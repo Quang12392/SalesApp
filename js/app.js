@@ -1325,29 +1325,37 @@ const App = {
     if (!tbody) return;
     tbody.innerHTML = list.length ? list.map(o => {
       const costTotal = o.items.reduce((s,i) => {
-        // costPrice trong Chi tiết đơn = tổng giá vốn FIFO (đã nhân SL rồi)
         if (i.costPrice > 0) return s + i.costPrice;
-        // Fallback cho đơn cũ: giá vốn SP hiện tại × SL
         const prod = this.products.find(p => p.sku === i.sku) || this.products.find(p => p.name === i.name);
         return s + (prod?.costPrice||0) * i.qty;
       }, 0);
       const profit = (o.finalTotal||0) - costTotal;
-      return `<tr>
-      <td><span class="product-sku">${o.id}</span></td>
-      <td style="font-weight:600">${o.customerName}</td>
-      <td style="max-width:200px;font-size:0.8rem">${o.items.map(i=>`${i.name} x${i.qty}`).join(', ')}</td>
-      <td><span class="price-text">${fmtd(o.finalTotal)}</span></td>
-      <td style="color:#10B981;font-weight:600">${fmtd(profit)}</td>
-      <td>${o.payment}</td>
-      <td><span class="order-status ${o.status}">${o.status==='completed'?'Hoàn thành':o.status==='pending'?'Chờ xử lý':'Đã hủy'}</span></td>
-      <td style="white-space:nowrap;color:var(--text-secondary)">${o.createdAt}</td>
-      <td><div class="table-actions">
+      const itemsSummary = o.items.map(i=>`${i.name} x${i.qty}`).join(', ');
+      return `<tr class="order-card" data-oid="${o.id}">
+      <td class="oc-id"><span class="product-sku">${o.id}</span></td>
+      <td class="oc-cust" style="font-weight:600">${o.customerName}</td>
+      <td class="oc-items" style="max-width:200px;font-size:0.8rem">${itemsSummary}</td>
+      <td class="oc-total"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
+      <td class="oc-profit" style="color:#10B981;font-weight:600">${fmtd(profit)}</td>
+      <td class="oc-payment">${o.payment}</td>
+      <td class="oc-status"><span class="order-status ${o.status}">${o.status==='completed'?'Hoàn thành':o.status==='pending'?'Chờ xử lý':'Đã hủy'}</span></td>
+      <td class="oc-date" style="white-space:nowrap;color:var(--text-secondary)">${o.createdAt}</td>
+      <td class="oc-actions"><div class="table-actions">
         <button class="btn-icon view-order" data-id="${o.id}" title="Xem / In hóa đơn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div></td>
     </tr>`;
     }).join('') : `<tr><td colspan="9" class="table-empty"><p>Không tìm thấy đơn hàng</p></td></tr>`;
-    document.getElementById('o-pagination').innerHTML = `<span>Hiển thị ${list.length} / ${this.orders.length} đơn hàng</span>`;
+    // Summary
+    const totalRevenue = list.reduce((s, o) => s + (o.finalTotal || 0), 0);
+    document.getElementById('o-pagination').innerHTML = `<div class="product-summary-bar">
+      <span>Tổng tiền hàng: <strong>${fmtd(totalRevenue)}</strong></span>
+      <span>${list.length} đơn hàng</span>
+    </div>`;
     document.querySelectorAll('.view-order').forEach(b => b.addEventListener('click', () => this.viewOrder(b.dataset.id)));
+    // Mobile: click cả row để xem chi tiết
+    document.querySelectorAll('.order-card').forEach(tr => tr.addEventListener('click', (e) => {
+      if (!e.target.closest('.btn-icon')) this.viewOrder(tr.dataset.oid);
+    }));
   },
 
   viewOrder(orderId) {

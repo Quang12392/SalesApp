@@ -1138,6 +1138,34 @@ ul, ol { list-style: none; }
   }
   .table-actions { gap: 6px; }
   
+  /* ── Đơn hàng → Card KiotViet style ── */
+  #orders .data-table tbody tr.order-card {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto auto;
+    gap: 2px 8px;
+    padding: 12px 8px;
+    cursor: pointer;
+  }
+  /* Khách hàng — row 1, col 1 */
+  .oc-cust { grid-column: 1; grid-row: 1; font-size: 0.95rem !important; }
+  /* Tổng tiền — row 1, col 2 */
+  .oc-total { grid-column: 2; grid-row: 1; text-align: right; font-size: 0.95rem !important; }
+  /* Ngày giờ + Mã đơn — row 2 */
+  .oc-date { grid-column: 1; grid-row: 2; font-size: 0.75rem !important; color: var(--text-muted) !important; }
+  .oc-id { grid-column: 2; grid-row: 2; text-align: right; }
+  .oc-id .product-sku { font-size: 0.7rem; }
+  /* Items — row 3 */
+  .oc-items { grid-column: 1 / -1; grid-row: 3; font-size: 0.78rem !important; color: #6B7280; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Payment — row 2 ẩn trên mobile vì ghi ở date */
+  .oc-payment { grid-column: 1; grid-row: 4; font-size: 0.75rem; }
+  /* Profit — ẩn trên mobile */
+  .oc-profit { display: none; }
+  /* Status — row 4, col 2 */
+  .oc-status { grid-column: 2; grid-row: 4; text-align: right; }
+  .oc-status .order-status { font-size: 0.7rem; padding: 2px 8px; }
+  /* Actions — ẩn, click cả row để xem */
+  .oc-actions { display: none; }
+
   /* ── Modal full-screen ── */
   .modal-container { border-radius: 0 !important; max-width: 100vw !important; max-height: 100vh !important; width: 100vw !important; height: 100vh !important; margin: 0 !important; }
   .modal-body { padding: 12px !important; }
