@@ -1733,3 +1733,20 @@ ul, ol { list-style: none; }
 .return-right .return-actions .btn-danger {
   width: 100%; padding: 12px; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;
 }
+
+/* ── Chặn xoay ngang trên mobile ── */
+#landscape-blocker {
+  display: none;
+  position: fixed; inset: 0; z-index: 999999;
+  background: linear-gradient(135deg, #1A73E8, #667eea);
+  color: #fff;
+  flex-direction: column; align-items: center; justify-content: center;
+  font-family: Inter, sans-serif; text-align: center; gap: 16px;
+}
+#landscape-blocker svg { width: 64px; height: 64px; animation: rotate-phone 1.5s ease-in-out infinite; }
+#landscape-blocker p { font-size: 1.1rem; font-weight: 600; }
+@keyframes rotate-phone { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
+
+@media screen and (max-width: 900px) and (orientation: landscape) {
+  #landscape-blocker { display: flex !important; }
+}

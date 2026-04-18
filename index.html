@@ -15,6 +15,11 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
+  <!-- Chặn xoay ngang -->
+  <div id="landscape-blocker">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01" stroke-width="3" stroke-linecap="round"/></svg>
+    <p>Vui lòng xoay dọc màn hình</p>
+  </div>
   <!-- ═══════════ LOADING SPLASH ═══════════ -->
   <div id="loading-splash" style="position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
     <img src="assets/logo2.png" alt="Kiều Hương Store" style="max-width:220px;height:auto;object-fit:contain;">
