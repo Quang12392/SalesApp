@@ -1104,6 +1104,18 @@ ul, ol { list-style: none; }
   /* Hide customer in cart panel (it's fixed at top now) */
   .pos-cart-panel > .pos-customer-section { position: static; display: none !important; }
   
+  /* "Thêm SP" button in cart view */
+  .pos-add-more-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; background: var(--primary-bg);
+    border-bottom: 1px solid var(--border);
+    color: var(--primary); font-weight: 600; font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .pos-add-more-bar:active { background: var(--primary-bg-strong); }
+  
+  /* Cart items in full view */
+  .pos-cart-items { max-height: none !important; flex: 1; }
   .pos-cart-panel.collapsed { max-height: 60px; overflow: hidden; }
   .pos-cart-panel.collapsed .pos-cart-items,
   .pos-cart-panel.collapsed .pos-totals .pos-total-row:not(.total),

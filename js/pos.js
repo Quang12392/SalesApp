@@ -216,6 +216,44 @@ const POS = {
     }
     this.renderCart();
     this.updateTotals();
+    // Mobile: switch to cart view when first item added
+    if (this._isMobile?.()) this.switchMobileView('cart');
+  },
+
+  // Mobile POS: toggle between browse (product list) and cart (checkout) views
+  switchMobileView(view) {
+    if (!this._isMobile?.()) return;
+    const posProducts = document.querySelector('.pos-products');
+    const cartPanel = document.querySelector('.pos-cart-panel');
+    if (!posProducts || !cartPanel) return;
+
+    if (view === 'cart') {
+      // Hide product list, show full cart
+      posProducts.style.display = 'none';
+      cartPanel.classList.remove('collapsed');
+      cartPanel.style.position = 'relative';
+      cartPanel.style.maxHeight = 'none';
+      cartPanel.style.borderRadius = '0';
+      cartPanel.style.boxShadow = 'none';
+      cartPanel.style.flex = '1';
+      cartPanel.style.overflow = 'auto';
+      this._mobileView = 'cart';
+    } else {
+      // Show product list, collapse cart to bottom sheet
+      posProducts.style.display = '';
+      cartPanel.style.position = '';
+      cartPanel.style.maxHeight = '';
+      cartPanel.style.borderRadius = '';
+      cartPanel.style.boxShadow = '';
+      cartPanel.style.flex = '';
+      cartPanel.style.overflow = '';
+      if (this.cart.length) {
+        cartPanel.classList.remove('collapsed');
+      } else {
+        cartPanel.classList.add('collapsed');
+      }
+      this._mobileView = 'browse';
+    }
   },
 
   updateQty(productId, delta) {
@@ -233,12 +271,15 @@ const POS = {
     }
     this.renderCart();
     this.updateTotals();
+    if (!this.cart.length && this._isMobile?.()) this.switchMobileView('browse');
   },
 
   removeFromCart(productId) {
     this.cart = this.cart.filter(c => c.id !== productId);
     this.renderCart();
     this.updateTotals();
+    // Mobile: go back to browse if cart empty
+    if (!this.cart.length && this._isMobile?.()) this.switchMobileView('browse');
   },
 
   renderCart() {
@@ -250,7 +291,15 @@ const POS = {
       </div>`;
       return;
     }
-    c.innerHTML = this.cart.map(item => {
+    // Mobile: add "Thêm SP" button at top of cart
+    const addMoreBtn = this._isMobile?.() && this._mobileView === 'cart'
+      ? `<div class="pos-add-more-bar" onclick="POS.switchMobileView('browse')">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+           <span>Thêm sản phẩm...</span>
+         </div>`
+      : '';
+    
+    c.innerHTML = addMoreBtn + this.cart.map(item => {
       const product = App.products.find(p => p.id === item.id || p.sku === item.sku || p.sku === item.id || p.id === item.sku || p.name === item.name);
       const stock = product ? product.stock : 999;
       const overStock = item.qty > stock;
