@@ -225,28 +225,36 @@ const POS = {
     if (!this._isMobile?.()) return;
     const posProducts = document.querySelector('.pos-products');
     const cartPanel = document.querySelector('.pos-cart-panel');
+    const custSection = document.querySelector('.pos-customer-section');
     if (!posProducts || !cartPanel) return;
 
     if (view === 'cart') {
+      // Move customer back to cart panel (so it's visible in cart view)
+      if (custSection && custSection.parentElement !== cartPanel) {
+        cartPanel.insertBefore(custSection, cartPanel.firstChild);
+        custSection.style.display = '';
+      }
+      // Show customer in cart view
+      const custInCart = cartPanel.querySelector('.pos-customer-section');
+      if (custInCart) custInCart.style.display = '';
+
       // Hide product list, show full cart
       posProducts.style.display = 'none';
       cartPanel.classList.remove('collapsed');
-      cartPanel.style.position = 'relative';
-      cartPanel.style.maxHeight = 'none';
-      cartPanel.style.borderRadius = '0';
-      cartPanel.style.boxShadow = 'none';
-      cartPanel.style.flex = '1';
-      cartPanel.style.overflow = 'auto';
+      cartPanel.classList.add('mobile-cart-view');
       this._mobileView = 'cart';
     } else {
-      // Show product list, collapse cart to bottom sheet
+      // Move customer to pos-products (between search and product list)
+      if (custSection) {
+        const searchBar = posProducts.querySelector('.pos-search-bar');
+        if (searchBar && custSection.parentElement !== posProducts) {
+          searchBar.insertAdjacentElement('afterend', custSection);
+        }
+        custSection.style.display = '';
+      }
+      // Show product list, reset cart panel
       posProducts.style.display = '';
-      cartPanel.style.position = '';
-      cartPanel.style.maxHeight = '';
-      cartPanel.style.borderRadius = '';
-      cartPanel.style.boxShadow = '';
-      cartPanel.style.flex = '';
-      cartPanel.style.overflow = '';
+      cartPanel.classList.remove('mobile-cart-view');
       if (this.cart.length) {
         cartPanel.classList.remove('collapsed');
       } else {
