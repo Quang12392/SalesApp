@@ -836,7 +836,13 @@ const App = {
       </tr>`;
     }).join('') : `<tr><td colspan="8" class="table-empty"><p>Không tìm thấy sản phẩm</p></td></tr>`;
 
-    if (pagination) pagination.innerHTML = `<span>Hiển thị ${list.length} / ${this.products.length} sản phẩm</span>`;
+    if (pagination) {
+      const totalStock = list.reduce((s, p) => s + (p.stock || 0), 0);
+      pagination.innerHTML = `<div class="product-summary-bar">
+        <span>Tổng tồn: <strong>${totalStock.toLocaleString('vi-VN')}</strong></span>
+        <span>${list.length} sản phẩm</span>
+      </div>`;
+    }
 
     // Re-bind row actions
     tbody.querySelectorAll('.edit-p').forEach(b => b.addEventListener('click', () => this.productModal(b.dataset.id)));

@@ -1066,37 +1066,77 @@ ul, ol { list-style: none; }
   .pos-cart-panel { width: 100%; }
   .pos-product-list { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
   
-  /* ── Bảng → Card layout ── */
+  /* ── Summary bar KiotViet style ── */
+  .table-pagination { order: -1; }
+  .product-summary-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: #F0F4FF; border-radius: 8px;
+    font-size: 0.85rem; color: #374151; margin-bottom: 8px;
+  }
+  .product-summary-bar strong { color: var(--primary); font-size: 1.1rem; }
+  .table-wrapper { display: flex; flex-direction: column; }
+  
+  /* ── Bảng SP → Card KiotViet style ── */
   .table-wrapper { overflow-x: visible; }
   .data-table { min-width: unset; }
   .data-table thead { display: none; }
   .data-table tbody tr {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 10px;
-    padding: 10px 8px;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    grid-template-rows: auto auto auto;
+    gap: 0 12px;
+    padding: 12px 8px;
     border-bottom: 1px solid var(--border);
+    align-items: center;
   }
   .data-table tbody td { padding: 0; border: none; }
-  /* Ảnh */
-  .prod-img-cell { width: 44px; height: 44px; }
-  .prod-thumb { width: 44px; height: 44px; }
-  /* SKU */
-  .data-table tbody td:nth-child(2) { font-size: 0.7rem; color: var(--text-muted); }
-  /* Tên SP - full width dòng 2 */
-  .data-table tbody td:nth-child(3) { flex: 1; min-width: 120px; font-weight: 600; font-size: 0.9rem; }
-  /* Nhóm - ẩn */
+  
+  /* Ảnh — cột 1, hàng 1-2 */
+  .data-table tbody td:nth-child(1) {
+    grid-column: 1; grid-row: 1 / 3;
+  }
+  .prod-img-cell { width: 48px; height: 48px; }
+  .prod-thumb { width: 48px; height: 48px; border-radius: 8px; }
+  
+  /* Tên SP — cột 2, hàng 1 */
+  .data-table tbody td:nth-child(3) {
+    grid-column: 2; grid-row: 1;
+    font-weight: 600; font-size: 0.9rem; line-height: 1.3;
+  }
+  
+  /* SKU — cột 2, hàng 2 */
+  .data-table tbody td:nth-child(2) {
+    grid-column: 2; grid-row: 2;
+    font-size: 0.72rem; color: var(--text-muted); order: 0;
+  }
+  
+  /* Giá bán — cột 3, hàng 1 */
+  .data-table tbody td:nth-child(5) {
+    grid-column: 3; grid-row: 1;
+    font-weight: 700; font-size: 0.9rem; text-align: right;
+    color: #1F2937;
+  }
+  
+  /* Tồn kho — cột 3, hàng 2 */
+  .data-table tbody td:nth-child(7) {
+    grid-column: 3; grid-row: 2;
+    text-align: right; font-size: 0.78rem; color: var(--text-muted);
+  }
+  .stock-badge { font-size: 0.72rem; padding: 1px 6px; }
+  
+  /* Nhóm — ẩn */
   .data-table tbody td:nth-child(4) { display: none; }
-  /* Giá bán */
-  .data-table tbody td:nth-child(5) { font-weight: 600; color: var(--primary); font-size: 0.85rem; }
-  /* Giá vốn - ẩn */
+  /* Giá vốn — ẩn */
   .data-table tbody td:nth-child(6) { display: none; }
-  /* Tồn kho */
-  .data-table tbody td:nth-child(7) { margin-left: auto; }
-  /* Thao tác */
-  .data-table tbody td:last-child { margin-left: auto; }
-  .table-actions { gap: 4px; }
+  
+  /* Thao tác — full width hàng 3 */
+  .data-table tbody td:last-child {
+    grid-column: 1 / -1; grid-row: 3;
+    display: flex; justify-content: flex-end;
+    padding-top: 6px; margin-top: 4px;
+    border-top: 1px dashed #E5E7EB;
+  }
+  .table-actions { gap: 6px; }
   
   /* ── Modal full-screen ── */
   .modal-container { border-radius: 0 !important; max-width: 100vw !important; max-height: 100vh !important; width: 100vw !important; height: 100vh !important; margin: 0 !important; }
