@@ -1,0 +1,5 @@
+# Không push lên GitHub
+apps-script/
+start.bat
+node_modules/
+.DS_Store

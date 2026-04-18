@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="QLBH Kiều Hương Store - Quản lý bán hàng thông minh">
+  <meta name="theme-color" content="#1A73E8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>QLBH Kiều Hương Store</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/index.css?v=54">
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</head>
+<body>
+  <!-- ═══════════ LOADING SPLASH ═══════════ -->
+  <div id="loading-splash" style="position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+    <img src="assets/logo2.png" alt="Kiều Hương Store" style="max-width:220px;height:auto;object-fit:contain;">
+    <div style="width:40px;height:40px;border:4px solid #e0e0e0;border-top:4px solid #1A73E8;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <p style="color:#666;font-family:'Be Vietnam Pro',sans-serif;font-size:0.9rem;">Đang tải dữ liệu...</p>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+  </div>
+  <!-- ═══════════ LOGIN PAGE ═══════════ -->
+  <div id="login-page" class="page login-page">
+    <div class="login-container">
+      <div class="login-left">
+        <div class="login-brand">
+          <div class="login-brand-icon">
+            <img src="assets/logo.png" alt="Kiều Hương Store" style="width:80px;height:80px;object-fit:contain;">
+          </div>
+          <h2>Kiều Hương Store</h2>
+          <p>Hệ thống quản lý bán hàng thông minh</p>
+        </div>
+        <div class="login-features">
+          <div class="login-feature"><span class="feature-icon">📦</span><span>Quản lý hàng hóa & tồn kho</span></div>
+          <div class="login-feature"><span class="feature-icon">🛒</span><span>Bán hàng nhanh chóng</span></div>
+          <div class="login-feature"><span class="feature-icon">📊</span><span>Báo cáo doanh thu chi tiết</span></div>
+          <div class="login-feature"><span class="feature-icon">👥</span><span>Quản lý khách hàng</span></div>
+        </div>
+      </div>
+      <div class="login-right">
+        <div class="login-card">
+          <h1>Đăng nhập</h1>
+          <p class="login-subtitle">Đăng nhập để sử dụng hệ thống</p>
+          <form id="login-form" class="login-form" autocomplete="off">
+            <div class="form-group">
+              <label for="login-username">Tên đăng nhập</label>
+              <input type="text" id="login-username" class="form-control" placeholder="Nhập tên đăng nhập" required>
+            </div>
+            <div class="form-group">
+              <label for="login-password">Mật khẩu</label>
+              <div class="input-password-wrap">
+                <input type="password" id="login-password" class="form-control" placeholder="Nhập mật khẩu" required>
+                <button type="button" class="toggle-password" tabindex="-1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="login-error" class="login-error" style="display:none"></div>
+            <button type="submit" class="btn btn-primary btn-login">Đăng nhập</button>
+          </form>
+          <div class="login-demo-info">
+            <span>🔑</span> Demo: <strong>admin</strong> / <strong>admin</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ MAIN APP ═══════════ -->
+  <div id="app-shell" class="app-shell" style="display:none">
+    <!-- TOP HEADER BAR -->
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <div class="header-logo">
+            <img src="assets/logo.png" alt="KH" style="width:32px;height:32px;object-fit:contain;border-radius:6px;">
+            <span class="header-logo-text">Kiều Hương</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <div id="network-status" class="network-status online">
+            <span class="net-dot"></span>
+            <span class="net-text">Online</span>
+          </div>
+          <button class="header-icon-btn" id="btn-notifications" title="Thong bao">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="notif-dot"></span>
+          </button>
+          <button class="header-icon-btn" id="btn-header-settings" title="Cài đặt" onclick="location.hash='#settings'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <div class="header-user" id="header-user-menu">
+            <div class="header-avatar" id="header-avatar">K</div>
+            <span class="header-username" id="header-username">Kiều Hương</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="user-dropdown" id="user-dropdown">
+              <div class="dropdown-user-info">
+                <div class="dropdown-avatar">K</div>
+                <div>
+                  <div class="dropdown-name" id="dropdown-name">Kiều Hương</div>
+                  <div class="dropdown-role" id="dropdown-role">Quản lý</div>
+                </div>
+              </div>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" id="btn-logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- NAVIGATION BAR (KiotViet style) -->
+    <nav class="main-nav">
+      <div class="nav-inner">
+        <div class="nav-tabs">
+          <a href="#dashboard" class="nav-tab active" data-page="dashboard">Tổng quan</a>
+          <div class="nav-tab-wrapper">
+            <a href="#products" class="nav-tab" data-page="products">Hàng hóa</a>
+            <div class="nav-dropdown">
+              <div class="nav-dropdown-inner">
+                <div class="nav-dropdown-col">
+                  <h4>Hàng hóa</h4>
+                  <a href="#products" class="nav-dropdown-item">Danh sách hàng hóa</a>
+                </div>
+                <div class="nav-dropdown-col">
+                  <h4>Kho hàng</h4>
+                  <a href="#inventory" class="nav-dropdown-item">Kiểm kho</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="nav-tab-wrapper">
+            <a href="#orders" class="nav-tab" data-page="orders">Đơn hàng</a>
+            <div class="nav-dropdown">
+              <div class="nav-dropdown-inner">
+                <div class="nav-dropdown-col">
+                  <a href="#orders" class="nav-dropdown-item">Hóa đơn</a>
+                  <a href="#returns" class="nav-dropdown-item" data-page="returns">Trả hàng</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <a href="#customers" class="nav-tab" data-page="customers">Khách hàng</a>
+          <div class="nav-tab-wrapper">
+            <a href="#reports" class="nav-tab" data-page="reports">Báo cáo</a>
+            <div class="nav-dropdown">
+              <div class="nav-dropdown-inner">
+                <div class="nav-dropdown-col">
+                  <a href="#reports" class="nav-dropdown-item" data-report="sales">Bán hàng</a>
+                  <a href="#reports" class="nav-dropdown-item" data-report="products">Hàng hóa</a>
+                  <a href="#reports" class="nav-dropdown-item" data-report="customers">Khách hàng</a>
+                </div>
+                <div class="nav-dropdown-col">
+                  <a href="#reports" class="nav-dropdown-item" data-report="endofday">Cuối ngày</a>
+                  <a href="#reports" class="nav-dropdown-item" data-report="finance">Tài chính</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-return" id="btn-open-return">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          Trả hàng
+        </button>
+        <button class="btn-sell" id="btn-open-pos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          Bán hàng
+        </button>
+      </div>
+    </nav>
+
+    <!-- MOBILE NAV TOGGLE -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
+    <!-- PAGE CONTENT -->
+    <div id="page-container" class="page-container"></div>
+
+    <!-- MOBILE BOTTOM NAV -->
+    <nav class="mobile-nav">
+      <a href="#dashboard" class="mob-nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Tổng quan</span>
+      </a>
+      <a href="#products" class="mob-nav-item" data-page="products">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <span>Hàng hóa</span>
+      </a>
+      <a href="#orders" class="mob-nav-item" data-page="orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+        <span>Đơn hàng</span>
+      </a>
+      <a href="#customers" class="mob-nav-item" data-page="customers">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>Khách hàng</span>
+      </a>
+      <a href="#reports" class="mob-nav-item" data-page="reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Báo cáo</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- ═══════════ RETURN MODAL ═══════════ -->
+  <div id="return-overlay" class="return-overlay" style="display:none">
+    <div class="return-modal">
+      <div class="return-header">
+        <h2 id="return-title">Chọn hóa đơn trả hàng</h2>
+        <button class="return-close" id="return-close">&times;</button>
+      </div>
+      <div class="return-body" id="return-body">
+        <div id="return-step1">
+          <div class="return-search-row">
+            <input type="text" id="return-search" class="form-control" placeholder="Tìm theo mã đơn hoặc tên khách...">
+          </div>
+          <div class="return-order-list" id="return-order-list"></div>
+          <div class="return-pagination" id="return-pagination"></div>
+        </div>
+        <div id="return-step2" style="display:none">
+          <div class="return-layout">
+            <div class="return-left">
+              <div class="return-items-list" id="return-items-list"></div>
+              <div class="return-note-wrap">
+                <input type="text" id="return-note" class="form-control" placeholder="✏ Ghi chú đơn hàng...">
+              </div>
+            </div>
+            <div class="return-right">
+              <div class="return-order-info" id="return-order-info"></div>
+              <div class="return-detail-rows" id="return-detail-rows"></div>
+              <div class="return-payment-methods" id="return-payment-methods"></div>
+              <div class="return-actions">
+                <button class="btn btn-secondary" id="return-back">← Quay lại</button>
+                <button class="btn btn-danger" id="return-confirm">TRẢ HÀNG</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ POS FULLSCREEN ═══════════ -->
+  <div id="pos-overlay" class="pos-overlay" style="display:none">
+    <div class="pos-header">
+      <div class="pos-header-left">
+        <button class="pos-back" id="pos-close" title="Đóng">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h2>Bán hàng</h2>
+      </div>
+      <div class="pos-header-right">
+        <span class="pos-time" id="pos-time"></span>
+      </div>
+    </div>
+    <div class="pos-body">
+      <!-- LEFT: Product Search & List -->
+      <div class="pos-products">
+        <div class="pos-search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="pos-product-search" placeholder="Tìm sản phẩm theo tên hoặc mã SKU..." autofocus>
+          <div class="pos-view-toggle" id="pos-view-toggle">
+            <button class="pos-view-btn active" data-view="grid" title="Lưới">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+            <button class="pos-view-btn" data-view="compact" title="Thu gọn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="5"/><rect x="10" y="3" width="5" height="5"/><rect x="17" y="3" width="5" height="5"/><rect x="3" y="10" width="5" height="5"/><rect x="10" y="10" width="5" height="5"/><rect x="17" y="10" width="5" height="5"/></svg>
+            </button>
+            <button class="pos-view-btn" data-view="list" title="Danh sách">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="pos-product-list" id="pos-product-list">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+      <!-- RIGHT: Cart & Payment -->
+      <div class="pos-cart-panel">
+        <!-- Customer -->
+        <div class="pos-customer-section">
+          <div class="pos-customer-search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <input type="text" id="pos-customer-search" placeholder="Tìm khách hàng hoặc nhập tên mới...">
+          </div>
+          <div class="pos-customer-list" id="pos-customer-dropdown" style="display:none"></div>
+          <div class="pos-selected-customer" id="pos-selected-customer" style="display:none"></div>
+        </div>
+        <!-- Drafts toggle -->
+        <div class="pos-drafts-bar" id="pos-drafts-bar" style="display:none">
+          <button class="pos-drafts-toggle" id="pos-drafts-toggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+            Đơn tạm (<span id="pos-drafts-count">0</span>)
+          </button>
+        </div>
+        <div class="pos-drafts-panel" id="pos-drafts-panel" style="display:none"></div>
+        <!-- Cart Items -->
+        <div class="pos-cart-items" id="pos-cart-items">
+          <div class="pos-cart-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+            <p>Chưa có sản phẩm</p>
+            <span>Tìm và chọn sản phẩm bên trái</span>
+          </div>
+        </div>
+        <!-- Totals & Payment -->
+        <div class="pos-totals">
+          <div class="pos-total-row">
+            <span>Tổng tiền hàng (<span id="pos-total-qty">0</span> SP)</span>
+            <span id="pos-subtotal">0đ</span>
+          </div>
+          <div class="pos-total-row">
+            <span>Giảm giá</span>
+            <div class="pos-discount-input-wrap">
+              <input type="text" inputmode="numeric" id="pos-discount" value="" placeholder="0">
+              <span>đ</span>
+            </div>
+          </div>
+          <div class="pos-total-row total">
+            <span>Khách cần trả</span>
+            <span id="pos-final-total">0đ</span>
+          </div>
+          <div class="pos-payment-methods">
+            <label class="pos-payment-option active">
+              <input type="radio" name="pos-payment" value="Tiền mặt" checked>
+              <span>💵 Tiền mặt</span>
+            </label>
+            <label class="pos-payment-option">
+              <input type="radio" name="pos-payment" value="Chuyển khoản">
+              <span>🏦 Chuyển khoản</span>
+            </label>
+            <label class="pos-payment-option">
+              <input type="radio" name="pos-payment" value="Ship COD">
+              <span>🚚 Ship COD</span>
+            </label>
+            <label class="pos-payment-option">
+              <input type="radio" name="pos-payment" value="Ship Thường">
+              <span>📦 Ship Thường</span>
+            </label>
+          </div>
+          <div class="pos-note-wrap">
+            <input type="text" id="pos-note" placeholder="Ghi chú đơn hàng...">
+          </div>
+          <div class="pos-action-buttons">
+            <button class="btn-save-draft" id="btn-save-draft" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              LƯU TẠM
+            </button>
+            <button class="btn-capture-cart" id="btn-capture-cart" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              TẢI ẢNH
+            </button>
+            <button class="btn-checkout" id="btn-checkout" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              THANH TOÁN
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ INVOICE PREVIEW ═══════════ -->
+  <div id="invoice-overlay" class="invoice-overlay" style="display:none">
+    <div class="invoice-container">
+      <div class="invoice-toolbar">
+        <h3>Hóa đơn</h3>
+        <div class="invoice-toolbar-btns">
+          <button class="btn btn-success" id="btn-capture-invoice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            📷 Tải ảnh
+          </button>
+          <button class="btn btn-primary" id="btn-print-invoice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            In / Lưu PDF
+          </button>
+          <button class="btn btn-secondary" id="btn-close-invoice">Đóng</button>
+          <button class="modal-close" id="btn-x-close-invoice" title="Đóng" style="margin-left:4px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="invoice-content" id="invoice-content"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ MODAL ═══════════ -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none">
+    <div class="modal-container" id="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-title">Modal</h3>
+        <button class="modal-close" id="modal-close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+
+  <!-- TOAST -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- PWA Install Banner -->
+  <div id="pwa-install-banner" class="pwa-install-banner" style="display:none">
+    <div class="pwa-install-content">
+      <img src="assets/icons/icon-192.png" alt="KH Store" class="pwa-icon">
+      <div>
+        <strong>Cai dat KH Store</strong>
+        <p>Them vao man hinh chinh de truy cap nhanh hon!</p>
+      </div>
+    </div>
+    <div class="pwa-install-actions">
+      <button id="pwa-install-close" class="btn btn-secondary btn-sm">Sau</button>
+      <button id="pwa-install-btn" class="btn btn-primary btn-sm">Cai dat</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="js/app.js?v=54"></script>
+  <script src="js/pos.js?v=54"></script>
+
+  <script>
+  // ── IndexedDB Cache Layer ──
+  const KHS_DB = {
+    _db: null,
+    async open() {
+      if (this._db) return this._db;
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('khs_offline', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('data')) db.createObjectStore('data');
+          if (!db.objectStoreNames.contains('pendingSync')) db.createObjectStore('pendingSync', { keyPath: 'id', autoIncrement: true });
+        };
+        req.onsuccess = () => { this._db = req.result; resolve(req.result); };
+        req.onerror = () => reject(req.error);
+      });
+    },
+    async save(key, data) {
+      const db = await this.open();
+      const tx = db.transaction('data', 'readwrite');
+      tx.objectStore('data').put(data, key);
+    },
+    async load(key) {
+      const db = await this.open();
+      return new Promise(resolve => {
+        const tx = db.transaction('data', 'readonly');
+        const req = tx.objectStore('data').get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      });
+    }
+  };
+
+  // Auto-cache data after sync
+  const origSync = App.syncFromSheet?.bind(App);
+  if (origSync) {
+    const _origSync = App.syncFromSheet;
+    App.syncFromSheet = async function() {
+      await _origSync.call(this);
+      // Cache to IndexedDB after successful sync
+      try {
+        await KHS_DB.save('products', this.products);
+        await KHS_DB.save('customers', this.customers);
+        await KHS_DB.save('orders', this.orders);
+        await KHS_DB.save('lastSync', new Date().toISOString());
+        console.log('IndexedDB: Data cached offline');
+      } catch(err) { console.log('IndexedDB save error:', err); }
+    };
+  }
+
+  // Load from IndexedDB on startup (fallback when offline)
+  (async function() {
+    try {
+      const cached = await KHS_DB.load('products');
+      if (cached && cached.length && App.products.length <= 25) {
+        // Only use cache if we didn't get fresh data from API
+        const lastSync = await KHS_DB.load('lastSync');
+        if (lastSync) console.log('IndexedDB: Using cached data from', lastSync);
+      }
+    } catch(err) { /* IndexedDB not available */ }
+  })();
+
+  // ── Service Worker Registration (Auto-Update) ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
+      console.log('SW registered:', reg.scope);
+      // Check for updates every 60 seconds
+      setInterval(() => reg.update(), 60000);
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+            // New version available — auto reload
+            console.log('New SW version activated, reloading...');
+            window.location.reload();
+          }
+        });
+      });
+    }).catch(err => console.log('SW error:', err));
+  }
+
+  // ── PWA Install Prompt ──
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Show install banner
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner && !localStorage.getItem('khs_pwa_dismissed')) {
+      banner.style.display = 'flex';
+    }
+  });
+
+  document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+      App.toast('success', 'Da cai dat KH Store!');
+    }
+    deferredPrompt = null;
+    document.getElementById('pwa-install-banner').style.display = 'none';
+  });
+
+  document.getElementById('pwa-install-close')?.addEventListener('click', () => {
+    document.getElementById('pwa-install-banner').style.display = 'none';
+    localStorage.setItem('khs_pwa_dismissed', '1');
+  });
+
+  window.addEventListener('appinstalled', () => {
+    document.getElementById('pwa-install-banner').style.display = 'none';
+    deferredPrompt = null;
+  });
+
+  // ── Network Status Indicator ──
+  function updateNetStatus() {
+    const el = document.getElementById('network-status');
+    if (!el) return;
+    if (navigator.onLine) {
+      el.className = 'network-status online';
+      el.querySelector('.net-text').textContent = 'Online';
+    } else {
+      el.className = 'network-status offline';
+      el.querySelector('.net-text').textContent = 'Offline';
+    }
+  }
+  updateNetStatus();
+  window.addEventListener('online', () => {
+    updateNetStatus();
+    App.toast('success', 'Da ket noi mang! Ban co the dong bo du lieu.');
+  });
+  window.addEventListener('offline', () => {
+    updateNetStatus();
+    App.toast('warning', 'Mat ket noi mang! Don hang se duoc luu tam.');
+  });
+  </script>
+</body>
+</html>
