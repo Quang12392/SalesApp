@@ -223,9 +223,8 @@ const POS = {
         App.toast('info', p.name + ' dang het hang. Hay luu tam don!');
       }
     }
-    // Mobile: always switch to cart view after adding
-    if (this._isMobile?.()) {
-      this._browseFromCart = false;
+    // Mobile: ALWAYS switch to cart view after adding a product
+    if (window.innerWidth <= 768) {
       this.switchMobileView('cart');
     }
     this.renderCart();
@@ -255,24 +254,14 @@ const POS = {
       cartPanel.classList.add('mobile-cart-view');
       this._mobileView = 'cart';
     } else {
-      // Coming from cart → show as "search to add" mode
-      const fromCart = this._mobileView === 'cart' && this.cart.length > 0;
-      
-      // Hide customer in browse (it's in cart view)
-      if (custSection) custSection.style.display = fromCart ? 'none' : '';
+      // Show as "search to add" mode
+      if (custSection) custSection.style.display = 'none';
       
       // Show product list
       posProducts.style.display = '';
       cartPanel.classList.remove('mobile-cart-view');
-      
-      if (fromCart) {
-        // Show cart as collapsed bottom bar
-        cartPanel.classList.remove('collapsed');
-        this._browseFromCart = true;
-      } else {
-        cartPanel.classList.add('collapsed');
-        this._browseFromCart = false;
-      }
+      // Always collapse cart (show only total bar at bottom)
+      cartPanel.classList.add('collapsed');
       
       this._mobileView = 'browse';
       // Re-render products to show cart highlights
