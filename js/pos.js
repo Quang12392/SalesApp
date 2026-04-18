@@ -104,8 +104,16 @@ const POS = {
     document.getElementById('pos-selected-customer').style.display = 'none';
     document.getElementById('pos-discount').value = '';
     document.getElementById('pos-note').value = '';
-    // Mobile: start collapsed
-    if (this._isMobile?.()) document.querySelector('.pos-cart-panel')?.classList.add('collapsed');
+    // Mobile: move customer section above product list
+    if (this._isMobile?.()) {
+      document.querySelector('.pos-cart-panel')?.classList.add('collapsed');
+      const custSection = document.querySelector('.pos-customer-section');
+      const productsDiv = document.querySelector('.pos-products');
+      const searchBar = productsDiv?.querySelector('.pos-search-bar');
+      if (custSection && searchBar) {
+        searchBar.insertAdjacentElement('afterend', custSection);
+      }
+    }
 
     document.querySelectorAll('.pos-payment-option').forEach((o, i) => {
       o.classList.toggle('active', i === 0);
@@ -130,6 +138,12 @@ const POS = {
   },
 
   close() {
+    // Mobile: move customer back to cart panel
+    const custSection = document.querySelector('.pos-customer-section');
+    const cartPanel = document.querySelector('.pos-cart-panel');
+    if (custSection && cartPanel && custSection.parentElement !== cartPanel) {
+      cartPanel.insertBefore(custSection, cartPanel.firstChild);
+    }
     document.getElementById('pos-overlay').style.display = 'none';
     clearInterval(this.posTimer);
   },

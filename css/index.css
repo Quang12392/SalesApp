@@ -1061,10 +1061,25 @@ ul, ol { list-style: none; }
   .modal-form .form-row { grid-template-columns: 1fr; }
   .nav-dropdown { display: none !important; }
   .header-username { display: none; }
-  .pos-body { flex-direction: column; height: calc(100vh - 56px); }
+  .pos-body { flex-direction: column; height: calc(100vh - 56px); position: relative; }
   
-  /* Products = full screen, list view */
-  .pos-products { border-right: none; border-bottom: none; flex: 1; overflow-y: auto; max-height: none; padding-bottom: 80px; }
+  /* === KiotViet mobile POS layout === */
+  /* Search bar stays at top */
+  .pos-products { border-right: none; border-bottom: none; flex: 1; overflow-y: auto; max-height: none; padding-bottom: 80px; order: 2; }
+  
+  /* Customer section — moved to pos-products by JS on mobile */
+  .pos-products > .pos-customer-section {
+    background: white; border-bottom: 1px solid var(--border);
+    padding: 6px 12px; position: relative;
+  }
+  .pos-products > .pos-customer-section .pos-customer-search-wrap { padding: 4px 8px; font-size: 0.8rem; }
+  .pos-products > .pos-customer-section .pos-customer-search-wrap input { font-size: 0.8rem; }
+  .pos-products > .pos-customer-section .pos-customer-list {
+    left: 8px; right: 8px;
+  }
+  .pos-products > .pos-customer-section .pos-selected-customer { margin-top: 4px; padding: 4px 8px; font-size: 0.8rem; }
+  
+  /* Product list = single column */
   .pos-product-list, .pos-product-list.view-compact, .pos-product-list.view-list { grid-template-columns: 1fr !important; gap: 0 !important; }
   .pos-p-card, .view-compact .pos-p-card { 
     padding: 10px 12px; gap: 10px; border-radius: 0; border: none; 
@@ -1077,21 +1092,25 @@ ul, ol { list-style: none; }
   .pos-p-bottom, .view-compact .pos-p-bottom { justify-content: space-between !important; }
   .pos-view-toggle { display: none !important; }
   
-  /* Cart = bottom sheet */
+  /* Cart = bottom sheet (without customer section) */
   .pos-cart-panel {
     width: 100%; position: fixed; bottom: 0; left: 0; right: 0;
     z-index: 200; max-height: 70vh;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
     transition: max-height 0.3s ease;
+    order: 3;
   }
+  /* Hide customer in cart panel (it's fixed at top now) */
+  .pos-cart-panel > .pos-customer-section { position: static; display: none !important; }
+  
   .pos-cart-panel.collapsed { max-height: 60px; overflow: hidden; }
-  .pos-cart-panel.collapsed .pos-customer-section,
   .pos-cart-panel.collapsed .pos-cart-items,
   .pos-cart-panel.collapsed .pos-totals .pos-total-row:not(.total),
   .pos-cart-panel.collapsed .pos-discount-input-wrap,
   .pos-cart-panel.collapsed .pos-payment-methods,
-  .pos-cart-panel.collapsed .pos-order-note { display: none; }
+  .pos-cart-panel.collapsed .pos-order-note,
+  .pos-cart-panel.collapsed .pos-drafts-bar { display: none; }
   
   /* Cart summary bar (always visible) */
   .pos-totals { padding: 8px 12px; }
