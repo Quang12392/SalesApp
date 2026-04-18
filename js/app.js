@@ -3,8 +3,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const DEMO_USERS = [
-  { id:'U1', username:'admin', password:'admin', displayName:'Kiều Hương', role:'admin' },
-  { id:'U2', username:'staff', password:'staff', displayName:'Nhân viên', role:'staff' }
+  // Đăng nhập qua Google Sheets API — không dùng tài khoản mặc định
 ];
 
 // ── UTILS ──
