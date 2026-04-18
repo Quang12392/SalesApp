@@ -1059,14 +1059,60 @@ ul, ol { list-style: none; }
   .today-stats { gap: 20px; }
   .toolbar-search input { width: 140px; }
   .modal-form .form-row { grid-template-columns: 1fr; }
-  .table-wrapper { overflow-x: auto; }
-  .data-table { min-width: 650px; }
   .nav-dropdown { display: none !important; }
   .header-username { display: none; }
   .pos-body { flex-direction: column; }
   .pos-products { border-right: none; border-bottom: 1px solid var(--border); max-height: 40vh; }
   .pos-cart-panel { width: 100%; }
   .pos-product-list { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  
+  /* ── Bảng → Card layout ── */
+  .table-wrapper { overflow-x: visible; }
+  .data-table { min-width: unset; }
+  .data-table thead { display: none; }
+  .data-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table tbody td { padding: 0; border: none; }
+  /* Ảnh */
+  .prod-img-cell { width: 44px; height: 44px; }
+  .prod-thumb { width: 44px; height: 44px; }
+  /* SKU */
+  .data-table tbody td:nth-child(2) { font-size: 0.7rem; color: var(--text-muted); }
+  /* Tên SP - full width dòng 2 */
+  .data-table tbody td:nth-child(3) { flex: 1; min-width: 120px; font-weight: 600; font-size: 0.9rem; }
+  /* Nhóm - ẩn */
+  .data-table tbody td:nth-child(4) { display: none; }
+  /* Giá bán */
+  .data-table tbody td:nth-child(5) { font-weight: 600; color: var(--primary); font-size: 0.85rem; }
+  /* Giá vốn - ẩn */
+  .data-table tbody td:nth-child(6) { display: none; }
+  /* Tồn kho */
+  .data-table tbody td:nth-child(7) { margin-left: auto; }
+  /* Thao tác */
+  .data-table tbody td:last-child { margin-left: auto; }
+  .table-actions { gap: 4px; }
+  
+  /* ── Modal full-screen ── */
+  .modal-container { border-radius: 0 !important; max-width: 100vw !important; max-height: 100vh !important; width: 100vw !important; height: 100vh !important; margin: 0 !important; }
+  .modal-body { padding: 12px !important; }
+  
+  /* ── Report cards ── */
+  .report-summary-cards { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .rpt-card-label { font-size: 0.7rem !important; }
+  .rpt-card-value { font-size: 0.85rem !important; }
+  .chart-area { height: 220px !important; }
+  
+  /* ── Toolbar ── */
+  .page-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .toolbar-left { flex-direction: column; gap: 8px; }
+  .toolbar-search input { width: 100%; }
+  .toolbar-right .btn { padding: 8px 12px; font-size: 0.8rem; width: 100%; justify-content: center; }
 }
 @media (max-width: 480px) {
   .today-stats { flex-direction: column; gap: 12px; }
