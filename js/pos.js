@@ -156,7 +156,18 @@ const POS = {
     c.innerHTML = list.map(p => {
       const stockClass = p.stock <= 0 ? 'out' : p.stock <= 3 ? 'low' : '';
       const outClass = p.stock <= 0 ? 'out-of-stock' : '';
-      return `<div class="pos-p-card ${outClass}" data-sku="${p.sku}" onclick="POS.addToCart('${p.id}')">
+      const cartItem = this.cart.find(ci => ci.id === p.id);
+      const inCart = !!cartItem;
+      const inCartClass = inCart ? 'in-cart' : '';
+      // If product is in cart, show qty controls instead of simple click
+      const qtyControls = inCart 
+        ? `<div class="pos-p-qty-inline" onclick="event.stopPropagation()">
+             <button onclick="POS.updateQty('${p.id}',-1)">−</button>
+             <span>${cartItem.qty}</span>
+             <button onclick="POS.updateQty('${p.id}',1)">+</button>
+           </div>`
+        : '';
+      return `<div class="pos-p-card ${outClass} ${inCartClass}" data-sku="${p.sku}" onclick="POS.addToCart('${p.id}')">
         <img class="pos-p-img" id="posimg-${p.id}" src="" alt="">
         <div class="pos-p-info">
           <div class="pos-p-name">${p.name}</div>
@@ -166,6 +177,7 @@ const POS = {
             <span class="pos-p-stock ${stockClass}">${p.stock <= 0 ? 'Hết hàng' : 'Kho: ' + p.stock}</span>
           </div>
         </div>
+        ${qtyControls}
       </div>`;
     }).join('');
 
@@ -211,8 +223,15 @@ const POS = {
         App.toast('info', p.name + ' dang het hang. Hay luu tam don!');
       }
     }
-    // Mobile: switch to cart view FIRST (so renderCart shows add-more button)
-    if (this._isMobile?.()) this.switchMobileView('cart');
+    // Mobile: switch to cart view only on FIRST add from initial browse
+    if (this._isMobile?.()) {
+      if (this._browseFromCart) {
+        // Adding from search-to-add mode — stay in browse, just refresh
+        this.renderProducts(document.getElementById('pos-product-search').value);
+      } else {
+        this.switchMobileView('cart');
+      }
+    }
     this.renderCart();
     this.updateTotals();
   },
@@ -231,7 +250,6 @@ const POS = {
         cartPanel.insertBefore(custSection, cartPanel.firstChild);
         custSection.style.display = '';
       }
-      // Show customer in cart view
       const custInCart = cartPanel.querySelector('.pos-customer-section');
       if (custInCart) custInCart.style.display = '';
 
@@ -241,23 +259,30 @@ const POS = {
       cartPanel.classList.add('mobile-cart-view');
       this._mobileView = 'cart';
     } else {
-      // Move customer to pos-products (between search and product list)
-      if (custSection) {
-        const searchBar = posProducts.querySelector('.pos-search-bar');
-        if (searchBar && custSection.parentElement !== posProducts) {
-          searchBar.insertAdjacentElement('afterend', custSection);
-        }
-        custSection.style.display = '';
-      }
-      // Show product list, reset cart panel
+      // Coming from cart → show as "search to add" mode
+      const fromCart = this._mobileView === 'cart' && this.cart.length > 0;
+      
+      // Hide customer in browse (it's in cart view)
+      if (custSection) custSection.style.display = fromCart ? 'none' : '';
+      
+      // Show product list
       posProducts.style.display = '';
       cartPanel.classList.remove('mobile-cart-view');
-      if (this.cart.length) {
+      
+      if (fromCart) {
+        // Show cart as collapsed bottom bar
         cartPanel.classList.remove('collapsed');
+        this._browseFromCart = true;
       } else {
         cartPanel.classList.add('collapsed');
+        this._browseFromCart = false;
       }
+      
       this._mobileView = 'browse';
+      // Re-render products to show cart highlights
+      this.renderProducts(document.getElementById('pos-product-search').value);
+      // Focus search
+      setTimeout(() => document.getElementById('pos-product-search')?.focus(), 100);
     }
   },
 
@@ -276,6 +301,10 @@ const POS = {
     }
     this.renderCart();
     this.updateTotals();
+    // Re-render products to update highlights
+    if (this._mobileView === 'browse') {
+      this.renderProducts(document.getElementById('pos-product-search').value);
+    }
     if (!this.cart.length && this._isMobile?.()) this.switchMobileView('browse');
   },
 

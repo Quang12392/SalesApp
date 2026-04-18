@@ -730,6 +730,27 @@ ul, ol { list-style: none; }
 .pos-p-stock.low { color: var(--warning); }
 .pos-p-stock.out { color: var(--danger); }
 
+/* Product in cart — highlighted */
+.pos-p-card.in-cart { 
+  background: #EFF6FF; border-left: 3px solid var(--primary);
+}
+.pos-p-card.in-cart .pos-p-name { color: var(--primary); }
+.pos-p-qty-inline {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+}
+.pos-p-qty-inline button {
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid var(--border); background: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 700; color: var(--text);
+  cursor: pointer;
+}
+.pos-p-qty-inline button:active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
+.pos-p-qty-inline span {
+  min-width: 24px; text-align: center;
+  font-weight: 800; font-size: 0.95rem; color: var(--primary);
+}
+
 /* Compact view — smaller cards */
 .view-compact { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:6px; }
 .view-compact .pos-p-card { padding:6px; gap:6px; flex-direction:column; align-items:stretch; text-align:center; }
