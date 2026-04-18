@@ -81,15 +81,12 @@ const POS = {
       // Tap on total bar → toggle expand/collapse
       cartPanel.addEventListener('click', e => {
         if (!this._isMobile()) return;
-        const totalRow = e.target.closest('.pos-total-row.total');
-        if (totalRow) {
-          cartPanel.classList.toggle('collapsed');
-        }
-      });
-      // Tap on products area → collapse cart
-      document.querySelector('.pos-products')?.addEventListener('click', () => {
-        if (this._isMobile() && !cartPanel.classList.contains('collapsed')) {
-          cartPanel.classList.add('collapsed');
+        // Only toggle on total row when in browse mode (bottom sheet)
+        if (this._mobileView !== 'cart') {
+          const totalRow = e.target.closest('.pos-total-row.total');
+          if (totalRow) {
+            cartPanel.classList.toggle('collapsed');
+          }
         }
       });
     }
