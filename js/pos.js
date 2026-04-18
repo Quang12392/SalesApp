@@ -223,14 +223,10 @@ const POS = {
         App.toast('info', p.name + ' dang het hang. Hay luu tam don!');
       }
     }
-    // Mobile: switch to cart view only on FIRST add from initial browse
+    // Mobile: always switch to cart view after adding
     if (this._isMobile?.()) {
-      if (this._browseFromCart) {
-        // Adding from search-to-add mode — stay in browse, just refresh
-        this.renderProducts(document.getElementById('pos-product-search').value);
-      } else {
-        this.switchMobileView('cart');
-      }
+      this._browseFromCart = false;
+      this.switchMobileView('cart');
     }
     this.renderCart();
     this.updateTotals();
