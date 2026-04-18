@@ -74,6 +74,25 @@ const POS = {
     document.addEventListener('click', e => {
       if (e.target.id === 'btn-new-order' || e.target.closest('#btn-new-order')) this.open();
     });
+    // Mobile: bottom sheet cart toggle
+    this._isMobile = () => window.innerWidth <= 768;
+    const cartPanel = document.querySelector('.pos-cart-panel');
+    if (cartPanel) {
+      // Tap on total bar → toggle expand/collapse
+      cartPanel.addEventListener('click', e => {
+        if (!this._isMobile()) return;
+        const totalRow = e.target.closest('.pos-total-row.total');
+        if (totalRow) {
+          cartPanel.classList.toggle('collapsed');
+        }
+      });
+      // Tap on products area → collapse cart
+      document.querySelector('.pos-products')?.addEventListener('click', () => {
+        if (this._isMobile() && !cartPanel.classList.contains('collapsed')) {
+          cartPanel.classList.add('collapsed');
+        }
+      });
+    }
   },
 
   open() {
@@ -85,6 +104,8 @@ const POS = {
     document.getElementById('pos-selected-customer').style.display = 'none';
     document.getElementById('pos-discount').value = '';
     document.getElementById('pos-note').value = '';
+    // Mobile: start collapsed
+    if (this._isMobile?.()) document.querySelector('.pos-cart-panel')?.classList.add('collapsed');
 
     document.querySelectorAll('.pos-payment-option').forEach((o, i) => {
       o.classList.toggle('active', i === 0);
@@ -319,6 +340,14 @@ const POS = {
     document.getElementById('btn-checkout').disabled = empty;
     document.getElementById('btn-save-draft').disabled = empty;
     document.getElementById('btn-capture-cart').disabled = empty;
+    // Mobile: show/hide bottom sheet
+    if (this._isMobile?.()) {
+      const cp = document.querySelector('.pos-cart-panel');
+      if (cp) {
+        if (empty) { cp.classList.add('collapsed'); }
+        // Show collapsed bar with total when cart has items
+      }
+    }
   },
 
   async captureCart() {
