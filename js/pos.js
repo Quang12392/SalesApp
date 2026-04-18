@@ -211,10 +211,10 @@ const POS = {
         App.toast('info', p.name + ' dang het hang. Hay luu tam don!');
       }
     }
+    // Mobile: switch to cart view FIRST (so renderCart shows add-more button)
+    if (this._isMobile?.()) this.switchMobileView('cart');
     this.renderCart();
     this.updateTotals();
-    // Mobile: switch to cart view when first item added
-    if (this._isMobile?.()) this.switchMobileView('cart');
   },
 
   // Mobile POS: toggle between browse (product list) and cart (checkout) views
