@@ -61,7 +61,17 @@
             <div id="login-error" class="login-error" style="display:none"></div>
             <button type="submit" class="btn btn-primary btn-login">Đăng nhập</button>
           </form>
-
+          <div style="margin-top:16px;text-align:center">
+            <button type="button" id="login-api-toggle" style="background:none;border:none;color:#6B7280;font-size:0.8rem;cursor:pointer;text-decoration:underline">⚙️ Cài đặt kết nối API</button>
+            <div id="login-api-box" style="display:none;margin-top:10px;text-align:left">
+              <label style="font-size:0.8rem;color:#374151;font-weight:600">API URL (Google Apps Script)</label>
+              <div style="display:flex;gap:6px;margin-top:4px">
+                <input type="text" id="login-api-url" placeholder="https://script.google.com/macros/s/..." style="flex:1;padding:8px 10px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:0.85rem">
+                <button type="button" id="login-api-save" style="padding:8px 14px;background:#1A73E8;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:0.8rem;cursor:pointer;white-space:nowrap">Lưu</button>
+              </div>
+              <div id="login-api-status" style="font-size:0.75rem;margin-top:4px;color:#10B981"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

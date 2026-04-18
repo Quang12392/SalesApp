@@ -289,6 +289,29 @@ const App = {
       const inp = document.getElementById('login-password');
       inp.type = inp.type === 'password' ? 'text' : 'password';
     });
+    // ── API config on login page ──
+    const apiToggle = document.getElementById('login-api-toggle');
+    const apiBox = document.getElementById('login-api-box');
+    const apiInput = document.getElementById('login-api-url');
+    const apiSave = document.getElementById('login-api-save');
+    const apiStatus = document.getElementById('login-api-status');
+    if (apiToggle) {
+      apiToggle.addEventListener('click', () => {
+        apiBox.style.display = apiBox.style.display === 'none' ? 'block' : 'none';
+        const saved = localStorage.getItem('khs_api_url');
+        if (saved) { apiInput.value = saved; apiStatus.textContent = '✅ Đã kết nối'; }
+      });
+    }
+    if (apiSave) {
+      apiSave.addEventListener('click', () => {
+        const url = apiInput.value.trim();
+        if (!url) { apiStatus.textContent = '❌ Vui lòng nhập URL'; apiStatus.style.color = '#EF4444'; return; }
+        localStorage.setItem('khs_api_url', url);
+        apiStatus.textContent = '✅ Đã lưu! Hãy đăng nhập.';
+        apiStatus.style.color = '#10B981';
+        this.autoSync();
+      });
+    }
     // Logout
     document.getElementById('btn-logout').addEventListener('click', () => this.logout());
     // User dropdown
