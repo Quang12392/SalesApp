@@ -1366,7 +1366,12 @@ ul, ol { list-style: none; }
     border-bottom: 1px solid var(--border);
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
   }
-  .orders-sticky-header .toolbar-search { margin-bottom: 8px; }
+  .orders-top-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .orders-time-filter {
+    padding: 7px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 0.8rem; background: var(--primary-bg); color: var(--primary);
+    font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
   .orders-summary-bar {
     display: flex; justify-content: space-between; align-items: center;
     padding: 6px 10px; border-radius: var(--radius-sm);

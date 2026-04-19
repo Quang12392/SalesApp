@@ -1280,16 +1280,26 @@ const App = {
   },
 
   // ═════════ ORDERS ═════════
-  oSearch: '', oFilter: 'all',
+  oSearch: '', oFilter: 'all', oTime: 'all',
 
   renderOrders(c) {
     // Only build full layout once
     if (!c.querySelector('#o-search')) {
       c.innerHTML = `
         <div class="orders-sticky-header">
-          <div class="toolbar-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
+          <div class="orders-top-row">
+            <div class="toolbar-search" style="flex:1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
+            </div>
+            <select class="orders-time-filter" id="o-time-filter">
+              <option value="all">Tất cả</option>
+              <option value="today">Hôm nay</option>
+              <option value="yesterday">Hôm qua</option>
+              <option value="week">Tuần này</option>
+              <option value="month" selected>Tháng này</option>
+              <option value="lastmonth">Tháng trước</option>
+            </select>
           </div>
           <div class="orders-summary-bar" id="o-summary">
             <span>Tổng tiền hàng: <strong>0đ</strong></span>
@@ -1307,13 +1317,52 @@ const App = {
         </div>
       `;
       document.getElementById('o-search').addEventListener('input', e => { this.oSearch = e.target.value; this.updateOrderTable(); });
+      document.getElementById('o-time-filter').addEventListener('change', e => { this.oTime = e.target.value; this.updateOrderTable(); });
+      this.oTime = 'month'; // default
     }
     this.updateOrderTable();
   },
 
+  _getDateRange(period) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    switch(period) {
+      case 'today': return { start: today, end: now };
+      case 'yesterday': {
+        const y = new Date(today); y.setDate(y.getDate() - 1);
+        return { start: y, end: today };
+      }
+      case 'week': {
+        const w = new Date(today); w.setDate(w.getDate() - w.getDay() + 1); // Monday
+        if (w > today) w.setDate(w.getDate() - 7);
+        return { start: w, end: now };
+      }
+      case 'month': {
+        return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: now };
+      }
+      case 'lastmonth': {
+        const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const e = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        return { start: s, end: e };
+      }
+      default: return null;
+    }
+  },
+
   updateOrderTable() {
+    const range = this._getDateRange(this.oTime);
     let list = this.orders.filter(o => {
-      return !this.oSearch || o.id.toLowerCase().includes(this.oSearch.toLowerCase()) || o.customerName.toLowerCase().includes(this.oSearch.toLowerCase());
+      const ms = !this.oSearch || o.id.toLowerCase().includes(this.oSearch.toLowerCase()) || o.customerName.toLowerCase().includes(this.oSearch.toLowerCase());
+      if (!ms) return false;
+      if (range && o.createdAt) {
+        // Parse "dd/MM/yyyy HH:mm:ss" or similar
+        const parts = o.createdAt.match(/(\d+)/g);
+        if (parts && parts.length >= 3) {
+          const d = new Date(parts[2], parts[1]-1, parts[0], parts[3]||0, parts[4]||0, parts[5]||0);
+          if (d < range.start || d > range.end) return false;
+        }
+      }
+      return true;
     });
     const tbody = document.getElementById('o-tbody');
     if (!tbody) return;
