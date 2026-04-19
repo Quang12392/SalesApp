@@ -1283,8 +1283,6 @@ const App = {
   oSearch: '', oFilter: 'all',
 
   renderOrders(c) {
-    // Count drafts
-    const draftCount = JSON.parse(localStorage.getItem('pos_drafts') || '[]').length;
     // Only build full layout once
     if (!c.querySelector('#o-search')) {
       c.innerHTML = `
@@ -1301,16 +1299,6 @@ const App = {
               <option value="cancelled" ${this.oFilter==='cancelled'?'selected':''}>Đã hủy</option>
             </select>
           </div>
-          <div class="orders-mobile-actions">
-            <button class="btn btn-outline orders-draft-btn" id="btn-view-drafts" ${draftCount === 0 ? 'style="display:none"' : ''}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Đơn tạm <span class="draft-badge">${draftCount}</span>
-            </button>
-            <button class="btn btn-primary" id="btn-new-order">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Tạo đơn mới
-            </button>
-          </div>
         </div>
         <div class="table-wrapper">
           <table class="data-table">
@@ -1325,15 +1313,6 @@ const App = {
       `;
       document.getElementById('o-search').addEventListener('input', e => { this.oSearch = e.target.value; this.updateOrderTable(); });
       document.getElementById('o-filter').addEventListener('change', e => { this.oFilter = e.target.value; this.updateOrderTable(); });
-      document.getElementById('btn-view-drafts')?.addEventListener('click', () => {
-        POS.open();
-        setTimeout(() => {
-          const draftsBar = document.getElementById('pos-drafts-bar');
-          const draftsPanel = document.getElementById('pos-drafts-panel');
-          if (draftsBar) draftsBar.style.display = '';
-          if (draftsPanel) draftsPanel.style.display = '';
-        }, 200);
-      });
     }
     this.updateOrderTable();
   },
