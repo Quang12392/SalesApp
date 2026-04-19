@@ -1287,11 +1287,11 @@ const App = {
     if (!c.querySelector('#o-search')) {
       c.innerHTML = `
         <div class="orders-sticky-header">
-          <div class="orders-top-row">
-            <div class="toolbar-search" style="flex:1">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
-            </div>
+          <div class="toolbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
+          </div>
+          <div class="orders-filter-row">
             <select class="orders-time-filter" id="o-time-filter">
               <option value="all">Tất cả</option>
               <option value="today">Hôm nay</option>

@@ -1366,11 +1366,12 @@ ul, ol { list-style: none; }
     border-bottom: 1px solid var(--border);
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
   }
-  .orders-top-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .orders-sticky-header .toolbar-search { margin-bottom: 6px; }
+  .orders-filter-row { margin-bottom: 6px; }
   .orders-time-filter {
-    padding: 7px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
     font-size: 0.8rem; background: var(--primary-bg); color: var(--primary);
-    font-weight: 600; cursor: pointer; white-space: nowrap;
+    font-weight: 600; cursor: pointer;
   }
   .orders-summary-bar {
     display: flex; justify-content: space-between; align-items: center;
@@ -1378,6 +1379,9 @@ ul, ol { list-style: none; }
     background: var(--primary-bg); font-size: 0.8rem;
   }
   .orders-summary-bar strong { color: var(--primary); font-size: 0.9rem; }
+
+  /* Hide hamburger menu on mobile (using bottom nav instead) */
+  .mobile-menu-toggle { display: none !important; }
   
   /* ── Header compact ── */
   .app-header { padding: 0 12px; }
