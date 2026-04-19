@@ -28,9 +28,11 @@ const POS = {
     document.getElementById('btn-checkout').addEventListener('click', () => this.checkout());
     document.getElementById('btn-save-draft').addEventListener('click', () => this.saveDraft());
     document.getElementById('btn-capture-cart').addEventListener('click', () => this.captureCart());
-    document.getElementById('pos-drafts-toggle').addEventListener('click', () => {
+    document.getElementById('pos-drafts-toggle').addEventListener('click', (e) => {
+      e.stopPropagation();
       const panel = document.getElementById('pos-drafts-panel');
-      if (panel.style.display === 'none') { this.renderDrafts(); } else { panel.style.display = 'none'; }
+      const isHidden = !panel || panel.style.display === 'none' || getComputedStyle(panel).display === 'none';
+      if (isHidden) { this.renderDrafts(); } else { panel.style.display = 'none'; }
     });
     // View mode toggle
     document.querySelectorAll('.pos-view-btn').forEach(btn => {
@@ -252,6 +254,11 @@ const POS = {
       posProducts.style.display = 'none';
       cartPanel.classList.remove('collapsed');
       cartPanel.classList.add('mobile-cart-view');
+      // Hide drafts bar/panel in cart view
+      const draftsBar = document.getElementById('pos-drafts-bar');
+      const draftsPanel = document.getElementById('pos-drafts-panel');
+      if (draftsBar) draftsBar.style.display = 'none';
+      if (draftsPanel) draftsPanel.style.display = 'none';
       this._mobileView = 'cart';
     } else {
       // Show as "search to add" mode
@@ -262,6 +269,11 @@ const POS = {
       cartPanel.classList.remove('mobile-cart-view');
       // Always collapse cart (show only total bar at bottom)
       cartPanel.classList.add('collapsed');
+      // Show drafts bar if there are drafts
+      this.updateDraftsBar();
+      // Close drafts panel
+      const draftsPanel = document.getElementById('pos-drafts-panel');
+      if (draftsPanel) draftsPanel.style.display = 'none';
       
       this._mobileView = 'browse';
       // Re-render products to show cart highlights
