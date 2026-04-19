@@ -820,6 +820,10 @@ const POS = {
     this.renderCart();
     this.updateTotals();
     document.getElementById('pos-drafts-panel').style.display = 'none';
+    // Mobile: switch to cart view to show loaded draft
+    if (window.innerWidth <= 768 && this.cart.length) {
+      this.switchMobileView('cart');
+    }
     App.toast('success', `📂 Đã tải đơn tạm (${this.cart.length} SP)`);
   },
 
