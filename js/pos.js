@@ -254,22 +254,17 @@ const POS = {
       posProducts.style.display = 'none';
       cartPanel.classList.remove('collapsed');
       cartPanel.classList.add('mobile-cart-view');
-      // Hide drafts bar/panel in cart view
-      const draftsBar = document.getElementById('pos-drafts-bar');
-      const draftsPanel = document.getElementById('pos-drafts-panel');
-      if (draftsBar) draftsBar.style.display = 'none';
-      if (draftsPanel) draftsPanel.style.display = 'none';
       this._mobileView = 'cart';
     } else {
       // Show as "search to add" mode
       if (custSection) custSection.style.display = 'none';
       
-      // Show product list
+      // Show product list (includes drafts bar)
       posProducts.style.display = '';
       cartPanel.classList.remove('mobile-cart-view');
       // Always collapse cart (show only total bar at bottom)
       cartPanel.classList.add('collapsed');
-      // Show drafts bar if there are drafts
+      // Refresh drafts bar
       this.updateDraftsBar();
       // Close drafts panel
       const draftsPanel = document.getElementById('pos-drafts-panel');

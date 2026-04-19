@@ -1177,8 +1177,7 @@ ul, ol { list-style: none; }
   .pos-cart-panel.collapsed .pos-totals .pos-total-row:not(.total),
   .pos-cart-panel.collapsed .pos-discount-input-wrap,
   .pos-cart-panel.collapsed .pos-payment-methods,
-  .pos-cart-panel.collapsed .pos-order-note,
-  .pos-cart-panel.collapsed .pos-drafts-bar { display: none; }
+  .pos-cart-panel.collapsed .pos-order-note { display: none; }
   
   /* Cart summary bar (always visible) */
   .pos-totals { padding: 8px 12px; }
