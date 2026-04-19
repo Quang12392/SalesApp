@@ -809,7 +809,8 @@ ul, ol { list-style: none; }
   background: var(--primary-bg); border-radius: var(--radius-md);
   font-size: 0.85rem;
 }
-.pos-selected-customer .cust-name { font-weight: 600; color: var(--primary); }
+.pos-selected-customer .cust-name { font-weight: 600; color: var(--primary); cursor: pointer; }
+.pos-selected-customer .cust-name:active { opacity: 0.7; }
 .pos-selected-customer .cust-remove {
   width: 20px; height: 20px; display: flex;
   align-items: center; justify-content: center;
@@ -817,6 +818,9 @@ ul, ol { list-style: none; }
   cursor: pointer;
 }
 .pos-selected-customer .cust-remove:hover { color: var(--danger); }
+
+/* When customer is selected, hide search bar */
+.pos-customer-section.customer-selected .pos-customer-search-wrap { display: none !important; }
 
 /* Cart Items */
 .pos-cart-items {

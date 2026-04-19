@@ -642,9 +642,9 @@ const POS = {
   showSelectedCustomer() {
     document.getElementById('pos-customer-dropdown').style.display = 'none';
     document.getElementById('pos-customer-search').value = '';
-    // Hide search bar when customer is selected
-    const searchWrap = document.querySelector('.pos-customer-search-wrap');
-    if (searchWrap) searchWrap.style.display = 'none';
+    // Hide search bar, show only selected name
+    const section = document.querySelector('.pos-customer-section');
+    if (section) section.classList.add('customer-selected');
     const el = document.getElementById('pos-selected-customer');
     el.style.display = 'flex';
     el.innerHTML = `<span class="cust-name" onclick="POS.clearCustomer()" title="Bấm để đổi khách hàng">👤 ${this.selectedCustomer.name}</span>
@@ -655,9 +655,8 @@ const POS = {
     this.selectedCustomer = null;
     document.getElementById('pos-selected-customer').style.display = 'none';
     // Show search bar again
-    const searchWrap = document.querySelector('.pos-customer-search-wrap');
-    if (searchWrap) searchWrap.style.display = '';
-    // Focus search
+    const section = document.querySelector('.pos-customer-section');
+    if (section) section.classList.remove('customer-selected');
     setTimeout(() => document.getElementById('pos-customer-search')?.focus(), 100);
   },
 
