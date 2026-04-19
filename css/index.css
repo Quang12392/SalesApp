@@ -1359,9 +1359,9 @@ ul, ol { list-style: none; }
   .pos-payment-methods { flex-direction: row; flex-wrap: wrap; gap: 4px; }
   .pos-payment-option { padding: 6px 2px; font-size: 0.7rem; flex: 1 1 auto; min-width: 0; }
   
-  /* Orders sticky header */
+  /* Orders sticky header - use fixed position on mobile */
   .orders-sticky-header {
-    position: sticky; top: 0; z-index: 10;
+    position: fixed; top: 52px; left: 0; right: 0; z-index: 10;
     background: white; padding: 10px 12px 8px;
     border-bottom: 1px solid var(--border);
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
@@ -1379,6 +1379,8 @@ ul, ol { list-style: none; }
     background: var(--primary-bg); font-size: 0.8rem;
   }
   .orders-summary-bar strong { color: var(--primary); font-size: 0.9rem; }
+  /* Push table content below fixed header */
+  .orders-sticky-header + .table-wrapper { padding-top: 110px; }
 
   /* Hide hamburger menu on mobile (using bottom nav instead) */
   .mobile-menu-toggle { display: none !important; }
