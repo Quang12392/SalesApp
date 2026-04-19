@@ -103,14 +103,24 @@ const POS = {
     document.getElementById('pos-selected-customer').style.display = 'none';
     document.getElementById('pos-discount').value = '';
     document.getElementById('pos-note').value = '';
-    // Mobile: move customer section above product list
-    if (this._isMobile?.()) {
-      document.querySelector('.pos-cart-panel')?.classList.add('collapsed');
+    // Reset customer-selected class
+    document.querySelector('.pos-customer-section')?.classList.remove('customer-selected');
+    // Mobile: always start in browse view
+    if (window.innerWidth <= 768) {
+      this._mobileView = 'browse';
+      const posProducts = document.querySelector('.pos-products');
+      const cartPanel = document.querySelector('.pos-cart-panel');
+      if (posProducts) posProducts.style.display = '';
+      if (cartPanel) {
+        cartPanel.classList.remove('mobile-cart-view');
+        cartPanel.classList.add('collapsed');
+      }
+      // Move customer section above product list
       const custSection = document.querySelector('.pos-customer-section');
-      const productsDiv = document.querySelector('.pos-products');
-      const searchBar = productsDiv?.querySelector('.pos-search-bar');
+      const searchBar = posProducts?.querySelector('.pos-search-bar');
       if (custSection && searchBar) {
         searchBar.insertAdjacentElement('afterend', custSection);
+        custSection.style.display = '';
       }
     }
 
