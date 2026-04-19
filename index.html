@@ -278,6 +278,14 @@
         <span class="pos-time" id="pos-time"></span>
       </div>
     </div>
+    <!-- Drafts bar (top, always accessible) -->
+    <div class="pos-drafts-bar" id="pos-drafts-bar" style="display:none">
+      <button class="pos-drafts-toggle" id="pos-drafts-toggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+        Đơn tạm (<span id="pos-drafts-count">0</span>)
+      </button>
+    </div>
+    <div class="pos-drafts-panel" id="pos-drafts-panel" style="display:none"></div>
     <div class="pos-body">
       <!-- LEFT: Product Search & List -->
       <div class="pos-products">
@@ -299,14 +307,7 @@
         <div class="pos-product-list" id="pos-product-list">
           <!-- Rendered by JS -->
         </div>
-        <!-- Drafts toggle (in browse area so it's not blocked by collapsed cart) -->
-        <div class="pos-drafts-bar" id="pos-drafts-bar" style="display:none">
-          <button class="pos-drafts-toggle" id="pos-drafts-toggle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
-            Đơn tạm (<span id="pos-drafts-count">0</span>)
-          </button>
-        </div>
-        <div class="pos-drafts-panel" id="pos-drafts-panel" style="display:none"></div>
+
       </div>
       <!-- RIGHT: Cart & Payment -->
       <div class="pos-cart-panel">
