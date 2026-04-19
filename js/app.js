@@ -220,7 +220,13 @@ const App = {
 
   handleRoute() {
     if (!this.user) return;
-    const h = location.hash.replace('#','') || 'dashboard';
+    let h = location.hash.replace('#','') || 'dashboard';
+    // "Bán hàng" tab → open POS overlay, stay on orders
+    if (h === 'pos') {
+      POS.open();
+      location.hash = '#orders';
+      return;
+    }
     this.page = h;
     document.querySelectorAll('.nav-tab, .mob-nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.page === h);

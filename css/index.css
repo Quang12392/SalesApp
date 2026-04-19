@@ -1044,12 +1044,24 @@ ul, ol { list-style: none; }
 }
 .mob-nav-item {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 6px 12px; border-radius: var(--radius-sm);
-  color: var(--text-muted); font-size: 0.65rem; font-weight: 500;
-  transition: var(--transition);
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  color: var(--text-muted); font-size: 0.6rem; font-weight: 500;
+  transition: var(--transition); text-decoration: none;
 }
-.mob-nav-item svg { width: 22px; height: 22px; }
+.mob-nav-item svg { width: 20px; height: 20px; }
 .mob-nav-item.active { color: var(--primary); }
+
+/* Bán hàng tab — prominent center button */
+.mob-nav-pos { position: relative; }
+.mob-nav-pos-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, #1A73E8, #4A90D9);
+  display: flex; align-items: center; justify-content: center;
+  margin-top: -18px; box-shadow: 0 4px 12px rgba(26,115,232,0.35);
+}
+.mob-nav-pos-icon svg { width: 22px; height: 22px; stroke: white; }
+.mob-nav-pos span { color: var(--primary); font-weight: 600; margin-top: 2px; }
+.mob-nav-pos.active .mob-nav-pos-icon { background: linear-gradient(135deg, #1557B0, #1A73E8); }
 
 @media (max-width: 900px) {
   .dash-grid { grid-template-columns: 1fr; }
