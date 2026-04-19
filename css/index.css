@@ -1359,19 +1359,20 @@ ul, ol { list-style: none; }
   .pos-payment-methods { flex-direction: row; flex-wrap: wrap; gap: 4px; }
   .pos-payment-option { padding: 6px 2px; font-size: 0.7rem; flex: 1 1 auto; min-width: 0; }
   
-  /* Orders mobile toolbar */
-  .orders-mobile-actions {
-    display: flex; gap: 8px; width: 100%;
+  /* Orders sticky header */
+  .orders-sticky-header {
+    position: sticky; top: 0; z-index: 10;
+    background: white; padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
   }
-  .orders-mobile-actions .btn { flex: 1; justify-content: center; font-size: 0.85rem; padding: 10px 8px; }
-  .orders-draft-btn { position: relative; }
-  .draft-badge {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: 18px; height: 18px; border-radius: 50%;
-    background: var(--danger); color: white;
-    font-size: 0.65rem; font-weight: 700;
-    margin-left: 4px;
+  .orders-sticky-header .toolbar-search { margin-bottom: 8px; }
+  .orders-summary-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 10px; border-radius: var(--radius-sm);
+    background: var(--primary-bg); font-size: 0.8rem;
   }
+  .orders-summary-bar strong { color: var(--primary); font-size: 0.9rem; }
   
   /* ── Header compact ── */
   .app-header { padding: 0 12px; }

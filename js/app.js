@@ -1286,18 +1286,14 @@ const App = {
     // Only build full layout once
     if (!c.querySelector('#o-search')) {
       c.innerHTML = `
-        <div class="page-toolbar orders-mobile-toolbar">
-          <div class="toolbar-left">
-            <div class="toolbar-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
-            </div>
-            <select class="filter-select" id="o-filter">
-              <option value="all">Tất cả trạng thái</option>
-              <option value="completed" ${this.oFilter==='completed'?'selected':''}>Hoàn thành</option>
-              <option value="pending" ${this.oFilter==='pending'?'selected':''}>Chờ xử lý</option>
-              <option value="cancelled" ${this.oFilter==='cancelled'?'selected':''}>Đã hủy</option>
-            </select>
+        <div class="orders-sticky-header">
+          <div class="toolbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
+          </div>
+          <div class="orders-summary-bar" id="o-summary">
+            <span>Tổng tiền hàng: <strong>0đ</strong></span>
+            <span>0 đơn hàng</span>
           </div>
         </div>
         <div class="table-wrapper">
@@ -1308,20 +1304,16 @@ const App = {
             </tr></thead>
             <tbody id="o-tbody"></tbody>
           </table>
-          <div class="table-pagination" id="o-pagination"></div>
         </div>
       `;
       document.getElementById('o-search').addEventListener('input', e => { this.oSearch = e.target.value; this.updateOrderTable(); });
-      document.getElementById('o-filter').addEventListener('change', e => { this.oFilter = e.target.value; this.updateOrderTable(); });
     }
     this.updateOrderTable();
   },
 
   updateOrderTable() {
     let list = this.orders.filter(o => {
-      const ms = !this.oSearch || o.id.toLowerCase().includes(this.oSearch.toLowerCase()) || o.customerName.toLowerCase().includes(this.oSearch.toLowerCase());
-      const mf = this.oFilter === 'all' || o.status === this.oFilter;
-      return ms && mf;
+      return !this.oSearch || o.id.toLowerCase().includes(this.oSearch.toLowerCase()) || o.customerName.toLowerCase().includes(this.oSearch.toLowerCase());
     });
     const tbody = document.getElementById('o-tbody');
     if (!tbody) return;
@@ -1347,12 +1339,15 @@ const App = {
       </div></td>
     </tr>`;
     }).join('') : `<tr><td colspan="9" class="table-empty"><p>Không tìm thấy đơn hàng</p></td></tr>`;
-    // Summary
+    // Update summary in sticky header
     const totalRevenue = list.reduce((s, o) => s + (o.finalTotal || 0), 0);
-    document.getElementById('o-pagination').innerHTML = `<div class="product-summary-bar">
-      <span>Tổng tiền hàng: <strong>${fmtd(totalRevenue)}</strong></span>
-      <span>${list.length} đơn hàng</span>
-    </div>`;
+    const summaryEl = document.getElementById('o-summary');
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <span>Tổng tiền hàng: <strong>${fmtd(totalRevenue)}</strong></span>
+        <span>${list.length} đơn hàng</span>
+      `;
+    }
     document.querySelectorAll('.view-order').forEach(b => b.addEventListener('click', () => this.viewOrder(b.dataset.id)));
     // Mobile: click cả row để xem chi tiết
     document.querySelectorAll('.order-card').forEach(tr => tr.addEventListener('click', (e) => {
