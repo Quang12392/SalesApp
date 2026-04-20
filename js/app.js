@@ -3349,6 +3349,8 @@ function initColumnResize() {
   function addResizeHandles() {
     document.querySelectorAll('.data-table').forEach(table => {
       if (table.dataset.resizable) return;
+      // Skip tables inside modals (batch table, etc.)
+      if (table.closest('.modal-body')) return;
       table.dataset.resizable = 'true';
 
       const ths = table.querySelectorAll('thead th');
