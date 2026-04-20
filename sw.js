@@ -1,11 +1,11 @@
 // Service Worker for QLBH Kieu Huong Store - PWA Offline Support
-const CACHE_NAME = 'khs-v95';
+const CACHE_NAME = 'khs-v96';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './css/index.css?v=95',
-  './js/app.js?v=95',
-  './js/pos.js?v=95',
+  './css/index.css?v=96',
+  './js/app.js?v=96',
+  './js/pos.js?v=96',
   './manifest.json',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png'
