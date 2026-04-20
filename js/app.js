@@ -1075,9 +1075,9 @@ const App = {
           </div>
           ${skuBatches.length ? `<div style="margin-top:16px">
             <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;color:#6B7280">📋 Các lô đã nhập (${skuBatches.length} lô)</div>
-            <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border-color);border-radius:8px">
-            <table class="data-table" style="font-size:0.78rem;margin:0"><thead style="position:sticky;top:0;z-index:1;background:#fff"><tr>
-              <th style="width:80px">Mã lô</th><th style="text-align:center;width:55px">SL</th><th style="text-align:right;width:70px">Giá nhập</th><th style="width:70px">Ngày</th><th style="width:40px"></th>
+            <div style="max-height:280px;overflow:auto;border:1px solid var(--border-color);border-radius:8px">
+            <table class="data-table" style="font-size:0.72rem;margin:0;min-width:300px"><thead style="position:sticky;top:0;z-index:1;background:#fff"><tr>
+              <th>Mã lô</th><th style="text-align:center">SL</th><th style="text-align:right">Giá nhập</th><th>Ngày</th><th style="width:36px"></th>
             </tr></thead><tbody>${batchRows}</tbody></table>
             </div>
           </div>` : ''}
