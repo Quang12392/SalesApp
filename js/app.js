@@ -1133,31 +1133,33 @@ const App = {
       if (!batch) return;
       // Remove any existing edit form
       document.querySelectorAll('.batch-edit-form').forEach(f => f.remove());
-      // Insert edit form after the clicked row
-      const row = btn.closest('tr');
-      const editRow = document.createElement('tr');
-      editRow.className = 'batch-edit-form';
-      editRow.innerHTML = `<td colspan="5" class="batch-edit-cell">
-        <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;color:#10B981">✏️ Sửa lô ${bid}</div>
-        <div style="margin-bottom:8px">
-          <label style="font-size:0.75rem;display:block;margin-bottom:2px">SL còn</label>
-          <input class="form-control" id="be-qty" type="number" value="${batch.qtyRemaining}" style="font-size:0.85rem;width:100%">
+      // Create edit form as standalone div OUTSIDE table
+      const scrollContainer = btn.closest('div[style*="max-height"]');
+      const editDiv = document.createElement('div');
+      editDiv.className = 'batch-edit-form';
+      editDiv.innerHTML = `
+        <div class="be-title">✏️ Sửa lô ${bid}</div>
+        <div class="be-field">
+          <label>SL còn</label>
+          <input class="form-control" id="be-qty" type="number" value="${batch.qtyRemaining}">
         </div>
-        <div style="margin-bottom:8px">
-          <label style="font-size:0.75rem;display:block;margin-bottom:2px">Giá nhập</label>
-          <input class="form-control" id="be-cost" type="number" value="${batch.costPrice}" style="font-size:0.85rem;width:100%">
+        <div class="be-field">
+          <label>Giá nhập</label>
+          <input class="form-control" id="be-cost" type="number" value="${batch.costPrice}">
         </div>
-        <div style="margin-bottom:8px">
-          <label style="font-size:0.75rem;display:block;margin-bottom:2px">Ghi chú</label>
-          <input class="form-control" id="be-note" value="${batch.note||''}" style="font-size:0.85rem;width:100%">
+        <div class="be-field">
+          <label>Ghi chú</label>
+          <input class="form-control" id="be-note" value="${batch.note||''}">
         </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-secondary btn-sm" id="be-cancel" style="padding:6px 14px;font-size:0.8rem">Hủy</button>
-          <button class="btn btn-primary btn-sm" id="be-save" style="padding:6px 14px;font-size:0.8rem">💾 Lưu</button>
+        <div class="be-actions">
+          <button class="btn btn-secondary btn-sm" id="be-cancel">Hủy</button>
+          <button class="btn btn-primary btn-sm" id="be-save">💾 Lưu</button>
         </div>
-      </td>`;
-      row.after(editRow);
-      document.getElementById('be-cancel').addEventListener('click', () => editRow.remove());
+      `;
+      if (scrollContainer) scrollContainer.after(editDiv);
+      else btn.closest('div').appendChild(editDiv);
+      editDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('be-cancel').addEventListener('click', () => editDiv.remove());
       document.getElementById('be-save').addEventListener('click', async () => {
         const newCost = parseInt(document.getElementById('be-cost').value)||0;
         const newNote = document.getElementById('be-note').value||'';

@@ -635,18 +635,18 @@ ul, ol { list-style: none; }
 }
 /* Hide column resize handles inside modals */
 .modal-body .col-resize { display: none !important; }
-/* Batch edit form - break out of table columns */
-.batch-edit-form td {
-  display: block; position: relative;
-  width: 100vw; max-width: 100%;
-  left: 0; right: 0;
-  background: #F0FDF4; padding: 14px !important;
-  border: 1px solid #BBF7D0; border-radius: 8px;
-  box-sizing: border-box;
+/* Batch edit form card */
+.batch-edit-form {
+  background: #F0FDF4; padding: 14px; margin-top: 10px;
+  border: 1px solid #BBF7D0; border-radius: 10px;
+  box-sizing: border-box; width: 100%;
 }
-.batch-edit-form .form-control {
-  width: 100% !important; box-sizing: border-box;
-}
+.be-title { font-weight: 700; font-size: 0.85rem; color: #10B981; margin-bottom: 10px; }
+.be-field { margin-bottom: 8px; }
+.be-field label { font-size: 0.75rem; display: block; margin-bottom: 2px; color: var(--text-secondary); }
+.be-field .form-control { width: 100%; box-sizing: border-box; font-size: 0.85rem; }
+.be-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.be-actions .btn { padding: 6px 14px; font-size: 0.8rem; }
 
 /* ═══════════════════════════════════════════════════════════════
    TOAST
