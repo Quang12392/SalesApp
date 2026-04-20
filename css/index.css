@@ -1307,11 +1307,17 @@ ul, ol { list-style: none; }
     min-width: 36px; min-height: 36px; 
     display: flex; align-items: center; justify-content: center;
   }
-  .modal-body { padding: 12px !important; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .modal-body { 
+    padding: 12px !important; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overflow-x: hidden; word-break: break-word;
+  }
+  .modal-body > div { max-width: 100%; overflow: hidden; }
   .modal-footer { 
     position: sticky; bottom: 0; z-index: 10; 
-    background: white; padding: 10px 16px !important;
+    background: white; padding: 10px 12px !important;
+    flex-wrap: wrap; gap: 6px !important; justify-content: center !important;
   }
+  .modal-footer .btn { font-size: 0.75rem; padding: 8px 10px; flex: 0 0 auto; }
   
   /* ── Invoice — full-screen ── */
   .invoice-overlay { padding: 0 !important; }

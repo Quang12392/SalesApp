@@ -930,13 +930,13 @@ const App = {
 
     document.getElementById('modal-title').textContent = 'Chi tiết sản phẩm';
     document.getElementById('modal-body').innerHTML = `
-      <div style="display:flex;gap:20px;align-items:flex-start">
+      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
         <div style="flex-shrink:0">
-          <img src="${savedImg || defaultImg}" style="width:100px;height:100px;border-radius:12px;object-fit:cover;border:2px solid var(--border-light)">
+          <img src="${savedImg || defaultImg}" style="width:80px;height:80px;border-radius:12px;object-fit:cover;border:2px solid var(--border-light)">
         </div>
-        <div style="flex:1">
-          <h3 style="margin:0 0 4px 0;font-size:1.1rem;color:var(--text-primary)">${p.name}</h3>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
+        <div style="flex:1;min-width:0">
+          <h3 style="margin:0 0 4px 0;font-size:1.05rem;color:var(--text-primary);word-break:break-word">${p.name}</h3>
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
             <span class="category-badge">${p.category}</span>
             <span class="stock-badge ${st.c}">${st.t}</span>
           </div>
