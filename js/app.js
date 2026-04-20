@@ -778,23 +778,21 @@ const App = {
     // Only render shell once (check if product toolbar exists specifically)
     if (!c.querySelector('#p-toolbar')) {
       c.innerHTML = `
-        <div class="page-toolbar" id="p-toolbar">
-          <div class="toolbar-left">
-            <div class="toolbar-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="p-search" placeholder="Tìm sản phẩm, mã SKU..." value="${this.pSearch}">
-            </div>
-            <select class="filter-select" id="p-filter">
-              <option value="all">Tất cả nhóm hàng</option>
-              ${cats.map(ca => `<option value="${ca}" ${this.pFilter===ca?'selected':''}>${ca}</option>`).join('')}
-            </select>
+        <div class="products-sticky-header" id="p-toolbar">
+          <div class="toolbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="p-search" placeholder="Tìm sản phẩm, mã SKU..." value="${this.pSearch}">
           </div>
-          <button class="btn btn-primary" id="btn-add-product">
+          <div class="products-summary-bar" id="p-summary">
+            <span>Tổng tồn: <strong>0</strong></span>
+            <span>0 sản phẩm</span>
+          </div>
+          <button class="btn btn-primary products-add-btn" id="btn-add-product">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Thêm sản phẩm
           </button>
         </div>
-        <div class="table-wrapper">
+        <div class="table-wrapper products-desktop-table">
           <table class="data-table">
             <thead><tr>
               <th style="width:50px">Ảnh</th><th>Mã hàng</th><th>Tên sản phẩm</th><th>Nhóm</th>
@@ -804,10 +802,11 @@ const App = {
           </table>
           <div class="table-pagination" id="p-pagination"></div>
         </div>
+        <!-- Mobile product cards -->
+        <div class="products-card-list" id="p-card-list"></div>
       `;
 
       document.getElementById('p-search').addEventListener('input', e => { this.pSearch = e.target.value; this.updateProductTable(); });
-      document.getElementById('p-filter').addEventListener('change', e => { this.pFilter = e.target.value; this.updateProductTable(); });
       document.getElementById('btn-add-product').addEventListener('click', () => this.productModal());
     }
 
@@ -816,11 +815,49 @@ const App = {
 
   updateProductTable() {
     let list = this.products.filter(p => {
-      const ms = !this.pSearch || p.name.toLowerCase().includes(this.pSearch.toLowerCase()) || p.sku.toLowerCase().includes(this.pSearch.toLowerCase());
-      const mf = this.pFilter === 'all' || p.category === this.pFilter;
-      return ms && mf;
+      return !this.pSearch || p.name.toLowerCase().includes(this.pSearch.toLowerCase()) || p.sku.toLowerCase().includes(this.pSearch.toLowerCase());
     });
 
+    const totalStock = list.reduce((s, p) => s + (p.stock || 0), 0);
+
+    // Update sticky header summary
+    const pSummary = document.getElementById('p-summary');
+    if (pSummary) {
+      pSummary.innerHTML = `
+        <span>Tổng tồn: <strong>${totalStock.toLocaleString('vi-VN')}</strong></span>
+        <span>${list.length} sản phẩm</span>
+      `;
+    }
+
+    // ── Mobile: product cards ──
+    const cardList = document.getElementById('p-card-list');
+    if (cardList) {
+      cardList.innerHTML = list.length ? list.map(p => {
+        const st = stockStatus(p.stock);
+        return `<div class="product-mobile-card" data-pid="${p.id}">
+          <div class="pmc-row1">
+            <span class="pmc-name">${p.name}</span>
+            <span class="pmc-price">${fmt(p.sellPrice)}</span>
+          </div>
+          <div class="pmc-row2">
+            <span class="pmc-sku">${p.sku}</span>
+            <span class="stock-badge ${st.c}">${st.t}</span>
+          </div>
+          <div class="pmc-row3">
+            <span class="pmc-actions">
+              <button class="btn-icon edit-p-m" data-id="${p.id}" title="Sửa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button class="btn-icon danger del-p-m" data-id="${p.id}" title="Xóa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            </span>
+          </div>
+        </div>`;
+      }).join('') : '<div class="omc-empty">Không tìm thấy sản phẩm</div>';
+      // Bind mobile card actions
+      cardList.querySelectorAll('.edit-p-m').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); this.productModal(b.dataset.id); }));
+      cardList.querySelectorAll('.del-p-m').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); this.delProduct(b.dataset.id); }));
+      cardList.querySelectorAll('.product-mobile-card').forEach(card => card.addEventListener('click', () => this.viewProduct(card.dataset.pid)));
+    }
+
+    // ── Desktop: table ──
     const tbody = document.getElementById('p-tbody');
     const pagination = document.getElementById('p-pagination');
     if (!tbody) return;
@@ -843,7 +880,6 @@ const App = {
     }).join('') : `<tr><td colspan="8" class="table-empty"><p>Không tìm thấy sản phẩm</p></td></tr>`;
 
     if (pagination) {
-      const totalStock = list.reduce((s, p) => s + (p.stock || 0), 0);
       pagination.innerHTML = `<div class="product-summary-bar">
         <span>Tổng tồn: <strong>${totalStock.toLocaleString('vi-VN')}</strong></span>
         <span>${list.length} sản phẩm</span>
