@@ -1050,13 +1050,12 @@ const App = {
               return da > db ? -1 : da < db ? 1 : 0;
             });
           const batchRows = skuBatches.map(b => `<tr style="${b.qtyRemaining<=0?'opacity:0.5':''}">
-            <td style="font-size:0.65rem;word-break:break-all" title="${b.id}">${b.id}</td>
-            <td style="text-align:center;font-size:0.8rem;white-space:nowrap">${b.qtyRemaining}/${b.qtyImported}</td>
-            <td style="text-align:right;font-size:0.8rem;white-space:nowrap">${fmtd(b.costPrice)}</td>
-            <td style="font-size:0.65rem;white-space:nowrap;color:#6B7280">${(b.importDate||'').substring(0,10)}${b.updatedAt ? '<br><span style="color:#10B981">⇢ '+(b.updatedAt||'').substring(0,10)+'</span>' : ''}</td>
-            <td style="text-align:right;white-space:nowrap;padding:2px">
-              <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" style="padding:1px 6px;font-size:0.7rem;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:4px;cursor:pointer" title="Sửa lô">✏️</button>
-              ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" style="padding:1px 6px;font-size:0.7rem;background:#FEE2E2;border:1px solid #FECACA;border-radius:4px;cursor:pointer;color:#EF4444" title="Xóa lô">🗑️</button>` : ''}
+            <td style="font-size:0.6rem;word-break:break-all">${b.id}</td>
+            <td style="text-align:center;font-size:0.75rem;white-space:nowrap">${b.qtyRemaining}/${b.qtyImported}</td>
+            <td style="text-align:right;font-size:0.75rem;white-space:nowrap">${fmtd(b.costPrice)}</td>
+            <td style="font-size:0.6rem;color:#6B7280;white-space:nowrap">${(b.importDate||'').substring(2,10)}</td>
+            <td style="text-align:right;white-space:nowrap;padding:1px">
+              <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" style="padding:0 4px;font-size:0.6rem;background:none;border:none;cursor:pointer" title="Sửa lô">✏️</button>${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" style="padding:0 4px;font-size:0.6rem;background:none;border:none;cursor:pointer;color:#EF4444" title="Xóa lô">🗑️</button>` : ''}
             </td>
           </tr>`).join('');
           return `<div style="border-top:2px solid var(--border-color);margin-top:16px;padding-top:16px">
@@ -1077,7 +1076,7 @@ const App = {
             <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;color:#6B7280">📋 Các lô đã nhập (${skuBatches.length} lô)</div>
             <div style="max-height:280px;overflow:auto;border:1px solid var(--border-color);border-radius:8px">
             <table class="data-table" style="font-size:0.72rem;margin:0;width:100%"><thead style="position:sticky;top:0;z-index:1;background:#fff"><tr>
-              <th>Mã lô</th><th style="text-align:center">SL</th><th style="text-align:right">Giá nhập</th><th>Ngày</th><th style="width:36px"></th>
+              <th>Mã lô</th><th style="text-align:center">SL</th><th style="text-align:right">Giá nhập</th><th>Ngày</th><th style="width:28px"></th>
             </tr></thead><tbody>${batchRows}</tbody></table>
             </div>
           </div>` : ''}
