@@ -1050,7 +1050,7 @@ const App = {
               return da > db ? -1 : da < db ? 1 : 0;
             });
           const batchRows = skuBatches.map(b => `<tr style="${b.qtyRemaining<=0?'opacity:0.5':''}">
-            <td style="font-size:0.7rem;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.id}">${b.id}</td>
+            <td style="font-size:0.65rem;word-break:break-all" title="${b.id}">${b.id}</td>
             <td style="text-align:center;font-size:0.8rem;white-space:nowrap">${b.qtyRemaining}/${b.qtyImported}</td>
             <td style="text-align:right;font-size:0.8rem;white-space:nowrap">${fmtd(b.costPrice)}</td>
             <td style="font-size:0.65rem;white-space:nowrap;color:#6B7280">${(b.importDate||'').substring(0,10)}${b.updatedAt ? '<br><span style="color:#10B981">⇢ '+(b.updatedAt||'').substring(0,10)+'</span>' : ''}</td>
