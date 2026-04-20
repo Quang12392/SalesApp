@@ -835,13 +835,18 @@ const App = {
       cardList.innerHTML = list.length ? list.map(p => {
         const st = stockStatus(p.stock);
         return `<div class="product-mobile-card" data-pid="${p.id}">
-          <div class="pmc-row1">
-            <span class="pmc-name">${p.name}</span>
-            <span class="pmc-price">${fmt(p.sellPrice)}</span>
-          </div>
-          <div class="pmc-row2">
-            <span class="pmc-sku">${p.sku}</span>
-            <span class="stock-badge ${st.c}">${st.t}</span>
+          <div class="pmc-body">
+            <img class="pmc-thumb" id="pimg-m-${p.id}" src="" alt="">
+            <div class="pmc-info">
+              <div class="pmc-row1">
+                <span class="pmc-name">${p.name}</span>
+                <span class="pmc-price">${fmt(p.sellPrice)}</span>
+              </div>
+              <div class="pmc-row2">
+                <span class="pmc-sku">${p.sku}</span>
+                <span class="stock-badge ${st.c}">${st.t}</span>
+              </div>
+            </div>
           </div>
           <div class="pmc-row3">
             <span class="pmc-actions">
@@ -3323,10 +3328,13 @@ const App = {
   async loadAllProductImages() {
     const defaultImg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="8" fill="#f0f4ff"/><path d="M16 32l6-8 4 5 6-7 6 10H10z" fill="#c5d5f7"/><circle cx="18" cy="18" r="3" fill="#a0b8e8"/></svg>');
     for (const p of this.products) {
-      const img = document.getElementById('pimg-' + p.id);
-      if (!img) continue;
       const saved = await this.getProductImage(p.id);
-      img.src = saved || defaultImg;
+      const src = saved || defaultImg;
+      const img = document.getElementById('pimg-' + p.id);
+      if (img) img.src = src;
+      // Mobile card image
+      const mImg = document.getElementById('pimg-m-' + p.id);
+      if (mImg) mImg.src = src;
     }
   }
 };

@@ -1442,6 +1442,12 @@ ul, ol { list-style: none; }
     cursor: pointer; transition: background 0.15s;
   }
   .product-mobile-card:active { background: var(--primary-bg); }
+  .pmc-body { display: flex; gap: 10px; align-items: center; margin-bottom: 4px; }
+  .pmc-thumb {
+    width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
+    border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .pmc-info { flex: 1; min-width: 0; }
   .pmc-row1 {
     display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;
   }
