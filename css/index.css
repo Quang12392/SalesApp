@@ -633,6 +633,8 @@ ul, ol { list-style: none; }
 .modal-body .data-table th {
   position: sticky; top: 0; z-index: 1;
 }
+/* Hide column resize handles inside modals */
+.modal-body .col-resize { display: none !important; }
 
 /* ═══════════════════════════════════════════════════════════════
    TOAST
