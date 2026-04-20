@@ -1351,6 +1351,8 @@ ul, ol { list-style: none; }
   .toolbar-search input { width: 100%; }
   .toolbar-right .btn { padding: 8px 12px; font-size: 0.8rem; width: 100%; justify-content: center; }
 }
+/* Desktop: hide mobile card list */
+.orders-card-list { display: none; }
 @media (max-width: 480px) {
   .today-stats { flex-direction: column; gap: 12px; }
   .page-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -1380,7 +1382,40 @@ ul, ol { list-style: none; }
   }
   .orders-summary-bar strong { color: var(--primary); font-size: 0.9rem; }
   /* Push table content below fixed header */
-  .orders-sticky-header + .table-wrapper { padding-top: 110px; }
+  .orders-sticky-header + .orders-card-list { padding-top: 110px; }
+
+  /* Hide desktop table, show mobile cards */
+  .orders-desktop-table { display: none !important; }
+  .orders-card-list { display: block; }
+
+  /* Mobile order cards - KiotViet style */
+  .order-mobile-card {
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .order-mobile-card:active { background: var(--primary-bg); }
+  .omc-row1 {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+  }
+  .omc-customer { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); }
+  .omc-total { font-weight: 700; font-size: 0.95rem; color: var(--text-primary); }
+  .omc-row2 {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+  }
+  .omc-date { font-size: 0.72rem; color: var(--text-secondary); }
+  .omc-payment { font-size: 0.72rem; color: var(--text-secondary); }
+  .omc-items { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 4px; }
+  .omc-items span { display: block; }
+  .omc-more { color: var(--primary); font-size: 0.72rem; }
+  .omc-row3 {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .omc-status { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .omc-status.completed { background: #D1FAE5; color: #059669; }
+  .omc-status.pending { background: #FEF3C7; color: #D97706; }
+  .omc-status.cancelled { background: #FEE2E2; color: #DC2626; }
+  .omc-profit { font-size: 0.75rem; color: #10B981; font-weight: 600; }
+  .omc-empty { padding: 40px 20px; text-align: center; color: var(--text-secondary); }
 
   /* Hide hamburger menu on mobile (using bottom nav instead) */
   .mobile-menu-toggle { display: none !important; }

@@ -1306,7 +1306,8 @@ const App = {
             <span>0 đơn hàng</span>
           </div>
         </div>
-        <div class="table-wrapper">
+        <div class="orders-card-list" id="o-card-list"></div>
+        <div class="table-wrapper orders-desktop-table">
           <table class="data-table">
             <thead><tr>
               <th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th>
@@ -1364,6 +1365,40 @@ const App = {
       }
       return true;
     });
+    // ── Mobile: card list ──
+    const cardList = document.getElementById('o-card-list');
+    if (cardList) {
+      cardList.innerHTML = list.length ? list.map(o => {
+        const ct = o.items.reduce((s,i) => {
+          if (i.costPrice > 0) return s + i.costPrice;
+          const p = this.products.find(p => p.sku === i.sku) || this.products.find(p => p.name === i.name);
+          return s + (p?.costPrice||0) * i.qty;
+        }, 0);
+        const pf = (o.finalTotal||0) - ct;
+        const fi = o.items[0];
+        const mc = o.items.length - 1;
+        const st = o.status==='completed'?'Hoàn thành':o.status==='pending'?'Chờ xử lý':'Đã hủy';
+        return `<div class="order-mobile-card" data-oid="${o.id}">
+          <div class="omc-row1">
+            <span class="omc-customer">${o.customerName}</span>
+            <span class="omc-total">${fmtd(o.finalTotal)}</span>
+          </div>
+          <div class="omc-row2">
+            <span class="omc-date">${o.createdAt} · ${o.id}</span>
+            <span class="omc-payment">${o.payment}</span>
+          </div>
+          <div class="omc-items">
+            ${fi ? `<span>${fi.name} <strong>x${fi.qty}</strong></span>` : ''}
+            ${mc > 0 ? `<span class="omc-more">+${mc} mặt hàng khác</span>` : ''}
+          </div>
+          <div class="omc-row3">
+            <span class="omc-status ${o.status}">${st}</span>
+            <span class="omc-profit">LN: ${fmtd(pf)}</span>
+          </div>
+        </div>`;
+      }).join('') : '<div class="omc-empty">Không tìm thấy đơn hàng</div>';
+    }
+    // ── Desktop: table ──
     const tbody = document.getElementById('o-tbody');
     if (!tbody) return;
     tbody.innerHTML = list.length ? list.map(o => {
@@ -1398,10 +1433,11 @@ const App = {
       `;
     }
     document.querySelectorAll('.view-order').forEach(b => b.addEventListener('click', () => this.viewOrder(b.dataset.id)));
-    // Mobile: click cả row để xem chi tiết
     document.querySelectorAll('.order-card').forEach(tr => tr.addEventListener('click', (e) => {
       if (!e.target.closest('.btn-icon')) this.viewOrder(tr.dataset.oid);
     }));
+    // Mobile cards click
+    document.querySelectorAll('.order-mobile-card').forEach(card => card.addEventListener('click', () => this.viewOrder(card.dataset.oid)));
   },
 
   viewOrder(orderId) {
