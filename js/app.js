@@ -1050,12 +1050,15 @@ const App = {
               return da > db ? -1 : da < db ? 1 : 0;
             });
           const batchRows = skuBatches.map(b => `<tr style="${b.qtyRemaining<=0?'opacity:0.5':''}">
-            <td style="font-size:0.6rem;word-break:break-all">${b.id}</td>
-            <td style="text-align:center;font-size:0.75rem;white-space:nowrap">${b.qtyRemaining}/${b.qtyImported}</td>
+            <td style="font-size:0.65rem;word-break:break-all;line-height:1.2">${b.id}</td>
+            <td style="text-align:center;font-size:0.75rem">${b.qtyRemaining}</td>
             <td style="text-align:right;font-size:0.75rem;white-space:nowrap">${fmtd(b.costPrice)}</td>
             <td style="font-size:0.6rem;color:#6B7280;white-space:nowrap">${(b.importDate||'').substring(2,10)}</td>
-            <td style="text-align:right;white-space:nowrap;padding:1px">
-              <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" style="padding:0 4px;font-size:0.6rem;background:none;border:none;cursor:pointer" title="Sửa lô">✏️</button>${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" style="padding:0 4px;font-size:0.6rem;background:none;border:none;cursor:pointer;color:#EF4444" title="Xóa lô">🗑️</button>` : ''}
+            <td style="padding:2px;vertical-align:middle">
+              <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+                <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" style="padding:2px;font-size:0.85rem;background:none;border:none;cursor:pointer;line-height:1" title="Sửa lô">✏️</button>
+                ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" style="padding:2px;font-size:0.85rem;background:none;border:none;cursor:pointer;line-height:1" title="Xóa lô">🗑️</button>` : ''}
+              </div>
             </td>
           </tr>`).join('');
           return `<div style="border-top:2px solid var(--border-color);margin-top:16px;padding-top:16px">
