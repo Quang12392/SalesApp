@@ -1954,15 +1954,19 @@ ul, ol { list-style: none; }
   .report-sidebar {
     width: 100%;
     position: static;
-    flex-direction: row;
+    flex-direction: column;
     display: flex;
-    gap: 16px;
-    overflow-x: auto;
+    gap: 8px;
     padding: 12px;
+    overflow: visible;
   }
-  .report-filter-group { margin-bottom: 0; min-width: 200px; }
+  .report-filter-group { margin-bottom: 0; min-width: auto; }
+  .report-filter-group h4 { font-size: 0.8rem; margin-bottom: 4px; }
   .report-type-list { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-  .report-type-btn { padding: 8px 10px; font-size: 0.8rem; white-space: nowrap; }
+  .report-type-btn { padding: 6px 10px; font-size: 0.78rem; white-space: nowrap; }
+  .report-type-btn svg { width: 14px; height: 14px; }
+  .rpt-view-toggle { gap: 4px; }
+  .rpt-view-btn { padding: 6px 10px; font-size: 0.78rem; }
   .report-summary-cards { grid-template-columns: 1fr 1fr; }
 }
 
