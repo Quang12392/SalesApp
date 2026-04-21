@@ -1758,14 +1758,13 @@ const App = {
           <div class="ch-stat"><span class="ch-stat-label">Tổng chi tiêu</span><strong class="price-text">${fmtd(cu.totalSpent)}</strong></div>
           <div class="ch-stat"><span class="ch-stat-label">Giao dịch cuối</span><strong>${cu.lastOrder || '-'}</strong></div>
         </div>
-        ${orders.length ? `<table class="data-table" style="margin-top:16px">
-          <thead><tr><th>Mã đơn</th><th>Sản phẩm</th><th style="text-align:right">Tổng</th><th>Ngày</th><th>TT</th></tr></thead>
+        ${orders.length ? `<table class="data-table" style="margin-top:16px;table-layout:fixed;width:100%">
+          <thead><tr><th style="width:30%">Mã đơn</th><th>Sản phẩm</th><th style="text-align:right;width:25%">Tổng</th><th style="width:10%">TT</th></tr></thead>
           <tbody>
             ${orders.map(o => `<tr>
-              <td><span class="product-sku">${o.id}</span></td>
-              <td style="font-size:0.8rem;max-width:200px">${(o.items||[]).map(i => i.name + ' x' + i.qty).join(', ')}</td>
+              <td style="font-size:0.7rem;word-break:break-all"><span class="product-sku">${o.id}</span><br><span style="color:#9CA3AF;font-size:0.65rem">${o.createdAt||''}</span></td>
+              <td style="font-size:0.75rem;word-break:break-word">${(o.items||[]).map(i => i.name + ' x' + i.qty).join(', ')}</td>
               <td style="text-align:right"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
-              <td style="white-space:nowrap;font-size:0.8rem">${o.createdAt||''}</td>
               <td><span class="order-status ${o.status}">${o.status === 'completed' ? 'OK' : '...'}</span></td>
             </tr>`).join('')}
           </tbody>
