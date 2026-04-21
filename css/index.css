@@ -636,12 +636,16 @@ ul, ol { list-style: none; }
 /* Hide column resize handles inside modals */
 .modal-body .col-resize { display: none !important; }
 /* Batch table */
-.batch-table { font-size: 0.72rem; }
-.batch-table td, .batch-table th { padding: 6px 4px; }
-.bt-id { font-size: 0.62rem; word-break: break-all; line-height: 1.2; max-width: 120px; }
-.bt-sl { text-align: center; font-size: 0.75rem; white-space: nowrap; width: 28px; }
-.bt-price { text-align: right; font-size: 0.75rem; white-space: nowrap; }
-.bt-date { font-size: 0.62rem; color: #6B7280; white-space: nowrap; }
+.batch-table { font-size: 0.72rem; table-layout: fixed; }
+.batch-table td, .batch-table th { padding: 5px 3px; overflow: hidden; }
+.batch-table th:nth-child(1) { width: 34%; }
+.batch-table th:nth-child(2) { width: 8%; text-align: center; }
+.batch-table th:nth-child(3) { width: 26%; text-align: right; }
+.batch-table th:nth-child(4) { width: 32%; }
+.bt-id { font-size: 0.58rem; word-break: break-all; line-height: 1.2; }
+.bt-sl { text-align: center; font-size: 0.72rem; }
+.bt-price { text-align: right; font-size: 0.72rem; white-space: nowrap; }
+.bt-date { font-size: 0.58rem; color: #6B7280; }
 .bt-acts { margin-left: 2px; }
 .bt-acts .btn { padding: 0; font-size: 0.8rem; background: none; border: none; cursor: pointer; line-height: 1; }
 /* Batch edit form card */
