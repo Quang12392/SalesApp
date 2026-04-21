@@ -1055,7 +1055,7 @@ const App = {
             <td style="text-align:right;font-size:0.8rem;white-space:nowrap;overflow:visible;font-weight:700">${fmtd(b.costPrice)}</td>
             <td style="font-size:0.7rem;color:#6B7280;overflow:visible;display:flex;align-items:center;justify-content:space-between;gap:2px;font-weight:600">
               <span>${(b.importDate||'').substring(0,10)}${b.updatedAt ? '<br><span style="color:#10B981;font-weight:700">⇢ '+(b.updatedAt||'').substring(0,10)+'</span>' : ''}</span>
-              <span style="display:flex;flex-direction:column;gap:1px;align-items:center;flex-shrink:0">
+              <span style="display:flex;flex-direction:column;gap:12px;align-items:center;flex-shrink:0;justify-content:space-between">
                 <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" style="padding:0;font-size:1rem;background:none;border:none;cursor:pointer;line-height:1" title="Sửa">✏️</button>
                 ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" style="padding:0;font-size:1rem;background:none;border:none;cursor:pointer;line-height:1" title="Xóa">🗑️</button>` : ''}
               </span>
@@ -1079,7 +1079,7 @@ const App = {
             <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;color:#6B7280">📋 Các lô đã nhập (${skuBatches.length} lô)</div>
             <div style="max-height:280px;overflow:auto;border:1px solid var(--border-color);border-radius:8px">
             <table class="data-table batch-table" style="margin:0;width:100%"><thead style="position:sticky;top:0;z-index:1;background:#fff"><tr>
-              <th>Mã lô</th><th>SL</th><th>Giá nhập</th><th>Ngày</th>
+              <th>Mã lô</th><th style="min-width:24px">SL</th><th>Giá nhập</th><th>Ngày</th>
             </tr></thead><tbody>${batchRows}</tbody></table>
             </div>
           </div>` : ''}
