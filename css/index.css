@@ -645,9 +645,9 @@ ul, ol { list-style: none; }
 .bt-id { font-size: 0.58rem; word-break: break-all; line-height: 1.2; }
 .bt-sl { text-align: center; font-size: 0.72rem; }
 .bt-price { text-align: right; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bt-date { font-size: 0.6rem; color: #6B7280; word-break: break-all; }
-.bt-acts { margin-left: 2px; }
-.bt-acts .btn { padding: 0; font-size: 0.8rem; background: none; border: none; cursor: pointer; line-height: 1; }
+.bt-date { font-size: 0.6rem; color: #6B7280; }
+.bt-acts { display: flex; flex-direction: column; gap: 2px; align-items: center; float: right; }
+.bt-acts .btn { padding: 0; font-size: 0.85rem; background: none; border: none; cursor: pointer; line-height: 1; }
 /* Batch edit form card */
 .batch-edit-form {
   background: #F0FDF4; padding: 14px; margin-top: 10px;
