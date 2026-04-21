@@ -1407,7 +1407,9 @@ const App = {
   updateOrderTable() {
     const range = this._getDateRange(this.oTime);
     let list = this.orders.filter(o => {
-      const ms = !this.oSearch || o.id.toLowerCase().includes(this.oSearch.toLowerCase()) || o.customerName.toLowerCase().includes(this.oSearch.toLowerCase());
+      // Bỏ đơn rỗng (không có items và total = 0)
+      if ((!o.items || o.items.length === 0) && !o.finalTotal) return false;
+      const ms = !this.oSearch || (o.id||'').toLowerCase().includes(this.oSearch.toLowerCase()) || (o.customerName||'').toLowerCase().includes(this.oSearch.toLowerCase());
       if (!ms) return false;
       if (range && o.createdAt) {
         // Parse "dd/MM/yyyy HH:mm:ss" or similar
