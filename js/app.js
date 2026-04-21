@@ -1646,7 +1646,7 @@ const App = {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Thêm khách hàng
           </button>
-          <div id="c-summary" style="font-weight:600;color:var(--text-secondary);font-size:0.85rem;padding-top:4px"></div>
+          <div id="c-summary" style="font-weight:600;color:var(--text-secondary);font-size:0.85rem;padding-top:4px;display:flex;justify-content:space-between"></div>
         </div>
         <div class="customer-card-list" id="c-card-list"></div>
         <div class="table-wrapper customer-table-desktop">
@@ -1681,7 +1681,7 @@ const App = {
     });
     const totalSpent = list.reduce((s, cu) => s + (cu.totalSpent || spendMap[cu.id] || 0), 0);
     const sumEl = document.getElementById('c-summary');
-    if (sumEl) sumEl.innerHTML = `Tổng bán: <span style="color:var(--primary);font-weight:700">${fmtd(totalSpent)}</span> &nbsp;&middot;&nbsp; ${list.length} khách hàng`;
+    if (sumEl) sumEl.innerHTML = `<span>Tổng bán: <span style="color:var(--primary);font-weight:700">${fmtd(totalSpent)}</span></span><span>${list.length} khách hàng</span>`;
 
     const cardList = document.getElementById('c-card-list');
     if (cardList) {
