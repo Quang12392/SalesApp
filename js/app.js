@@ -1054,7 +1054,7 @@ const App = {
             <td class="bt-sl">${b.qtyRemaining}</td>
             <td class="bt-price">${fmtd(b.costPrice)}</td>
             <td class="bt-date">
-              <span>${(b.importDate||'').substring(2,10)}</span>
+              <span>${(b.importDate||'').substring(0,10)}</span>
               <span class="bt-acts">
                 <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" title="Sửa">✏️</button>
                 ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" title="Xóa">🗑️</button>` : ''}
