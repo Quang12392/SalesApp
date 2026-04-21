@@ -1354,6 +1354,10 @@ const App = {
               <option value="month" selected>Tháng này</option>
               <option value="lastmonth">Tháng trước</option>
             </select>
+            <button class="btn-return-orders" onclick="App.openReturnFromOrders()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              Trả hàng
+            </button>
           </div>
           <div class="orders-summary-bar" id="o-summary">
             <span>Tổng tiền hàng: <strong>0đ</strong></span>
@@ -2460,6 +2464,10 @@ const App = {
     document.getElementById('return-search')?.addEventListener('input', (e) => { this.returnSearch=e.target.value; this.returnPage=1; this.renderReturnOrders(); });
     document.getElementById('return-back')?.addEventListener('click', () => this.returnStep1());
     document.getElementById('return-confirm')?.addEventListener('click', () => this.processReturn());
+  },
+
+  openReturnFromOrders() {
+    this.openReturn();
   },
 
   openReturn() {

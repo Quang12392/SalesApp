@@ -2000,6 +2000,14 @@ ul, ol { list-style: none; }
   cursor: pointer; transition: all 0.2s; white-space: nowrap;
 }
 .btn-return:hover { background: linear-gradient(135deg, #D97706, #B45309); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(217,119,6,0.3); }
+.btn-return-orders {
+  display: flex; align-items: center; gap: 4px; padding: 6px 14px;
+  background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff;
+  border: none; border-radius: 8px; font-weight: 600; font-size: 0.8rem;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap; margin-left: auto;
+}
+.btn-return-orders:hover { background: linear-gradient(135deg, #D97706, #B45309); }
+.btn-return-orders svg { flex-shrink: 0; }
 
 /* ═══ RETURN MODAL ═══ */
 .return-overlay {
