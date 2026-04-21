@@ -19,6 +19,18 @@ const POS = {
   init() {
     document.getElementById('btn-open-pos').addEventListener('click', () => this.open());
     document.getElementById('pos-close').addEventListener('click', () => this.close());
+    // Intercept Android back gesture / browser back button
+    window.addEventListener('popstate', (e) => {
+      if (this._posOpen) {
+        if (this.cart.length > 0) {
+          // Re-push state so back doesn't navigate away
+          history.pushState({ pos: true }, '', location.href);
+          this.showExitConfirm();
+        } else {
+          this.close(true);
+        }
+      }
+    });
     document.getElementById('pos-product-search').addEventListener('input', e => this.renderProducts(e.target.value));
     document.getElementById('pos-discount').addEventListener('input', (e) => {
       const raw = e.target.value.replace(/\D/g, '');
@@ -98,6 +110,9 @@ const POS = {
     this.cart = [];
     this.selectedCustomer = null;
     document.getElementById('pos-overlay').style.display = 'flex';
+    this._posOpen = true;
+    // Push history state so Android back gesture can be intercepted
+    history.pushState({ pos: true }, '', location.href);
     document.getElementById('pos-product-search').value = '';
     document.getElementById('pos-customer-search').value = '';
     document.getElementById('pos-selected-customer').style.display = 'none';
@@ -159,6 +174,7 @@ const POS = {
       cartPanel.insertBefore(custSection, cartPanel.firstChild);
     }
     document.getElementById('pos-overlay').style.display = 'none';
+    this._posOpen = false;
     clearInterval(this.posTimer);
   },
 
