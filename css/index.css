@@ -1201,7 +1201,7 @@ ul, ol { list-style: none; }
   }
   .pos-cart-panel.mobile-cart-view .pos-totals { flex-shrink: 0; }
   .pos-cart-panel.mobile-cart-view .pos-actions { flex-shrink: 0; }
-  .pos-cart-panel.collapsed { max-height: 0; overflow: hidden; padding: 0; border: none; box-shadow: none; }
+  .pos-cart-panel.collapsed { display: none !important; }
   .pos-cart-panel.collapsed .pos-cart-items,
   .pos-cart-panel.collapsed .pos-totals,
   .pos-cart-panel.collapsed .pos-discount-input-wrap,
