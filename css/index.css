@@ -1071,6 +1071,8 @@ ul, ol { list-style: none; }
   display: none; position: fixed;
   bottom: 0; left: 0; right: 0;
   height: var(--mobile-nav-h);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: content-box;
   background: white; border-top: 1px solid var(--border);
   z-index: 100; justify-content: space-around; align-items: center;
   box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
