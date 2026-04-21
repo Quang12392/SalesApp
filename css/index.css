@@ -1462,7 +1462,14 @@ ul, ol { list-style: none; }
 
   /* ── Customer mobile cards - KiotViet style ── */
   .customer-table-desktop { display: none !important; }
-  .customer-card-list { display: block; }
+  .customer-card-list { display: block; padding-top: 140px; }
+  .customers-sticky-header {
+    position: fixed; top: 52px; left: 0; right: 0; z-index: 10;
+    background: white; padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .customers-sticky-header .toolbar-search { margin-bottom: 6px; }
   .cust-mobile-card {
     display: flex; align-items: center; gap: 12px;
     padding: 14px 16px; border-bottom: 1px solid var(--border);
