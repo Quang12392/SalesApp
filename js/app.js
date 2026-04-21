@@ -9,6 +9,8 @@ const DEMO_USERS = [
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
 function fmtd(n) { return fmt(n) + 'đ'; }
+function unfmt(s) { return parseInt(String(s).replace(/\./g,''))||0; }
+function fmtInput(el) { const v=unfmt(el.value); el.value=v?fmt(v):''; }
 function fmtShort(n) {
   if (n >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + ' tr';
   if (n >= 1000) return Math.round(n/1000) + 'K';
@@ -1031,8 +1033,8 @@ const App = {
         </div>
         <div class="form-group"><label>Tên sản phẩm</label><input class="form-control" id="pf-name" value="${p?.name||''}" required></div>
         <div class="form-row">
-          <div class="form-group"><label>Giá bán</label><input class="form-control" id="pf-sell" type="number" value="${p?.sellPrice||''}" required></div>
-          <div class="form-group"><label>Giá vốn${hasBatches?' <span style=\"font-size:0.7rem;color:#10B981\">(tự tính từ lô)</span>':''}</label><input class="form-control" id="pf-cost" type="number" value="${p?.costPrice||''}" ${hasBatches?'readonly style="background:#F3F4F6;cursor:not-allowed"':''}></div>
+          <div class="form-group"><label>Giá bán</label><input class="form-control" id="pf-sell" type="text" inputmode="numeric" value="${p?.sellPrice?fmt(p.sellPrice):''}" oninput="fmtInput(this)" required></div>
+          <div class="form-group"><label>Giá vốn${hasBatches?' <span style=\"font-size:0.7rem;color:#10B981\">(tự tính từ lô)</span>':''}</label><input class="form-control" id="pf-cost" type="text" inputmode="numeric" value="${p?.costPrice?fmt(p.costPrice):''}" oninput="fmtInput(this)" ${hasBatches?'readonly style="background:#F3F4F6;cursor:not-allowed"':''}></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Tồn kho${hasBatches?' <span style=\"font-size:0.7rem;color:#10B981\">(quản lý qua lô)</span>':''}</label><input class="form-control" id="pf-stock" type="number" value="${p?.stock??''}" ${hasBatches?'readonly style="background:#F3F4F6;cursor:not-allowed"':'required'}></div>
@@ -1070,7 +1072,7 @@ const App = {
             </div>
             <div class="form-row">
               <div class="form-group"><label>SL nhập</label><input class="form-control" id="pf-batch-qty" type="number" min="1" value="1"></div>
-              <div class="form-group"><label>Giá nhập lô này</label><input class="form-control" id="pf-batch-cost" type="number" value="${p.costPrice||0}"></div>
+              <div class="form-group"><label>Giá nhập lô này</label><input class="form-control" id="pf-batch-cost" type="text" inputmode="numeric" value="${p.costPrice?fmt(p.costPrice):'0'}" oninput="fmtInput(this)"></div>
             </div>
             <div class="form-group"><label>Ghi chú lô</label><input class="form-control" id="pf-batch-note" placeholder="VD: Nhập từ NCC X"></div>
             <div id="pf-batch-id-preview" style="font-size:0.8rem;color:#6B7280;margin-top:4px"></div>
@@ -1147,7 +1149,7 @@ const App = {
         </div>
         <div class="be-field">
           <label>Giá nhập</label>
-          <input class="form-control" id="be-cost" type="number" value="${batch.costPrice}">
+          <input class="form-control" id="be-cost" type="text" inputmode="numeric" value="${fmt(batch.costPrice)}" oninput="fmtInput(this)">
         </div>
         <div class="be-field">
           <label>Ghi chú</label>
@@ -1163,7 +1165,7 @@ const App = {
       editDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       document.getElementById('be-cancel').addEventListener('click', () => editDiv.remove());
       document.getElementById('be-save').addEventListener('click', async () => {
-        const newCost = parseInt(document.getElementById('be-cost').value)||0;
+        const newCost = unfmt(document.getElementById('be-cost').value);
         const newNote = document.getElementById('be-note').value||'';
         const newQty = parseInt(document.getElementById('be-qty').value);
         const url = localStorage.getItem('khs_api_url');
@@ -1206,8 +1208,8 @@ const App = {
         sku: document.getElementById('pf-sku').value.trim(),
         name: document.getElementById('pf-name').value.trim(),
         category: document.getElementById('pf-cat').value,
-        sellPrice: parseInt(document.getElementById('pf-sell').value)||0,
-        costPrice: parseInt(document.getElementById('pf-cost').value)||0,
+        sellPrice: unfmt(document.getElementById('pf-sell').value),
+        costPrice: unfmt(document.getElementById('pf-cost').value),
         stock: parseInt(document.getElementById('pf-stock').value)||0,
         unit: document.getElementById('pf-unit').value.trim()||'hộp'
       };
@@ -1244,7 +1246,7 @@ const App = {
         // Nhập lô mới nếu checkbox được tick
         if (hasBatch && url) {
           const bQty = parseInt(document.getElementById('pf-batch-qty').value)||0;
-          const bCost = parseInt(document.getElementById('pf-batch-cost').value)||0;
+          const bCost = unfmt(document.getElementById('pf-batch-cost').value);
           const bNote = document.getElementById('pf-batch-note').value||'';
           const bDate = document.getElementById('pf-batch-date').value||'';
           const bSuffix = document.getElementById('pf-batch-suffix').value?.trim()||'';
