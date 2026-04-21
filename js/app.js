@@ -1423,26 +1423,27 @@ const App = {
     const cardList = document.getElementById('o-card-list');
     if (cardList) {
       cardList.innerHTML = list.length ? list.map(o => {
-        const ct = o.items.reduce((s,i) => {
+        const items = o.items || [];
+        const ct = items.reduce((s,i) => {
           if (i.costPrice > 0) return s + i.costPrice;
           const p = this.products.find(p => p.sku === i.sku) || this.products.find(p => p.name === i.name);
           return s + (p?.costPrice||0) * i.qty;
         }, 0);
         const pf = (o.finalTotal||0) - ct;
-        const fi = o.items[0];
-        const mc = o.items.length - 1;
+        const fi = items[0];
+        const mc = items.length - 1;
         const st = o.status==='completed'?'Hoàn thành':o.status==='pending'?'Chờ xử lý':'Đã hủy';
         return `<div class="order-mobile-card" data-oid="${o.id}">
           <div class="omc-row1">
-            <span class="omc-customer">${o.customerName}</span>
+            <span class="omc-customer">${o.customerName||'Khách lẻ'}</span>
             <span class="omc-total">${fmtd(o.finalTotal)}</span>
           </div>
           <div class="omc-row2">
-            <span class="omc-date">${o.createdAt} · ${o.id}</span>
-            <span class="omc-payment">${o.payment}</span>
+            <span class="omc-date">${o.createdAt||''} · ${o.id||''}</span>
+            <span class="omc-payment">${o.payment||''}</span>
           </div>
           <div class="omc-items">
-            ${fi ? `<span>${fi.name} <strong>x${fi.qty}</strong></span>` : ''}
+            ${fi ? `<span>${fi.name||'SP'} <strong>x${fi.qty||0}</strong></span>` : '<span style="color:#999">Không có sản phẩm</span>'}
             ${mc > 0 ? `<span class="omc-more">+${mc} mặt hàng khác</span>` : ''}
           </div>
           <div class="omc-row3">
@@ -1456,22 +1457,23 @@ const App = {
     const tbody = document.getElementById('o-tbody');
     if (!tbody) return;
     tbody.innerHTML = list.length ? list.map(o => {
-      const costTotal = o.items.reduce((s,i) => {
+      const items = o.items || [];
+      const costTotal = items.reduce((s,i) => {
         if (i.costPrice > 0) return s + i.costPrice;
         const prod = this.products.find(p => p.sku === i.sku) || this.products.find(p => p.name === i.name);
         return s + (prod?.costPrice||0) * i.qty;
       }, 0);
       const profit = (o.finalTotal||0) - costTotal;
-      const itemsSummary = o.items.map(i=>`${i.name} x${i.qty}`).join(', ');
+      const itemsSummary = items.map(i=>`${i.name||'?'} x${i.qty||0}`).join(', ') || 'Không có SP';
       return `<tr class="order-card" data-oid="${o.id}">
-      <td class="oc-id"><span class="product-sku">${o.id}</span></td>
-      <td class="oc-cust" style="font-weight:600">${o.customerName}</td>
+      <td class="oc-id"><span class="product-sku">${o.id||''}</span></td>
+      <td class="oc-cust" style="font-weight:600">${o.customerName||'Khách lẻ'}</td>
       <td class="oc-items" style="max-width:200px;font-size:0.8rem">${itemsSummary}</td>
       <td class="oc-total"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
       <td class="oc-profit" style="color:#10B981;font-weight:600">${fmtd(profit)}</td>
-      <td class="oc-payment">${o.payment}</td>
+      <td class="oc-payment">${o.payment||''}</td>
       <td class="oc-status"><span class="order-status ${o.status}">${o.status==='completed'?'Hoàn thành':o.status==='pending'?'Chờ xử lý':'Đã hủy'}</span></td>
-      <td class="oc-date" style="white-space:nowrap;color:var(--text-secondary)">${o.createdAt}</td>
+      <td class="oc-date" style="white-space:nowrap;color:var(--text-secondary)">${o.createdAt||''}</td>
       <td class="oc-actions"><div class="table-actions">
         <button class="btn-icon view-order" data-id="${o.id}" title="Xem / In hóa đơn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div></td>
