@@ -1761,7 +1761,7 @@ const App = {
         ${orders.length ? `<table class="data-table" style="margin-top:16px;table-layout:fixed;width:100%">
           <thead><tr><th style="width:30%">Mã đơn</th><th>Sản phẩm</th><th style="text-align:right;width:25%">Tổng</th><th style="width:10%">TT</th></tr></thead>
           <tbody>
-            ${orders.map(o => `<tr>
+            ${orders.map(o => `<tr class="ch-order-row" data-oid="${o.id}" style="cursor:pointer">
               <td style="font-size:0.7rem;word-break:break-all"><span class="product-sku">${o.id}</span><br><span style="color:#9CA3AF;font-size:0.65rem">${o.createdAt||''}</span></td>
               <td style="font-size:0.75rem;word-break:break-word">${(o.items||[]).map(i => i.name + ' x' + i.qty).join(', ')}</td>
               <td style="text-align:right"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
@@ -1774,6 +1774,13 @@ const App = {
     document.getElementById('modal-footer').innerHTML = '<button class="btn btn-secondary" id="m-cancel">Đóng</button>';
     this.openModal();
     document.getElementById('m-cancel').addEventListener('click', () => this.closeModal());
+    // Click order row → view order detail
+    document.querySelectorAll('.ch-order-row').forEach(tr => {
+      tr.addEventListener('click', () => {
+        this.closeModal();
+        setTimeout(() => this.viewOrder(tr.dataset.oid), 300);
+      });
+    });
   },
 
   // SVG avatars by gender
