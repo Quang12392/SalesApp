@@ -1131,7 +1131,7 @@ ul, ol { list-style: none; }
   
   /* === KiotViet mobile POS layout === */
   /* Search bar stays at top */
-  .pos-products { border-right: none; border-bottom: none; flex: 1; overflow-y: auto; max-height: none; padding-bottom: 80px; order: 2; }
+  .pos-products { border-right: none; border-bottom: none; flex: 1; overflow-y: auto; max-height: none; padding-bottom: 0; order: 2; }
   
   /* Customer section — moved to pos-products by JS on mobile */
   .pos-products > .pos-customer-section {
