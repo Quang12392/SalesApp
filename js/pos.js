@@ -110,9 +110,11 @@ const POS = {
     this.cart = [];
     this.selectedCustomer = null;
     document.getElementById('pos-overlay').style.display = 'flex';
-    this._posOpen = true;
-    // Push history state so Android back gesture can be intercepted
-    history.pushState({ pos: true }, '', location.href);
+    // Delay pushState so it doesn't conflict with hash routing (#pos → #orders)
+    setTimeout(() => {
+      this._posOpen = true;
+      history.pushState({ pos: true }, '', location.href);
+    }, 300);
     document.getElementById('pos-product-search').value = '';
     document.getElementById('pos-customer-search').value = '';
     document.getElementById('pos-selected-customer').style.display = 'none';
