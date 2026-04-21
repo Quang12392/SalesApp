@@ -1921,7 +1921,7 @@ const App = {
   },
 
   // ═════════ REPORTS ═════════
-  reportType: 'sales',
+  reportType: 'finance',
   reportPeriod: 'thisMonth',
   reportView: 'chart',
 
