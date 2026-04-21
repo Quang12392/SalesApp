@@ -1635,7 +1635,6 @@ const App = {
 
   // ═════════ CUSTOMERS ═════════
   renderCustomers(c) {
-    // Only build full layout once
     if (!c.querySelector('#c-search')) {
       c.innerHTML = `
         <div class="page-toolbar">
@@ -1650,7 +1649,9 @@ const App = {
             Thêm khách hàng
           </button>
         </div>
-        <div class="table-wrapper">
+        <div id="c-summary" style="padding:8px 16px;font-weight:600;color:var(--text-secondary);font-size:0.85rem"></div>
+        <div class="customer-card-list" id="c-card-list"></div>
+        <div class="table-wrapper customer-table-desktop">
           <table class="data-table">
             <thead><tr>
               <th>Mã KH</th><th>Tên khách hàng</th><th>Điện thoại</th><th>Địa chỉ</th>
@@ -1671,8 +1672,6 @@ const App = {
     let list = this.customers.filter(cu => {
       return !this.cSearch || cu.name.toLowerCase().includes(this.cSearch.toLowerCase()) || (cu.phone && cu.phone.includes(this.cSearch));
     });
-
-    // Fallback: compute from local orders if Sheets didn't provide data
     const spendMap = {};
     const lastOrderMap = {};
     this.orders.filter(o => o.status === 'completed').forEach(o => {
@@ -1682,6 +1681,36 @@ const App = {
         if (!lastOrderMap[cid] || o.createdAt > lastOrderMap[cid]) lastOrderMap[cid] = o.createdAt;
       }
     });
+    const totalSpent = list.reduce((s, cu) => s + (cu.totalSpent || spendMap[cu.id] || 0), 0);
+    const sumEl = document.getElementById('c-summary');
+    if (sumEl) sumEl.innerHTML = `Tổng bán: <span style="color:var(--primary);font-weight:700">${fmtd(totalSpent)}</span> &nbsp;&middot;&nbsp; ${list.length} khách hàng`;
+
+    const cardList = document.getElementById('c-card-list');
+    if (cardList) {
+      cardList.innerHTML = list.length ? list.map(cu => {
+        const spent = cu.totalSpent || spendMap[cu.id] || 0;
+        const lastOrd = cu.lastOrder || lastOrderMap[cu.id] || '';
+        const initial = (cu.name||'?')[0].toUpperCase();
+        const bg = cu.gender==='Nữ'?'#FCE7F3':cu.gender==='Nam'?'#DBEAFE':avatarColor(cu.name);
+        const clr = cu.gender==='Nữ'?'#BE185D':cu.gender==='Nam'?'#1E40AF':'#fff';
+        return `<div class="cust-mobile-card" data-cid="${cu.id}">
+          <div class="cmc-avatar" style="background:${bg};color:${clr}">${initial}</div>
+          <div class="cmc-info">
+            <div class="cmc-name">${cu.name}</div>
+            <div class="cmc-phone">${cu.phone||'Chưa có SĐT'}</div>
+            ${lastOrd ? `<div style="font-size:0.7rem;color:#9CA3AF">${lastOrd}</div>` : ''}
+          </div>
+          <div class="cmc-right">
+            <div class="cmc-total">${fmtd(spent)}</div>
+            <div class="cmc-actions">
+              <button class="btn-icon hist-c" data-id="${cu.id}" title="Lịch sử">🕐</button>
+              <button class="btn-icon edit-c" data-id="${cu.id}" title="Sửa">✏️</button>
+              <button class="btn-icon danger del-c" data-id="${cu.id}" title="Xóa">🗑️</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('') : '<div style="text-align:center;padding:40px;color:#9CA3AF">Không tìm thấy khách hàng</div>';
+    }
 
     const tbody = document.getElementById('c-tbody');
     if (!tbody) return;
@@ -1711,6 +1740,12 @@ const App = {
     document.querySelectorAll('.edit-c').forEach(b => b.addEventListener('click', () => this.customerModal(b.dataset.id)));
     document.querySelectorAll('.del-c').forEach(b => b.addEventListener('click', () => this.delCustomer(b.dataset.id)));
     document.querySelectorAll('.hist-c').forEach(b => b.addEventListener('click', () => this.viewCustomerHistory(b.dataset.id)));
+    document.querySelectorAll('.cust-mobile-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-icon')) return;
+        this.viewCustomerHistory(card.dataset.cid);
+      });
+    });
   },
 
   viewCustomerHistory(custId) {

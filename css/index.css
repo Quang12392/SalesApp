@@ -1395,6 +1395,7 @@ ul, ol { list-style: none; }
 /* Desktop: hide mobile card lists */
 .orders-card-list { display: none; }
 .products-card-list { display: none; }
+.customer-card-list { display: none; }
 @media (max-width: 480px) {
   .today-stats { flex-direction: column; gap: 12px; }
   .page-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -1458,6 +1459,28 @@ ul, ol { list-style: none; }
   .omc-status.cancelled { background: #FEE2E2; color: #DC2626; }
   .omc-profit { font-size: 0.75rem; color: #10B981; font-weight: 600; }
   .omc-empty { padding: 40px 20px; text-align: center; color: var(--text-secondary); }
+
+  /* ── Customer mobile cards - KiotViet style ── */
+  .customer-table-desktop { display: none !important; }
+  .customer-card-list { display: block; }
+  .cust-mobile-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .cust-mobile-card:active { background: var(--primary-bg); }
+  .cmc-avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1.1rem;
+  }
+  .cmc-info { flex: 1; min-width: 0; }
+  .cmc-name { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cmc-phone { font-size: 0.78rem; color: var(--text-secondary); }
+  .cmc-right { text-align: right; flex-shrink: 0; }
+  .cmc-total { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-bottom: 4px; }
+  .cmc-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .cmc-actions .btn-icon { font-size: 0.85rem; padding: 2px; background: none; border: none; cursor: pointer; }
 
   /* ── Products sticky header ── */
   .products-sticky-header {
