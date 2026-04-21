@@ -169,7 +169,10 @@ const POS = {
     popup.id = 'pos-exit-confirm';
     popup.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
     popup.innerHTML = `
-      <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);position:relative">
+        <button id="pos-exit-x" style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;color:#EF4444;padding:4px;border-radius:6px;transition:background 0.2s" title="Tiếp tục">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
         <div style="width:56px;height:56px;margin:0 auto 16px;background:#FEF3C7;border-radius:50%;display:flex;align-items:center;justify-content:center">
           <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" width="28" height="28"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
@@ -182,6 +185,8 @@ const POS = {
       </div>
     `;
     document.body.appendChild(popup);
+    // X button - dismiss popup, continue working
+    document.getElementById('pos-exit-x').addEventListener('click', () => popup.remove());
     // Discard - close without saving
     document.getElementById('pos-exit-discard').addEventListener('click', () => {
       popup.remove();
