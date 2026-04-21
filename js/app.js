@@ -1750,29 +1750,29 @@ const App = {
     const cu = this.customers.find(x => x.id === custId);
     if (!cu) return;
     const orders = this.orders.filter(o => o.customerId === custId);
-    document.getElementById('modal-title').textContent = `Lich su mua hang - ${cu.name}`;
+    document.getElementById('modal-title').textContent = `Lịch sử mua hàng - ${cu.name}`;
     document.getElementById('modal-body').innerHTML = `
       <div class="cust-history">
         <div class="ch-stats">
-          <div class="ch-stat"><span class="ch-stat-label">Tong don</span><strong>${cu.totalOrders || orders.length}</strong></div>
-          <div class="ch-stat"><span class="ch-stat-label">Tong chi tieu</span><strong class="price-text">${fmtd(cu.totalSpent)}</strong></div>
-          <div class="ch-stat"><span class="ch-stat-label">Giao dich cuoi</span><strong>${cu.lastOrder || '-'}</strong></div>
+          <div class="ch-stat"><span class="ch-stat-label">Tổng đơn</span><strong>${cu.totalOrders || orders.length}</strong></div>
+          <div class="ch-stat"><span class="ch-stat-label">Tổng chi tiêu</span><strong class="price-text">${fmtd(cu.totalSpent)}</strong></div>
+          <div class="ch-stat"><span class="ch-stat-label">Giao dịch cuối</span><strong>${cu.lastOrder || '-'}</strong></div>
         </div>
         ${orders.length ? `<table class="data-table" style="margin-top:16px">
-          <thead><tr><th>Ma don</th><th>San pham</th><th style="text-align:right">Tong</th><th>Ngay</th><th>TT</th></tr></thead>
+          <thead><tr><th>Mã đơn</th><th>Sản phẩm</th><th style="text-align:right">Tổng</th><th>Ngày</th><th>TT</th></tr></thead>
           <tbody>
             ${orders.map(o => `<tr>
               <td><span class="product-sku">${o.id}</span></td>
-              <td style="font-size:0.8rem;max-width:200px">${o.items.map(i => i.name + ' x' + i.qty).join(', ')}</td>
+              <td style="font-size:0.8rem;max-width:200px">${(o.items||[]).map(i => i.name + ' x' + i.qty).join(', ')}</td>
               <td style="text-align:right"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
-              <td style="white-space:nowrap;font-size:0.8rem">${o.createdAt}</td>
+              <td style="white-space:nowrap;font-size:0.8rem">${o.createdAt||''}</td>
               <td><span class="order-status ${o.status}">${o.status === 'completed' ? 'OK' : '...'}</span></td>
             </tr>`).join('')}
           </tbody>
-        </table>` : '<p style="text-align:center;color:var(--text-secondary);padding:24px">Chua co don hang nao</p>'}
+        </table>` : '<p style="text-align:center;color:var(--text-secondary);padding:24px">Chưa có đơn hàng nào</p>'}
       </div>
     `;
-    document.getElementById('modal-footer').innerHTML = '<button class="btn btn-secondary" id="m-cancel">Dong</button>';
+    document.getElementById('modal-footer').innerHTML = '<button class="btn btn-secondary" id="m-cancel">Đóng</button>';
     this.openModal();
     document.getElementById('m-cancel').addEventListener('click', () => this.closeModal());
   },
