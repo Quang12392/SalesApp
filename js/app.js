@@ -1533,6 +1533,7 @@ const App = {
     document.getElementById('modal-footer').innerHTML = `
       <button class="btn btn-secondary" id="m-cancel">Đóng</button>
       <button class="btn btn-primary" id="m-print-order">In hóa đơn</button>
+      ${o.status === 'completed' ? '<button class="btn" id="m-return-order" style="background:linear-gradient(135deg,#EF4444,#B91C1C);color:#fff;font-weight:600">↩ Trả hàng</button>' : ''}
     `;
     this.openModal();
     document.getElementById('m-cancel').addEventListener('click', () => this.closeModal());
@@ -1540,6 +1541,16 @@ const App = {
       this.closeModal();
       if (typeof POS !== 'undefined' && POS.showInvoice) POS.showInvoice(o);
     });
+    const returnBtn = document.getElementById('m-return-order');
+    if (returnBtn) {
+      returnBtn.addEventListener('click', () => {
+        this.closeModal();
+        setTimeout(() => {
+          this.openReturn();
+          setTimeout(() => this.selectReturnOrder(o.id), 200);
+        }, 300);
+      });
+    }
   },
 
   // ═════════ RETURNS PAGE ═════════
