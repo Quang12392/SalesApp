@@ -1050,14 +1050,14 @@ const App = {
               return da > db ? -1 : da < db ? 1 : 0;
             });
           const batchRows = skuBatches.map(b => `<tr style="${b.qtyRemaining<=0?'opacity:0.5':''}">
-            <td class="bt-id">${b.id}</td>
-            <td class="bt-sl">${b.qtyRemaining}</td>
-            <td class="bt-price">${fmtd(b.costPrice)}</td>
-            <td class="bt-date">
+            <td style="font-size:0.58rem;word-break:break-all;line-height:1.2;overflow:visible">${b.id}</td>
+            <td style="text-align:center;font-size:0.72rem;overflow:visible">${b.qtyRemaining}</td>
+            <td style="text-align:right;font-size:0.72rem;white-space:nowrap;overflow:visible">${fmtd(b.costPrice)}</td>
+            <td style="font-size:0.6rem;color:#6B7280;overflow:visible;display:flex;align-items:center;justify-content:space-between;gap:2px">
               <span>${(b.importDate||'').substring(0,10)}</span>
-              <span class="bt-acts">
-                <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" title="Sửa">✏️</button>
-                ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" title="Xóa">🗑️</button>` : ''}
+              <span style="display:flex;flex-direction:column;gap:1px;align-items:center;flex-shrink:0">
+                <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" style="padding:0;font-size:0.85rem;background:none;border:none;cursor:pointer;line-height:1" title="Sửa">✏️</button>
+                ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" style="padding:0;font-size:0.85rem;background:none;border:none;cursor:pointer;line-height:1" title="Xóa">🗑️</button>` : ''}
               </span>
             </td>
           </tr>`).join('');
