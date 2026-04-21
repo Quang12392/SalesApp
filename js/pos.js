@@ -146,7 +146,12 @@ const POS = {
     this.applyViewMode();
   },
 
-  close() {
+  close(force) {
+    // If cart has items and not forced, show confirmation popup
+    if (!force && this.cart.length > 0) {
+      this.showExitConfirm();
+      return;
+    }
     // Mobile: move customer back to cart panel
     const custSection = document.querySelector('.pos-customer-section');
     const cartPanel = document.querySelector('.pos-cart-panel');
@@ -155,6 +160,40 @@ const POS = {
     }
     document.getElementById('pos-overlay').style.display = 'none';
     clearInterval(this.posTimer);
+  },
+
+  showExitConfirm() {
+    // Remove existing popup if any
+    document.getElementById('pos-exit-confirm')?.remove();
+    const popup = document.createElement('div');
+    popup.id = 'pos-exit-confirm';
+    popup.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+    popup.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+        <div style="width:56px;height:56px;margin:0 auto 16px;background:#FEF3C7;border-radius:50%;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" width="28" height="28"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3 style="margin:0 0 8px;font-size:1.1rem;color:#1F2937">Bạn có muốn lưu đơn hàng này hay không?</h3>
+        <p style="margin:0 0 20px;font-size:0.85rem;color:#6B7280">Đơn hàng có ${this.cart.length} sản phẩm sẽ bị mất nếu không lưu tạm.</p>
+        <div style="display:flex;gap:12px;justify-content:center">
+          <button id="pos-exit-discard" style="flex:1;padding:12px 16px;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#EF4444,#B91C1C);color:#fff">Không</button>
+          <button id="pos-exit-save" style="flex:1;padding:12px 16px;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#10B981,#059669);color:#fff">Lưu tạm</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(popup);
+    // Discard - close without saving
+    document.getElementById('pos-exit-discard').addEventListener('click', () => {
+      popup.remove();
+      this.cart = [];
+      this.close(true);
+    });
+    // Save draft then close
+    document.getElementById('pos-exit-save').addEventListener('click', () => {
+      popup.remove();
+      this.saveDraft();
+      this.close(true);
+    });
   },
 
   renderProducts(query) {
