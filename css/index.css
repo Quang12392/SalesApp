@@ -2147,6 +2147,16 @@ ul, ol { list-style: none; }
   width: 100%; padding: 12px; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;
 }
 
+/* ── Return modal mobile responsive ── */
+@media (max-width: 600px) {
+  .return-modal { max-width: 100%; margin: 0; border-radius: 0; height: 100vh; max-height: 100vh; }
+  .return-body { overflow-y: auto; max-height: calc(100vh - 56px); }
+  .return-layout { flex-direction: column; min-height: auto; }
+  .return-left { border-right: none; padding-right: 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 12px; margin-bottom: 12px; }
+  .return-right { width: 100%; padding-left: 0; }
+  .return-right .return-actions { flex-direction: column; gap: 8px; padding-top: 12px; }
+  .return-right .return-actions .btn { width: 100%; }
+}
 /* ── Chặn xoay ngang trên mobile ── */
 #landscape-blocker {
   display: none;
