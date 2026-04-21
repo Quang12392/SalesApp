@@ -1050,15 +1050,15 @@ const App = {
               return da > db ? -1 : da < db ? 1 : 0;
             });
           const batchRows = skuBatches.map(b => `<tr style="${b.qtyRemaining<=0?'opacity:0.5':''}">
-            <td style="font-size:0.65rem;word-break:break-all;line-height:1.2">${b.id}</td>
-            <td style="text-align:center;font-size:0.75rem">${b.qtyRemaining}</td>
-            <td style="text-align:right;font-size:0.75rem;white-space:nowrap">${fmtd(b.costPrice)}</td>
-            <td style="font-size:0.6rem;color:#6B7280;white-space:nowrap">${(b.importDate||'').substring(2,10)}</td>
-            <td style="padding:2px;vertical-align:middle">
-              <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
-                <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" style="padding:2px;font-size:0.85rem;background:none;border:none;cursor:pointer;line-height:1" title="Sửa lô">✏️</button>
-                ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" style="padding:2px;font-size:0.85rem;background:none;border:none;cursor:pointer;line-height:1" title="Xóa lô">🗑️</button>` : ''}
-              </div>
+            <td class="bt-id">${b.id}</td>
+            <td class="bt-sl">${b.qtyRemaining}</td>
+            <td class="bt-price">${fmtd(b.costPrice)}</td>
+            <td class="bt-date">
+              ${(b.importDate||'').substring(2,10)}
+              <span class="bt-acts">
+                <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" title="Sửa">✏️</button>
+                ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" title="Xóa">🗑️</button>` : ''}
+              </span>
             </td>
           </tr>`).join('');
           return `<div style="border-top:2px solid var(--border-color);margin-top:16px;padding-top:16px">
@@ -1078,8 +1078,8 @@ const App = {
           ${skuBatches.length ? `<div style="margin-top:16px">
             <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;color:#6B7280">📋 Các lô đã nhập (${skuBatches.length} lô)</div>
             <div style="max-height:280px;overflow:auto;border:1px solid var(--border-color);border-radius:8px">
-            <table class="data-table" style="font-size:0.72rem;margin:0;width:100%"><thead style="position:sticky;top:0;z-index:1;background:#fff"><tr>
-              <th>Mã lô</th><th style="text-align:center">SL</th><th style="text-align:right">Giá nhập</th><th>Ngày</th><th style="width:28px"></th>
+            <table class="data-table batch-table" style="margin:0;width:100%"><thead style="position:sticky;top:0;z-index:1;background:#fff"><tr>
+              <th>Mã lô</th><th>SL</th><th>Giá nhập</th><th>Ngày</th>
             </tr></thead><tbody>${batchRows}</tbody></table>
             </div>
           </div>` : ''}
