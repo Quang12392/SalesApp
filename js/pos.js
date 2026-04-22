@@ -549,7 +549,7 @@ const POS = {
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
         <thead>
-          <tr style="border-bottom:2px solid #1a73e8">
+          <tr style="border-bottom:2px solid #2E7D32">
             <th style="padding:6px 4px;text-align:left">#</th>
             <th style="padding:6px 4px;text-align:left">Sản phẩm</th>
             <th style="padding:6px 4px;text-align:right">SL</th>
@@ -570,7 +570,7 @@ const POS = {
       <div style="margin-top:12px;font-size:0.85rem">
         <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Tổng tiền hàng:</span><span>${fmtd(subtotal)}</span></div>
         ${discount > 0 ? `<div style="display:flex;justify-content:space-between;padding:4px 0"><span>Giảm giá:</span><span>-${fmtd(discount)}</span></div>` : ''}
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #1a73e8;font-size:1rem;font-weight:700;color:#1a73e8"><span>TỔNG CỘNG:</span><span>${fmtd(finalTotal)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #2E7D32;font-size:1rem;font-weight:700;color:#2E7D32"><span>TỔNG CỘNG:</span><span>${fmtd(finalTotal)}</span></div>
       </div>
       <div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#222;font-weight:600">
         <p>Cảm ơn quý khách đã mua hàng!</p>
@@ -621,7 +621,7 @@ const POS = {
           <img src="${dataUrl}" style="width:100%;display:block;border-radius:8px;" alt="Đơn hàng">
           <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;">
             <button id="img-save-btn" style="padding:8px 20px;background:#2E7D32;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Lưu ảnh</button>
-            ${navigator.share ? '<button id="img-share-btn" style="padding:8px 20px;background:#1B5E20;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Chia sẻ</button>' : ''}
+            ${navigator.share ? '<button id="img-share-btn" style="padding:8px 20px;background:#1A73E8;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Chia sẻ</button>' : ''}
             <button id="img-close-btn" style="padding:8px 20px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Đóng</button>
           </div>
         </div>
