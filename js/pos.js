@@ -198,7 +198,7 @@ const POS = {
         <p style="margin:0 0 20px;font-size:0.85rem;color:#6B7280">Đơn hàng có ${this.cart.length} sản phẩm sẽ bị mất nếu không lưu tạm.</p>
         <div style="display:flex;gap:12px;justify-content:center">
           <button id="pos-exit-discard" style="flex:1;padding:12px 16px;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#EF4444,#B91C1C);color:#fff">Không</button>
-          <button id="pos-exit-save" style="flex:1;padding:12px 16px;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#10B981,#059669);color:#fff">Lưu tạm</button>
+          <button id="pos-exit-save" style="flex:1;padding:12px 16px;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#1B5E20,#059669);color:#fff">Lưu tạm</button>
         </div>
       </div>
     `;
@@ -620,8 +620,8 @@ const POS = {
           </button>
           <img src="${dataUrl}" style="width:100%;display:block;border-radius:8px;" alt="Đơn hàng">
           <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;">
-            <button id="img-save-btn" style="padding:8px 20px;background:#1A73E8;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Lưu ảnh</button>
-            ${navigator.share ? '<button id="img-share-btn" style="padding:8px 20px;background:#10B981;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Chia sẻ</button>' : ''}
+            <button id="img-save-btn" style="padding:8px 20px;background:#2E7D32;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Lưu ảnh</button>
+            ${navigator.share ? '<button id="img-share-btn" style="padding:8px 20px;background:#1B5E20;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Chia sẻ</button>' : ''}
             <button id="img-close-btn" style="padding:8px 20px;background:#6b7280;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Đóng</button>
           </div>
         </div>

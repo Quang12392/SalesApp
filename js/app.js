@@ -22,7 +22,7 @@ function stockStatus(s) {
   return { c:'in-stock', t:`Còn ${s}` };
 }
 function avatarColor(name) {
-  const cols = ['#1A73E8','#7C3AED','#EC4899','#F59E0B','#EF4444','#06B6D4','#10B981','#8B5CF6'];
+  const cols = ['#2E7D32','#7C3AED','#EC4899','#F59E0B','#EF4444','#06B6D4','#1B5E20','#8B5CF6'];
   let h = 0; for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
   return cols[Math.abs(h) % cols.length];
 }
@@ -335,7 +335,7 @@ const App = {
         if (!url) { apiStatus.textContent = '❌ Vui lòng nhập URL'; apiStatus.style.color = '#EF4444'; return; }
         localStorage.setItem('khs_api_url', url);
         apiStatus.textContent = '✅ Đã lưu! Hãy đăng nhập.';
-        apiStatus.style.color = '#10B981';
+        apiStatus.style.color = '#1B5E20';
         this.autoSync();
       });
     }
@@ -526,7 +526,7 @@ const App = {
                     <div class="hbar-item">
                       <div class="hbar-label" title="${cu.name}">${cu.name}</div>
                       <div class="hbar-bar-wrap">
-                        <div class="hbar-bar" style="width:${(cu.totalSpent / maxSpent * 100)}%;background:#10B981"></div>
+                        <div class="hbar-bar" style="width:${(cu.totalSpent / maxSpent * 100)}%;background:#1B5E20"></div>
                       </div>
                       <div class="hbar-value">${fmtShort(cu.totalSpent)}</div>
                     </div>
@@ -787,7 +787,7 @@ const App = {
       ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
       ctx.lineTo(x + barW, pad.top + ch);
       ctx.closePath();
-      ctx.fillStyle = val > 0 ? '#1A73E8' : '#E5E7EB';
+      ctx.fillStyle = val > 0 ? '#2E7D32' : '#E5E7EB';
       ctx.fill();
     });
   },
@@ -982,7 +982,7 @@ const App = {
         </div>
         <div>
           <div style="font-size:0.75rem;color:var(--text-secondary)">Lợi nhuận</div>
-          <div style="font-weight:600;font-size:0.9rem;margin-top:2px;color:#10B981">${fmt(profit)}</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-top:2px;color:#1B5E20">${fmt(profit)}</div>
         </div>
         <div>
           <div style="font-size:0.75rem;color:var(--text-secondary)">Đơn vị tính</div>
@@ -1053,10 +1053,10 @@ const App = {
         <div class="form-group"><label>Tên sản phẩm</label><input class="form-control" id="pf-name" value="${p?.name||''}" required></div>
         <div class="form-row">
           <div class="form-group"><label>Giá bán</label><input class="form-control" id="pf-sell" type="text" inputmode="numeric" value="${p?.sellPrice?fmt(p.sellPrice):''}" oninput="fmtInput(this)" required></div>
-          <div class="form-group"><label>Giá vốn${hasBatches?' <span style=\"font-size:0.7rem;color:#10B981\">(tự tính từ lô)</span>':''}</label><input class="form-control" id="pf-cost" type="text" inputmode="numeric" value="${p?.costPrice?fmt(p.costPrice):''}" oninput="fmtInput(this)" ${hasBatches?'readonly style="background:#F3F4F6;cursor:not-allowed"':''}></div>
+          <div class="form-group"><label>Giá vốn${hasBatches?' <span style=\"font-size:0.7rem;color:#1B5E20\">(tự tính từ lô)</span>':''}</label><input class="form-control" id="pf-cost" type="text" inputmode="numeric" value="${p?.costPrice?fmt(p.costPrice):''}" oninput="fmtInput(this)" ${hasBatches?'readonly style="background:#F3F4F6;cursor:not-allowed"':''}></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Tồn kho${hasBatches?' <span style=\"font-size:0.7rem;color:#10B981\">(quản lý qua lô)</span>':''}</label><input class="form-control" id="pf-stock" type="number" value="${p?.stock??''}" ${hasBatches?'readonly style="background:#F3F4F6;cursor:not-allowed"':'required'}></div>
+          <div class="form-group"><label>Tồn kho${hasBatches?' <span style=\"font-size:0.7rem;color:#1B5E20\">(quản lý qua lô)</span>':''}</label><input class="form-control" id="pf-stock" type="number" value="${p?.stock??''}" ${hasBatches?'readonly style="background:#F3F4F6;cursor:not-allowed"':'required'}></div>
           <div class="form-group"><label>Đơn vị tính</label><input class="form-control" id="pf-unit" value="${p?.unit||'hộp'}"></div>
         </div>
         ${p ? (() => {
@@ -1075,7 +1075,7 @@ const App = {
             <td style="text-align:center;font-size:0.8rem;overflow:visible;font-weight:700">${b.qtyRemaining}</td>
             <td style="text-align:right;font-size:0.8rem;white-space:nowrap;overflow:visible;font-weight:700">${fmtd(b.costPrice)}</td>
             <td style="font-size:0.7rem;color:#6B7280;overflow:visible;display:flex;align-items:center;justify-content:space-between;gap:2px;font-weight:600">
-              <span>${(b.importDate||'').substring(0,10)}${b.updatedAt ? '<br><span style="color:#10B981;font-weight:700">⇢ '+(b.updatedAt||'').substring(0,10)+'</span>' : ''}</span>
+              <span>${(b.importDate||'').substring(0,10)}${b.updatedAt ? '<br><span style="color:#1B5E20;font-weight:700">⇢ '+(b.updatedAt||'').substring(0,10)+'</span>' : ''}</span>
               <span style="display:flex;flex-direction:column;gap:12px;align-items:center;flex-shrink:0;justify-content:space-between">
                 <button class="btn btn-sm batch-edit-btn" data-bid="${b.id}" style="padding:0;font-size:1rem;background:none;border:none;cursor:pointer;line-height:1" title="Sửa">✏️</button>
                 ${b.qtyRemaining<=0 ? `<button class="btn btn-sm batch-del-btn" data-bid="${b.id}" style="padding:0;font-size:1rem;background:none;border:none;cursor:pointer;line-height:1" title="Xóa">🗑️</button>` : ''}
@@ -1083,7 +1083,7 @@ const App = {
             </td>
           </tr>`).join('');
           return `<div style="border-top:2px solid var(--border-color);margin-top:16px;padding-top:16px">
-          <label style="font-weight:700;font-size:0.95rem;color:#10B981;display:flex;align-items:center;gap:6px;margin-bottom:12px"><input type="checkbox" id="pf-batch-toggle"> 📦 Nhập thêm lô mới</label>
+          <label style="font-weight:700;font-size:0.95rem;color:#1B5E20;display:flex;align-items:center;gap:6px;margin-bottom:12px"><input type="checkbox" id="pf-batch-toggle"> 📦 Nhập thêm lô mới</label>
           <div id="pf-batch-fields" style="display:none">
             <div class="form-row">
               <div class="form-group"><label>Ngày nhập</label><input class="form-control" id="pf-batch-date" type="date" value="${new Date().toISOString().substring(0,10)}"></div>
@@ -1388,7 +1388,7 @@ const App = {
           <table class="data-table">
             <thead><tr>
               <th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th>
-              <th>Tổng tiền</th><th style="color:#10B981">Lợi nhuận</th><th>Thanh toán</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th>
+              <th>Tổng tiền</th><th style="color:#1B5E20">Lợi nhuận</th><th>Thanh toán</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th>
             </tr></thead>
             <tbody id="o-tbody"></tbody>
           </table>
@@ -1495,7 +1495,7 @@ const App = {
       <td class="oc-cust" style="font-weight:600">${o.customerName||'Khách lẻ'}</td>
       <td class="oc-items" style="max-width:200px;font-size:0.8rem">${itemsSummary}</td>
       <td class="oc-total"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
-      <td class="oc-profit" style="color:#10B981;font-weight:600">${fmtd(profit)}</td>
+      <td class="oc-profit" style="color:#1B5E20;font-weight:600">${fmtd(profit)}</td>
       <td class="oc-payment">${o.payment||''}</td>
       <td class="oc-status"><span class="order-status ${o.status}">${o.status==='completed'?'Hoàn thành':o.status==='pending'?'Chờ xử lý':'Đã hủy'}</span></td>
       <td class="oc-date" style="white-space:nowrap;color:var(--text-secondary)">${o.createdAt||''}</td>
@@ -1641,7 +1641,7 @@ const App = {
       ` + shown.map(r => {
         const itemsVal = r.itemsValue || r.returnTotal || 0;
         return `<tr>
-          <td style="color:#1A73E8;font-weight:600">${r.id}</td>
+          <td style="color:#2E7D32;font-weight:600">${r.id}</td>
           <td style="color:#6B7280">${r.orderId||''}</td>
           <td>${r.createdBy||''}</td>
           <td>${r.createdAt||''}</td>
@@ -2056,7 +2056,7 @@ const App = {
       const cw=w-p.l-p.r, ch=h-p.t-p.b;
       if(!data.length){ctx.fillStyle='#999';ctx.font='14px "Be Vietnam Pro"';ctx.fillText('Không có dữ liệu',w/2-50,h/2);return;}
       const mx=Math.max(...data)*1.2||1, bw=Math.min(cw/data.length*0.6,50), gap=cw/data.length;
-      const clr = color||'#1A73E8';
+      const clr = color||'#2E7D32';
 
       // Store bar rects for hit detection
       const bars = [];
@@ -2234,9 +2234,9 @@ const App = {
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Số đơn</div><div class="rpt-card-value">${cnt}</div></div><div class="rpt-card purple"><div class="rpt-card-label">TB / đơn</div><div class="rpt-card-value">${fmtd(avg)}</div></div><div class="rpt-card orange"><div class="rpt-card-label">Giảm giá</div><div class="rpt-card-value">${fmtd(disc)}</div></div></div>`;
     if(view==='chart'){
       el.innerHTML=`<h2 class="report-title">Báo cáo bán hàng</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Phân bổ thanh toán</h3></div><div class="card-body"><div class="chart-area" style="height:280px"><canvas id="rc5"></canvas></div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu theo nhân viên</h3></div><div class="card-body"><div class="chart-area" style="height:320px"><canvas id="rc-emp"></canvas></div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu ${periodLabel}</h3></div><div class="card-body"><div class="chart-area" style="height:320px"><canvas id="rc1"></canvas></div></div></div>`;
-      this.rptPieChart('rc5',['Tiền mặt','Chuyển khoản','Ship COD','Ship Thường'],[cS,bS,codS,shipS],['#1A73E8','#10B981','#F59E0B','#8B5CF6']);
-      this.rptBarChart('rc-emp',empSorted.map(([n])=>n.length>12?n.substring(0,12)+'…':n),empSorted.map(([,d])=>d.r),'#10B981',empSorted.map(([,d])=>d.c+' đơn'));
-      this.rptBarChart('rc1',dr.map(([d])=>d.substring(0,5)),dr.map(([,d])=>d.r),'#1A73E8',dr.map(([,d])=>d.c+' đơn'));
+      this.rptPieChart('rc5',['Tiền mặt','Chuyển khoản','Ship COD','Ship Thường'],[cS,bS,codS,shipS],['#2E7D32','#1B5E20','#F59E0B','#8B5CF6']);
+      this.rptBarChart('rc-emp',empSorted.map(([n])=>n.length>12?n.substring(0,12)+'…':n),empSorted.map(([,d])=>d.r),'#1B5E20',empSorted.map(([,d])=>d.c+' đơn'));
+      this.rptBarChart('rc1',dr.map(([d])=>d.substring(0,5)),dr.map(([,d])=>d.r),'#2E7D32',dr.map(([,d])=>d.c+' đơn'));
     } else {
       el.innerHTML=`<h2 class="report-title">Báo cáo bán hàng</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Phân loại thanh toán</h3></div><div class="card-body"><table class="data-table"><thead><tr><th>Hình thức</th><th style="text-align:right">Số đơn</th><th style="text-align:right">Số tiền</th></tr></thead><tbody><tr><td>💵 Tiền mặt</td><td style="text-align:right">${cT.length}</td><td style="text-align:right;font-weight:600">${fmtd(cS)}</td></tr><tr><td>🏦 Chuyển khoản</td><td style="text-align:right">${bT.length}</td><td style="text-align:right;font-weight:600">${fmtd(bS)}</td></tr><tr><td>🚚 Ship COD</td><td style="text-align:right">${codT.length}</td><td style="text-align:right;font-weight:600">${fmtd(codS)}</td></tr><tr><td>📦 Ship Thường</td><td style="text-align:right">${shipT.length}</td><td style="text-align:right;font-weight:600">${fmtd(shipS)}</td></tr></tbody><tfoot><tr style="font-weight:700;background:var(--bg-secondary)"><td>Tổng</td><td style="text-align:right">${cnt}</td><td style="text-align:right">${fmtd(rev)}</td></tr></tfoot></table></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu theo nhân viên</h3></div><div class="card-body"><table class="data-table"><thead><tr><th>Nhân viên</th><th style="text-align:right">Số đơn</th><th style="text-align:right">Doanh thu</th><th style="text-align:right">TB / đơn</th></tr></thead><tbody>${empSorted.map(([n,d])=>`<tr><td style="font-weight:600">${n}</td><td style="text-align:right">${d.c}</td><td style="text-align:right;font-weight:600">${fmtd(d.r)}</td><td style="text-align:right">${fmtd(d.c?Math.round(d.r/d.c):0)}</td></tr>`).join('')}</tbody><tfoot><tr style="font-weight:700;background:var(--bg-secondary)"><td>Tổng</td><td style="text-align:right">${cnt}</td><td style="text-align:right">${fmtd(rev)}</td><td style="text-align:right">${fmtd(avg)}</td></tr></tfoot></table></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Chi tiết ${periodLabel}</h3></div><div class="card-body"><table class="data-table"><thead><tr><th>Ngày</th><th style="text-align:right">Số đơn</th><th style="text-align:right">Doanh thu</th></tr></thead><tbody>${dr.reverse().map(([d,v])=>`<tr><td>${d}</td><td style="text-align:right">${v.c}</td><td style="text-align:right;font-weight:600">${fmtd(v.r)}</td></tr>`).join('')}</tbody><tfoot><tr style="font-weight:700;background:var(--bg-secondary)"><td>Tổng</td><td style="text-align:right">${cnt}</td><td style="text-align:right">${fmtd(rev)}</td></tr></tfoot></table></div></div>`;
     }
@@ -2248,7 +2248,7 @@ const App = {
     const mr=br[0]?.[1]||1, mq=bq[0]?.[1]||1;
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Tổng SP bán</div><div class="rpt-card-value">${Object.values(qm).reduce((a,b)=>a+b,0)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Số loại SP</div><div class="rpt-card-value">${Object.keys(qm).length}</div></div><div class="rpt-card purple"><div class="rpt-card-label">Tổng doanh thu</div><div class="rpt-card-value">${fmtd(Object.values(rm).reduce((a,b)=>a+b,0))}</div></div></div>`;
     const topRevHtml = br.map(([n,v]) => `<div class="hbar-item"><div class="hbar-label" title="${n}">${n}</div><div class="hbar-bar-wrap"><div class="hbar-bar" style="width:${Math.round(v/mr*100)}%"></div></div><div class="hbar-value">${fmtd(v)}</div></div>`).join('');
-    const topQtyHtml = bq.map(([n,v]) => `<div class="hbar-item"><div class="hbar-label" title="${n}">${n}</div><div class="hbar-bar-wrap"><div class="hbar-bar" style="width:${Math.round(v/mq*100)}%;background:#10B981"></div></div><div class="hbar-value">${v}</div></div>`).join('');
+    const topQtyHtml = bq.map(([n,v]) => `<div class="hbar-item"><div class="hbar-label" title="${n}">${n}</div><div class="hbar-bar-wrap"><div class="hbar-bar" style="width:${Math.round(v/mq*100)}%;background:#1B5E20"></div></div><div class="hbar-value">${v}</div></div>`).join('');
     el.innerHTML=`<h2 class="report-title">B\u00e1o c\u00e1o h\u00e0ng h\u00f3a</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Top h\u00e0ng theo doanh thu</h3></div><div class="card-body"><div class="hbar-list">${topRevHtml}</div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Top h\u00e0ng theo s\u1ed1 l\u01b0\u1ee3ng</h3></div><div class="card-body"><div class="hbar-list">${topQtyHtml}</div></div></div>`;
   },
 
@@ -2273,9 +2273,9 @@ const App = {
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card red"><div class="rpt-card-label">Giá vốn</div><div class="rpt-card-value">${fmtd(cost)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận</div><div class="rpt-card-value">${fmtd(profit)}</div></div><div class="rpt-card orange"><div class="rpt-card-label">Chiết khấu</div><div class="rpt-card-value">${fmtd(disc)}</div></div></div>`;
     if(view==='chart'){
       el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Cơ cấu doanh thu</h3></div><div class="card-body"><div class="chart-area" style="height:280px"><canvas id="rc6"></canvas></div></div></div>`;
-      this.rptPieChart('rc6',['Giá vốn','Lợi nhuận','Chiết khấu'],[cost,profit,disc],['#EF4444','#10B981','#F59E0B']);
+      this.rptPieChart('rc6',['Giá vốn','Lợi nhuận','Chiết khấu'],[cost,profit,disc],['#EF4444','#1B5E20','#F59E0B']);
     } else {
-      el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Tổng hợp</h3></div><div class="card-body"><table class="data-table"><tbody><tr><td>Tổng doanh thu</td><td style="text-align:right;font-weight:600;color:var(--primary)">${fmtd(rev)}</td></tr><tr><td>Giá vốn hàng bán</td><td style="text-align:right;font-weight:600;color:#EF4444">${fmtd(cost)}</td></tr><tr><td>Chiết khấu</td><td style="text-align:right">${fmtd(disc)}</td></tr><tr style="font-size:1.1rem;font-weight:700;background:var(--bg-secondary)"><td>Lợi nhuận gộp</td><td style="text-align:right;color:#10B981">${fmtd(profit)}</td></tr><tr><td>Biên lợi nhuận</td><td style="text-align:right;font-weight:600">${rev?Math.round(profit/rev*100):0}%</td></tr></tbody></table></div></div>`;
+      el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Tổng hợp</h3></div><div class="card-body"><table class="data-table"><tbody><tr><td>Tổng doanh thu</td><td style="text-align:right;font-weight:600;color:var(--primary)">${fmtd(rev)}</td></tr><tr><td>Giá vốn hàng bán</td><td style="text-align:right;font-weight:600;color:#EF4444">${fmtd(cost)}</td></tr><tr><td>Chiết khấu</td><td style="text-align:right">${fmtd(disc)}</td></tr><tr style="font-size:1.1rem;font-weight:700;background:var(--bg-secondary)"><td>Lợi nhuận gộp</td><td style="text-align:right;color:#1B5E20">${fmtd(profit)}</td></tr><tr><td>Biên lợi nhuận</td><td style="text-align:right;font-weight:600">${rev?Math.round(profit/rev*100):0}%</td></tr></tbody></table></div></div>`;
     }
   },
   // ═════════ INVENTORY ═════════
@@ -2357,7 +2357,7 @@ const App = {
         <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
           <div style="font-size:0.85rem;color:#EF4444;font-weight:600">🔴 Hết hàng: ${outOfStock.length} SP</div>
           <div style="font-size:0.85rem;color:#F59E0B;font-weight:600">🟡 Sắp hết: ${lowStock.length} SP</div>
-          <div style="font-size:0.85rem;color:#10B981;font-weight:600">🟢 Còn hàng: ${prods.length} SP</div>
+          <div style="font-size:0.85rem;color:#1B5E20;font-weight:600">🟢 Còn hàng: ${prods.length} SP</div>
         </div>
       </div></div>`;
     }
@@ -2389,10 +2389,10 @@ const App = {
       this.rptBarChart('inv-qty-chart',
         top10.map(p => p.name.length>12?p.name.substring(0,12)+'…':p.name),
         top10.map(p => p.stock||0),
-        '#1A73E8',
+        '#2E7D32',
         top10.map(p => 'Vốn: '+fmtShort((p.costPrice||0)*(p.stock||0)))
       );
-      this.rptPieChart('inv-pie',['Giá vốn','Lợi nhuận DK'],[totalCost,totalProfit],['#EF4444','#10B981']);
+      this.rptPieChart('inv-pie',['Giá vốn','Lợi nhuận DK'],[totalCost,totalProfit],['#EF4444','#1B5E20']);
     }
   },
 
@@ -2622,7 +2622,7 @@ const App = {
           const remaining = (o.finalTotal||0) - totalReturned;
           const hasReturn = totalReturned > 0;
           return `<tr class="return-row" data-oid="${o.id}" style="cursor:pointer;transition:background 0.15s">
-          <td style="color:#1A73E8;font-weight:600">${o.id}${hasReturn?' <span style="color:#F59E0B;font-size:0.7rem">⟳ đã trả</span>':''}</td>
+          <td style="color:#2E7D32;font-weight:600">${o.id}${hasReturn?' <span style="color:#F59E0B;font-size:0.7rem">⟳ đã trả</span>':''}</td>
           <td>${o.createdAt||''}</td>
           <td>${o.customerName||'Khách lẻ'}</td>
           <td style="text-align:right;font-weight:600">${hasReturn?`<span style="text-decoration:line-through;color:#9CA3AF;font-size:0.75rem">${fmtd(o.finalTotal||0)}</span> ${fmtd(remaining)}`:fmtd(o.finalTotal||0)}</td>
@@ -2659,7 +2659,7 @@ const App = {
 
     // Right panel - order info
     document.getElementById('return-order-info').innerHTML = `
-      <div class="info-item"><span class="info-label" style="color:#1A73E8;font-weight:700">Trả hàng / ${order.id} - ${order.createdBy||''}</span></div>
+      <div class="info-item"><span class="info-label" style="color:#2E7D32;font-weight:700">Trả hàng / ${order.id} - ${order.createdBy||''}</span></div>
       <div class="info-item" style="margin-top:4px"><span class="info-label">👤 ${order.customerName||'Khách lẻ'}</span></div>
     `;
 
@@ -2940,7 +2940,7 @@ const App = {
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" id="btn-upload-qr">📷 Chọn ảnh</button>
             <button class="btn btn-primary btn-sm" id="btn-process-qr" style="background:#F59E0B;border-color:#F59E0B" disabled>⚡ Xử lý ảnh</button>
-            <button class="btn btn-primary btn-sm" id="btn-save-cropped-qr" style="background:#10B981;border-color:#10B981" disabled>💾 Lưu QR đã tách</button>
+            <button class="btn btn-primary btn-sm" id="btn-save-cropped-qr" style="background:#1B5E20;border-color:#1B5E20" disabled>💾 Lưu QR đã tách</button>
             <button class="btn btn-secondary btn-sm" id="btn-clear-qr">🗑 Xóa</button>
           </div>
         </div>
@@ -2986,8 +2986,8 @@ const App = {
     const switchTab = (tab) => {
       document.querySelectorAll('.settings-tab').forEach(t => { t.classList.remove('active'); t.style.borderBottomColor = 'transparent'; t.style.color = '#6B7280'; });
       document.getElementById('tab-'+tab).classList.add('active');
-      document.getElementById('tab-'+tab).style.borderBottomColor = '#1A73E8';
-      document.getElementById('tab-'+tab).style.color = '#1A73E8';
+      document.getElementById('tab-'+tab).style.borderBottomColor = '#2E7D32';
+      document.getElementById('tab-'+tab).style.color = '#2E7D32';
       if(tab === 'users') this.renderUsersTab();
       else this.renderRolesTab();
     };
@@ -3201,7 +3201,7 @@ const App = {
       <table class="data-table">
         <thead><tr><th>Tên hiển thị</th><th>Tên đăng nhập</th><th>Điện thoại</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
         <tbody>${this.users.length ? this.users.map(u => `<tr>
-          <td style="font-weight:600">${u.displayName}${u.username===this.user?.username?' <span style="color:#1A73E8;font-size:0.7rem">Tôi</span>':''}</td>
+          <td style="font-weight:600">${u.displayName}${u.username===this.user?.username?' <span style="color:#2E7D32;font-size:0.7rem">Tôi</span>':''}</td>
           <td>${u.username}</td>
           <td>${u.phone||'—'}</td>
           <td><span style="background:${u.role==='Admin'?'#DBEAFE':'#F3F4F6'};color:${u.role==='Admin'?'#1E40AF':'#374151'};padding:2px 8px;border-radius:4px;font-size:0.78rem">${u.role}</span></td>
@@ -3333,7 +3333,7 @@ const App = {
                 <div style="font-weight:700;font-size:0.85rem;color:#374151;margin-bottom:6px;padding:4px 0;border-bottom:1px solid #E5E7EB">${mod.group}</div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px 24px">
                   ${mod.perms.map(p => `<label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;cursor:pointer">
-                    <input type="checkbox" class="rf-perm" data-key="${p.key}" ${perms[p.key]?'checked':''} style="accent-color:#1A73E8"> ${p.label}
+                    <input type="checkbox" class="rf-perm" data-key="${p.key}" ${perms[p.key]?'checked':''} style="accent-color:#2E7D32"> ${p.label}
                   </label>`).join('')}
                 </div>
               </div>
