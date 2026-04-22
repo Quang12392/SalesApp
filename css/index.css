@@ -474,8 +474,8 @@ ul, ol { list-style: none; }
 }
 .hbar-label {
   width: 180px; font-size: 0.8rem;
-  white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; flex-shrink: 0;
+  word-break: break-word;
+  flex-shrink: 0; line-height: 1.3;
 }
 .hbar-bar-wrap { flex: 1; height: 20px; background: var(--border-light); border-radius: 4px; overflow: hidden; }
 .hbar-bar {
