@@ -101,14 +101,15 @@ const App = {
         if (url) localStorage.setItem('khs_api_url', url);
       }
       if (!url) { hideSplash(); clearTimeout(safety); return; }
-      const [pRes, cRes, oRes, rRes, uRes, roRes, bRes] = await Promise.all([
+      const [pRes, cRes, oRes, rRes, uRes, roRes, bRes, cfgRes] = await Promise.all([
         fetch(url + '?action=getProducts').then(r => r.json()).catch(() => ({ success: false })),
         fetch(url + '?action=getCustomers').then(r => r.json()).catch(() => ({ success: false })),
         fetch(url + '?action=getOrders').then(r => r.json()).catch(() => ({ success: false })),
         fetch(url + '?action=getReturns').then(r => r.json()).catch(() => ({ success: false })),
         fetch(url + '?action=getUsers').then(r => r.json()).catch(() => ({ success: false })),
         fetch(url + '?action=getRoles').then(r => r.json()).catch(() => ({ success: false })),
-        fetch(url + '?action=getBatches').then(r => r.json()).catch(() => ({ success: false }))
+        fetch(url + '?action=getBatches').then(r => r.json()).catch(() => ({ success: false })),
+        fetch(url + '?action=getConfig').then(r => r.json()).catch(() => ({ success: false }))
       ]);
       if (pRes.success && pRes.data?.length) this.products = pRes.data;
       if (cRes.success && cRes.data?.length) this.customers = cRes.data;
@@ -117,6 +118,15 @@ const App = {
       if (uRes.success && uRes.data) this.users = uRes.data;
       if (roRes.success && roRes.data) this.roles = roRes.data;
       if (bRes.success && bRes.data) this.batches = bRes.data;
+      // Sync store config → localStorage
+      if (cfgRes.success && cfgRes.data) {
+        const cfg = cfgRes.data;
+        if (cfg.store_name) localStorage.setItem('khs_store_name', cfg.store_name);
+        if (cfg.store_addr) localStorage.setItem('khs_store_addr', cfg.store_addr);
+        if (cfg.store_phone) localStorage.setItem('khs_store_phone', cfg.store_phone);
+        if (cfg.qr_info) localStorage.setItem('khs_qr_info', cfg.qr_info);
+        if (cfg.qr_image) this.saveConfigValue('pos_qr_image', cfg.qr_image);
+      }
       this.handleRoute();
       // Sync ảnh từ cloud (background, không block UI)
       this.syncImagesFromCloud();
@@ -2956,10 +2966,21 @@ const App = {
     document.getElementById('btn-save-api').addEventListener('click', () => this.saveApiUrl());
     document.getElementById('btn-sync-data').addEventListener('click', () => this.syncData());
     document.getElementById('btn-save-store').addEventListener('click', () => {
-      localStorage.setItem('khs_store_name', document.getElementById('set-store-name').value);
-      localStorage.setItem('khs_store_addr', document.getElementById('set-store-addr').value);
-      localStorage.setItem('khs_store_phone', document.getElementById('set-store-phone').value);
-      this.toast('success', 'Đã lưu thông tin cửa hàng!');
+      const name = document.getElementById('set-store-name').value;
+      const addr = document.getElementById('set-store-addr').value;
+      const phone = document.getElementById('set-store-phone').value;
+      localStorage.setItem('khs_store_name', name);
+      localStorage.setItem('khs_store_addr', addr);
+      localStorage.setItem('khs_store_phone', phone);
+      // Sync lên Google Sheets
+      const url = localStorage.getItem('khs_api_url');
+      if (url) {
+        const saveToCloud = (key, value) => fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key, value }) }).catch(() => {});
+        saveToCloud('store_name', name);
+        saveToCloud('store_addr', addr);
+        saveToCloud('store_phone', phone);
+      }
+      this.toast('success', 'Đã lưu thông tin cửa hàng! (đồng bộ tất cả thiết bị)');
     });
 
     // User/Role tabs
@@ -3069,8 +3090,15 @@ const App = {
       const src = document.getElementById('qr-cropped-img').src;
       if (!src) return;
       await this.saveConfigValue('pos_qr_image', src);
-      localStorage.setItem('khs_qr_info', document.getElementById('qr-decoded-info').value);
-      this.toast('success', '💾 Đã lưu QR + thông tin vào hóa đơn!');
+      const qrInfo = document.getElementById('qr-decoded-info').value;
+      localStorage.setItem('khs_qr_info', qrInfo);
+      // Sync lên Google Sheets
+      const url = localStorage.getItem('khs_api_url');
+      if (url) {
+        fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key:'qr_image', value: src }) }).catch(() => {});
+        fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: qrInfo }) }).catch(() => {});
+      }
+      this.toast('success', '💾 Đã lưu QR + thông tin (đồng bộ tất cả thiết bị)!');
     });
     // Clear all
     document.getElementById('btn-clear-qr').addEventListener('click', async () => {
@@ -3084,6 +3112,12 @@ const App = {
       qrOriginalDataUrl = null;
       await this.saveConfigValue('pos_qr_image', '');
       localStorage.removeItem('khs_qr_info');
+      // Sync xóa lên Google Sheets
+      const url = localStorage.getItem('khs_api_url');
+      if (url) {
+        fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key:'qr_image', value: '' }) }).catch(() => {});
+        fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: '' }) }).catch(() => {});
+      }
       this.toast('success', '🗑 Đã xóa tất cả!');
     });
     // Load existing saved QR
