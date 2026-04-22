@@ -222,6 +222,9 @@ const App = {
     // Settings gear icon
     const settBtn = document.getElementById('btn-header-settings');
     if(settBtn) settBtn.style.display = this.hasPermission('settings') ? '' : 'none';
+    // Notification bell
+    const notifBtn = document.getElementById('btn-notifications');
+    if(notifBtn) notifBtn.style.display = this.hasPermission('notifications') ? '' : 'none';
   },
 
   handleRoute() {
@@ -2463,6 +2466,8 @@ const App = {
 
   // ═══ NOTIFICATION SYSTEM ═══
   initNotifications() {
+    // Skip if user doesn't have notification permission
+    if (!this.hasPermission('notifications')) return;
     const btn = document.getElementById('btn-notifications');
     if (!btn) return;
     btn.addEventListener('click', (e) => {
@@ -3148,7 +3153,8 @@ const App = {
     { group: 'Đơn hàng', perms: [{ key: 'orders.view', label: 'Xem đơn hàng' }, { key: 'orders.create', label: 'Bán hàng (POS)' }, { key: 'orders.return', label: 'Trả hàng' }] },
     { group: 'Khách hàng', perms: [{ key: 'customers.view', label: 'Xem khách hàng' }, { key: 'customers.edit', label: 'Thêm/Sửa/Xóa' }] },
     { group: 'Báo cáo', perms: [{ key: 'reports', label: 'Xem báo cáo' }] },
-    { group: 'Thiết lập', perms: [{ key: 'settings', label: 'Cài đặt chung' }, { key: 'settings.users', label: 'Quản lý người dùng' }] }
+    { group: 'Thiết lập', perms: [{ key: 'settings', label: 'Cài đặt chung' }, { key: 'settings.users', label: 'Quản lý người dùng' }] },
+    { group: 'Thông báo', perms: [{ key: 'notifications', label: 'Xem thông báo' }] }
   ],
 
   renderUsersTab() {
