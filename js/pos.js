@@ -1014,7 +1014,7 @@ const POS = {
       </div>
       ${order.note ? `<div style="margin-top:12px;font-size:0.85rem;color:var(--text-secondary)">Ghi chú: ${order.note}</div>` : ''}
       <div class="inv-footer">
-        <p style="font-size:1.1rem;font-weight:600">Cảm ơn quý khách đã mua hàng!</p>
+        <p>Cảm ơn quý khách đã mua hàng! 🙏</p>
         <p>Kiều Hương Store</p>
       </div>
     `;
