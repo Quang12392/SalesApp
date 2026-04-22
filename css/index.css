@@ -1439,12 +1439,13 @@ ul, ol { list-style: none; }
   .order-mobile-card {
     padding: 12px 14px; border-bottom: 1px solid var(--border);
     cursor: pointer; transition: background 0.15s;
+    overflow: hidden; word-break: break-word;
   }
   .order-mobile-card:active { background: var(--primary-bg); }
   .omc-row1 {
     display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
   }
-  .omc-customer { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); }
+  .omc-customer { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); word-break: break-word; max-width: 60%; }
   .omc-total { font-weight: 700; font-size: 0.95rem; color: var(--text-primary); }
   .omc-row2 {
     display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
