@@ -1907,13 +1907,13 @@ ul, ol { list-style: none; }
   font-size: 0.72rem; font-weight: 600;
   transition: all 0.3s ease;
 }
-.network-status.online { background: rgba(16,185,129,0.15); color: #1B5E20; }
+.network-status.online { background: rgba(255,255,255,0.2); color: #fff; }
 .network-status.offline { background: rgba(239,68,68,0.2); color: #fff; }
 .net-dot {
   width: 7px; height: 7px; border-radius: 50%;
   display: inline-block;
 }
-.network-status.online .net-dot { background: #1B5E20; }
+.network-status.online .net-dot { background: #FFD600; }
 .network-status.offline .net-dot { background: #EF4444; animation: blink 1s infinite; }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
