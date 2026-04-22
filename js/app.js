@@ -38,6 +38,8 @@ const App = {
   users: [],
   roles: [],
   batches: [],
+  notifications: [],
+  _notifPanelOpen: false,
   pSearch: '', pFilter: 'all', cSearch: '',
 
   init() {
@@ -81,6 +83,8 @@ const App = {
     }
     // Auto-sync from Google Sheets if API is configured
     this.autoSync();
+    // Init notification system
+    this.initNotifications();
   },
 
   async autoSync() {
@@ -2456,6 +2460,98 @@ const App = {
   returnPerPage: 7,
   returnSearch: '',
   returnSelectedOrder: null,
+
+  // ═══ NOTIFICATION SYSTEM ═══
+  initNotifications() {
+    const btn = document.getElementById('btn-notifications');
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._notifPanelOpen = !this._notifPanelOpen;
+      const panel = document.getElementById('notif-panel');
+      panel.style.display = this._notifPanelOpen ? 'block' : 'none';
+      if (this._notifPanelOpen) this.renderNotifPanel();
+    });
+    document.getElementById('notif-mark-read')?.addEventListener('click', () => {
+      if (this.notifications.length) {
+        localStorage.setItem('kh_lastSeenNotifId', this.notifications[0].id);
+        this.updateNotifBadge();
+        this.renderNotifPanel();
+      }
+    });
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+      const panel = document.getElementById('notif-panel');
+      const btn = document.getElementById('btn-notifications');
+      if (this._notifPanelOpen && panel && !panel.contains(e.target) && !btn.contains(e.target)) {
+        this._notifPanelOpen = false;
+        panel.style.display = 'none';
+      }
+    });
+    // Fetch now + poll every 30s
+    this.fetchNotifications();
+    setInterval(() => this.fetchNotifications(), 30000);
+  },
+
+  async fetchNotifications() {
+    const url = localStorage.getItem('khs_api_url');
+    if (!url) return;
+    try {
+      const res = await fetch(url + '?action=getNotifications').then(r => r.json());
+      if (res.success && res.data) {
+        this.notifications = res.data;
+        this.updateNotifBadge();
+        if (this._notifPanelOpen) this.renderNotifPanel();
+      }
+    } catch(e) { /* silent */ }
+  },
+
+  updateNotifBadge() {
+    const badge = document.getElementById('notif-badge');
+    if (!badge) return;
+    const lastSeen = localStorage.getItem('kh_lastSeenNotifId') || '';
+    let unread = 0;
+    for (const n of this.notifications) {
+      if (n.id === lastSeen) break;
+      unread++;
+    }
+    if (unread > 0) {
+      badge.textContent = unread > 99 ? '99+' : unread;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  },
+
+  renderNotifPanel() {
+    const body = document.getElementById('notif-panel-body');
+    if (!body) return;
+    const lastSeen = localStorage.getItem('kh_lastSeenNotifId') || '';
+    if (!this.notifications.length) {
+      body.innerHTML = '<div class="notif-empty">Không có thông báo</div>';
+      return;
+    }
+    let html = '';
+    let passedLastSeen = false;
+    for (const n of this.notifications) {
+      if (n.id === lastSeen) passedLastSeen = true;
+      const isUnread = !passedLastSeen;
+      const icon = this._notifIcon(n.type);
+      html += `<div class="notif-item ${isUnread ? 'unread' : ''}">
+        <span class="notif-icon">${icon}</span>
+        <div class="notif-content">
+          <div class="notif-msg">${n.message}</div>
+          <div class="notif-meta">${n.createdBy ? n.createdBy + ' · ' : ''}${n.createdAt}</div>
+        </div>
+      </div>`;
+    }
+    body.innerHTML = html;
+  },
+
+  _notifIcon(type) {
+    const icons = { order:'🛒', product:'✏️', product_add:'➕', product_del:'🗑️', batch:'📦', return:'↩️' };
+    return icons[type] || '🔔';
+  },
 
   initReturn() {
     document.getElementById('btn-open-return')?.addEventListener('click', () => this.openReturn());
