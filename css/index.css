@@ -662,7 +662,7 @@ ul, ol { list-style: none; }
 }
 .modal-close:hover { background: #FEE2E2; color: #DC2626; }
 .modal-close svg { width: 18px; height: 18px; }
-.modal-body { padding: 24px; flex: 1; overflow-y: auto; }
+.modal-body { padding: 24px; flex: 1; overflow-y: auto; min-height: 0; }
 .modal-footer {
   padding: 14px 24px; border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: 8px;
