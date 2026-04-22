@@ -527,7 +527,7 @@ const POS = {
     const custName = this.selectedCustomer?.name || 'Khách lẻ';
 
     const temp = document.createElement('div');
-    temp.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:0 24px 24px 24px;width:420px;font-family:Inter,sans-serif;';
+    temp.style.cssText = 'position:fixed;left:-9999px;top:0;background:#ffffff;padding:24px 28px 28px 28px;width:420px;font-family:Inter,sans-serif;color:#000;';
     temp.innerHTML = `
       <div style="text-align:center;margin-bottom:2px">
         <img src="assets/logo2.png" style="max-width:260px;height:auto;display:block;margin:0 auto" crossorigin="anonymous">
