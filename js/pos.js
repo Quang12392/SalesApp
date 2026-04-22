@@ -572,8 +572,8 @@ const POS = {
         ${discount > 0 ? `<div style="display:flex;justify-content:space-between;padding:4px 0"><span>Giảm giá:</span><span>-${fmtd(discount)}</span></div>` : ''}
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #1a73e8;font-size:1rem;font-weight:700;color:#1a73e8"><span>TỔNG CỘNG:</span><span>${fmtd(finalTotal)}</span></div>
       </div>
-      <div style="text-align:center;margin-top:12px;font-size:0.75rem;color:#888">
-        <p>Cảm ơn quý khách!</p>
+      <div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#222;font-weight:600">
+        <p>Cảm ơn quý khách đã mua hàng!</p>
         <p>Kiều Hương Store</p>
       </div>
     `;
@@ -1013,8 +1013,8 @@ const POS = {
         <div class="inv-total-row final"><span>TỔNG THANH TOÁN:</span><span>${fmtd(order.finalTotal)}</span></div>
       </div>
       ${order.note ? `<div style="margin-top:12px;font-size:0.85rem;color:var(--text-secondary)">Ghi chú: ${order.note}</div>` : ''}
-      <div class="inv-footer">
-        <p>Cảm ơn quý khách đã mua hàng! 🙏</p>
+      <div class="inv-footer" style="font-size:1rem;font-weight:700;color:#111">
+        <p>Cảm ơn quý khách đã mua hàng!</p>
         <p>Kiều Hương Store</p>
       </div>
     `;
