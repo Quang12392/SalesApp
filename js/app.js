@@ -2616,19 +2616,22 @@ const App = {
     if(!shown.length) {
       el.innerHTML = '<div style="text-align:center;padding:30px;color:#9CA3AF">Không tìm thấy đơn hàng</div>';
     } else {
-      el.innerHTML = `<table><thead><tr><th>Mã đơn</th><th>Thời gian</th><th>Khách hàng</th><th style="text-align:right">Tổng cộng</th><th></th></tr></thead>
+      el.innerHTML = `<table><thead><tr><th>Mã đơn</th><th>Thời gian</th><th>Khách hàng</th><th style="text-align:right">Tổng cộng</th></tr></thead>
         <tbody>${shown.map(o => {
           const totalReturned = this.returns.filter(r => r.orderId === o.id).reduce((s,r) => s + (r.returnTotal||0), 0);
           const remaining = (o.finalTotal||0) - totalReturned;
           const hasReturn = totalReturned > 0;
-          return `<tr>
+          return `<tr class="return-row" data-oid="${o.id}" style="cursor:pointer;transition:background 0.15s">
           <td style="color:#1A73E8;font-weight:600">${o.id}${hasReturn?' <span style="color:#F59E0B;font-size:0.7rem">⟳ đã trả</span>':''}</td>
           <td>${o.createdAt||''}</td>
           <td>${o.customerName||'Khách lẻ'}</td>
           <td style="text-align:right;font-weight:600">${hasReturn?`<span style="text-decoration:line-through;color:#9CA3AF;font-size:0.75rem">${fmtd(o.finalTotal||0)}</span> ${fmtd(remaining)}`:fmtd(o.finalTotal||0)}</td>
-          <td><button class="btn-choose" data-oid="${o.id}">Chọn</button></td>
         </tr>`;}).join('')}</tbody></table>`;
-      el.querySelectorAll('.btn-choose').forEach(b => b.addEventListener('click', () => this.selectReturnOrder(b.dataset.oid)));
+      el.querySelectorAll('.return-row').forEach(r => {
+        r.addEventListener('click', () => this.selectReturnOrder(r.dataset.oid));
+        r.addEventListener('mouseenter', () => r.style.background = '#EFF6FF');
+        r.addEventListener('mouseleave', () => r.style.background = '');
+      });
     }
 
     // Pagination
