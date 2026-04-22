@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/index.css?v=147">
+  <link rel="stylesheet" href="css/index.css?v=148">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
@@ -141,7 +141,6 @@
     <nav class="main-nav">
       <div class="nav-inner">
         <div class="nav-tabs">
-          <a href="#dashboard" class="nav-tab active" data-page="dashboard">Tổng quan</a>
           <div class="nav-tab-wrapper">
             <a href="#products" class="nav-tab" data-page="products">Hàng hóa</a>
             <div class="nav-dropdown">
@@ -207,17 +206,13 @@
 
     <!-- MOBILE BOTTOM NAV -->
     <nav class="mobile-nav">
-      <a href="#dashboard" class="mob-nav-item active" data-page="dashboard">
+      <a href="#reports" class="mob-nav-item" data-page="reports">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        <span>Tổng quan</span>
+        <span>Báo cáo</span>
       </a>
       <a href="#products" class="mob-nav-item" data-page="products">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
         <span>Hàng hóa</span>
-      </a>
-      <a href="#orders" class="mob-nav-item" data-page="orders">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
-        <span>Đơn hàng</span>
       </a>
       <a href="#pos" class="mob-nav-item mob-nav-pos" id="mob-nav-pos" data-page="pos">
         <div class="mob-nav-pos-icon">
@@ -225,13 +220,13 @@
         </div>
         <span>Bán hàng</span>
       </a>
+      <a href="#orders" class="mob-nav-item" data-page="orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+        <span>Đơn hàng</span>
+      </a>
       <a href="#customers" class="mob-nav-item" data-page="customers">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         <span>Khách hàng</span>
-      </a>
-      <a href="#reports" class="mob-nav-item" data-page="reports">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <span>Báo cáo</span>
       </a>
     </nav>
   </div>
@@ -453,8 +448,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/app.js?v=147"></script>
-  <script src="js/pos.js?v=147"></script>
+  <script src="js/app.js?v=148"></script>
+  <script src="js/pos.js?v=148"></script>
 
   <script>
   // ── IndexedDB Cache Layer ──

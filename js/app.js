@@ -229,7 +229,9 @@ const App = {
 
   handleRoute() {
     if (!this.user) return;
-    let h = location.hash.replace('#','') || 'dashboard';
+    let h = location.hash.replace('#','') || 'reports';
+    // Redirect old dashboard to reports
+    if (h === 'dashboard') h = 'reports';
     // "Bán hàng" tab → open POS overlay, stay on orders
     if (h === 'pos') {
       POS.open();
