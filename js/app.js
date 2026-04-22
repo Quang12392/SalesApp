@@ -2549,7 +2549,7 @@ const App = {
   },
 
   _notifIcon(type) {
-    const icons = { order:'🛒', product:'✏️', product_add:'➕', product_del:'🗑️', batch:'📦', return:'↩️' };
+    const icons = { order:'🛒', product:'✏️', product_add:'➕', product_del:'🗑️', batch:'📦', return:'↩️', customer_add:'👤', customer:'✏️', customer_del:'🗑️' };
     return icons[type] || '🔔';
   },
 
