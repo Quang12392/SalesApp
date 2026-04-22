@@ -839,7 +839,8 @@ const POS = {
       });
     }
 
-    this.close();
+    this.cart = []; // Clear cart BEFORE close so popup won't trigger
+    this.close(true);
     this.showInvoice(order);
   },
 
