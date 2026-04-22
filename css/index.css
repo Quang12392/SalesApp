@@ -255,7 +255,8 @@ ul, ol { list-style: none; }
 .notif-meta { font-size: 0.7rem; color: #9CA3AF; margin-top: 3px; }
 .notif-empty { padding: 40px 20px; text-align: center; color: #9CA3AF; font-size: 0.85rem; }
 @media (max-width: 768px) {
-  .notif-panel { width: calc(100vw - 20px); right: -40px; top: 44px; }
+  .notif-panel { position: fixed; top: 52px; left: 10px; right: 10px; width: auto; max-height: 60vh; }
+  .notif-panel-body { max-height: calc(60vh - 50px); }
 }
 .header-user {
   display: flex; align-items: center; gap: 8px;
