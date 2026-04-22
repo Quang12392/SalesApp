@@ -532,7 +532,7 @@ const POS = {
       <div style="text-align:center;margin-bottom:2px">
         <img src="assets/logo2.png" style="max-width:260px;height:auto;display:block;margin:0 auto" crossorigin="anonymous">
       </div>
-      <p style="font-size:1.08rem;font-weight:700;text-align:center;margin:2px 0 8px 0">ĐƠN HÀNG</p>
+      <p style="font-size:1.2rem;font-weight:800;text-align:center;margin:2px 0 8px 0;color:#000">ĐƠN HÀNG</p>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px;padding:0 4px">
         <div style="flex:1;font-size:0.88rem;line-height:1.8">
           <div><b>Ngày:</b> ${dateStr} ${timeStr}</div>
@@ -979,7 +979,7 @@ const POS = {
     el.innerHTML = `
       <div class="inv-header" style="text-align:center">
         <img src="assets/logo2.png" style="max-width:220px;height:auto;margin-bottom:4px">
-        <p style="margin:4px 0 8px 0;font-size:1rem;font-weight:700">HÓA ĐƠN BÁN HÀNG</p>
+        <p style="margin:4px 0 8px 0;font-size:1.2rem;font-weight:800;color:#000">HÓA ĐƠN BÁN HÀNG</p>
       </div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin:0 0 8px 0;padding:0;gap:12px">
         <div class="inv-info" style="flex:1">
