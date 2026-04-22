@@ -700,8 +700,8 @@ ul, ol { list-style: none; }
 .modal-close svg { width: 18px; height: 18px; }
 .modal-body { padding: 24px; flex: 1; overflow-y: auto; min-height: 0; }
 .modal-footer {
-  padding: 14px 24px; border-top: 1px solid var(--border);
-  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 16px 24px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 10px;
 }
 .modal-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .modal-form .form-group { margin-bottom: 16px; }
@@ -1432,7 +1432,7 @@ ul, ol { list-style: none; }
     background: white; padding: 10px 12px !important;
     flex-wrap: wrap; gap: 6px !important; justify-content: center !important;
   }
-  .modal-footer .btn { font-size: 0.75rem; padding: 8px 10px; flex: 0 0 auto; }
+  .modal-footer .btn { font-size: 0.95rem; padding: 14px 24px; flex: 0 0 auto; }
   
   /* ── Invoice — full-screen ── */
   .invoice-overlay { padding: 0 !important; }
