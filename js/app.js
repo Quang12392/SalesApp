@@ -2131,8 +2131,9 @@ const App = {
       cvs.width=rr.width*dpr; cvs.height=rr.height*dpr; ctx.scale(dpr,dpr);
       const w=rr.width, h=rr.height, total=data.reduce((a,b)=>a+b,0);
       if(!total){ctx.fillStyle='#999';ctx.font='14px "Be Vietnam Pro"';ctx.fillText('Không có dữ liệu',w/2-50,h/2);return;}
-      const cx=w*0.35, cy=h/2, radius=Math.min(cx-20,cy-20);
-      const lx=w*0.65;
+      const legendH = labels.length * 24 + 10;
+      const pieH = h - legendH;
+      const cx=w/2, cy=pieH/2, radius=Math.min(cx-20,cy-10);
 
       // Build slice angles
       const slices = [];
@@ -2170,17 +2171,23 @@ const App = {
           ctx.fillStyle='#374151'; ctx.font='bold 15px "Be Vietnam Pro"'; ctx.textAlign='center';
           ctx.fillText(fmtShort(total), cx, cy+6);
         }
-        // Legend
+        // Legend — below pie, full width
+        const legendY = pieH + 8;
+        const cols = labels.length <= 4 ? 2 : 2;
+        const colW = w / cols;
         labels.forEach((l,i) => {
-          const ly=30+i*28;
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          const lx = col * colW + 8;
+          const ly = legendY + row * 22;
           const isH = i===hoverIdx;
           ctx.fillStyle=colors[i%colors.length];
-          ctx.beginPath(); ctx.roundRect(lx,ly,14,14,3); ctx.fill();
+          ctx.beginPath(); ctx.roundRect(lx,ly,12,12,3); ctx.fill();
           ctx.fillStyle = isH ? '#111' : '#374151';
-          ctx.font = isH ? 'bold 12px "Be Vietnam Pro"' : '12px "Be Vietnam Pro"';
+          ctx.font = isH ? 'bold 11px "Be Vietnam Pro"' : '11px "Be Vietnam Pro"';
           ctx.textAlign='left';
           const pct = total ? Math.round(data[i]/total*100) : 0;
-          ctx.fillText(`${l}: ${fmtShort(data[i])} (${pct}%)`, lx+20, ly+12);
+          ctx.fillText(`${l}: ${fmtShort(data[i])}`, lx+16, ly+11);
         });
         // Tooltip on hover
         if(hoverIdx >= 0){
@@ -2233,7 +2240,7 @@ const App = {
     const empSorted=Object.entries(em).sort((a,b)=>b[1].r-a[1].r);
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Số đơn</div><div class="rpt-card-value">${cnt}</div></div><div class="rpt-card purple"><div class="rpt-card-label">TB / đơn</div><div class="rpt-card-value">${fmtd(avg)}</div></div><div class="rpt-card orange"><div class="rpt-card-label">Giảm giá</div><div class="rpt-card-value">${fmtd(disc)}</div></div></div>`;
     if(view==='chart'){
-      el.innerHTML=`<h2 class="report-title">Báo cáo bán hàng</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Phân bổ thanh toán</h3></div><div class="card-body"><div class="chart-area" style="height:280px"><canvas id="rc5"></canvas></div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu theo nhân viên</h3></div><div class="card-body"><div class="chart-area" style="height:320px"><canvas id="rc-emp"></canvas></div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu ${periodLabel}</h3></div><div class="card-body"><div class="chart-area" style="height:320px"><canvas id="rc1"></canvas></div></div></div>`;
+      el.innerHTML=`<h2 class="report-title">Báo cáo bán hàng</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Phân bổ thanh toán</h3></div><div class="card-body"><div class="chart-area" style="height:340px"><canvas id="rc5"></canvas></div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu theo nhân viên</h3></div><div class="card-body"><div class="chart-area" style="height:320px"><canvas id="rc-emp"></canvas></div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu ${periodLabel}</h3></div><div class="card-body"><div class="chart-area" style="height:320px"><canvas id="rc1"></canvas></div></div></div>`;
       this.rptPieChart('rc5',['Tiền mặt','Chuyển khoản','Ship COD','Ship Thường'],[cS,bS,codS,shipS],['#1A73E8','#10B981','#F59E0B','#8B5CF6']);
       this.rptBarChart('rc-emp',empSorted.map(([n])=>n.length>12?n.substring(0,12)+'…':n),empSorted.map(([,d])=>d.r),'#10B981',empSorted.map(([,d])=>d.c+' đơn'));
       this.rptBarChart('rc1',dr.map(([d])=>d.substring(0,5)),dr.map(([,d])=>d.r),'#1A73E8',dr.map(([,d])=>d.c+' đơn'));
@@ -2276,7 +2283,7 @@ const App = {
     const profit=rev-cost-disc;
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card red"><div class="rpt-card-label">Giá vốn</div><div class="rpt-card-value">${fmtd(cost)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận</div><div class="rpt-card-value">${fmtd(profit)}</div></div><div class="rpt-card orange"><div class="rpt-card-label">Chiết khấu</div><div class="rpt-card-value">${fmtd(disc)}</div></div></div>`;
     if(view==='chart'){
-      el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Cơ cấu doanh thu</h3></div><div class="card-body"><div class="chart-area" style="height:280px"><canvas id="rc6"></canvas></div></div></div>`;
+      el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Cơ cấu doanh thu</h3></div><div class="card-body"><div class="chart-area" style="height:340px"><canvas id="rc6"></canvas></div></div></div>`;
       this.rptPieChart('rc6',['Giá vốn','Lợi nhuận','Chiết khấu'],[cost,profit,disc],['#EF4444','#10B981','#F59E0B']);
     } else {
       el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Tổng hợp</h3></div><div class="card-body"><table class="data-table"><tbody><tr><td>Tổng doanh thu</td><td style="text-align:right;font-weight:600;color:var(--primary)">${fmtd(rev)}</td></tr><tr><td>Giá vốn hàng bán</td><td style="text-align:right;font-weight:600;color:#EF4444">${fmtd(cost)}</td></tr><tr><td>Chiết khấu</td><td style="text-align:right">${fmtd(disc)}</td></tr><tr style="font-size:1.1rem;font-weight:700;background:var(--bg-secondary)"><td>Lợi nhuận gộp</td><td style="text-align:right;color:#10B981">${fmtd(profit)}</td></tr><tr><td>Biên lợi nhuận</td><td style="text-align:right;font-weight:600">${rev?Math.round(profit/rev*100):0}%</td></tr></tbody></table></div></div>`;
