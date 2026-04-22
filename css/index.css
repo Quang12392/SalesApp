@@ -1154,12 +1154,12 @@ ul, ol { list-style: none; }
   box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
 }
 .mob-nav-item {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 6px 8px; border-radius: var(--radius-sm);
-  color: var(--text-muted); font-size: 0.6rem; font-weight: 500;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  color: var(--text-muted); font-size: 0.72rem; font-weight: 600;
   transition: var(--transition); text-decoration: none;
 }
-.mob-nav-item svg { width: 20px; height: 20px; }
+.mob-nav-item svg { width: 24px; height: 24px; }
 .mob-nav-item.active { color: var(--primary); }
 
 /* Bán hàng tab — prominent center button */
