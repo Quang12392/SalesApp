@@ -2007,7 +2007,7 @@ ul, ol { list-style: none; }
   bottom: 0;
   width: 4px;
 }
-.rpt-card.blue::before { background: #7C3AED; }
+.rpt-card.blue::before { background: #05e2e0; }
 .rpt-card.green::before { background: var(--primary); }
 .rpt-card.purple::before { background: #8B5CF6; }
 .rpt-card.orange::before { background: #F59E0B; }
