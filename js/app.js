@@ -61,10 +61,10 @@ const App = {
           if (document.getElementById('sw-update-banner')) return;
           const banner = document.createElement('div');
           banner.id = 'sw-update-banner';
-          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-size:0.9rem;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-size:0.9rem;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
           banner.innerHTML = `
             <span>🔄 Có bản cập nhật mới!</span>
-            <button onclick="location.reload()" style="background:#fff;color:#764ba2;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.85rem">Cập nhật ngay</button>
+            <button onclick="location.reload()" style="background:#fff;color:#1B5E20;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.85rem">Cập nhật ngay</button>
           `;
           document.body.prepend(banner);
         };
@@ -1723,8 +1723,8 @@ const App = {
         const spent = cu.totalSpent || spendMap[cu.id] || 0;
         const lastOrd = cu.lastOrder || lastOrderMap[cu.id] || '';
         const initial = (cu.name||'?')[0].toUpperCase();
-        const bg = cu.gender==='Nữ'?'#FCE7F3':cu.gender==='Nam'?'#DBEAFE':avatarColor(cu.name);
-        const clr = cu.gender==='Nữ'?'#BE185D':cu.gender==='Nam'?'#1E40AF':'#fff';
+        const bg = cu.gender==='Nữ'?'#FCE7F3':cu.gender==='Nam'?'#C8E6C9':avatarColor(cu.name);
+        const clr = cu.gender==='Nữ'?'#BE185D':cu.gender==='Nam'?'#1B5E20':'#fff';
         return `<div class="cust-mobile-card" data-cid="${cu.id}">
           <div class="cmc-avatar" style="background:${bg};color:${clr}">${initial}</div>
           <div class="cmc-info">
@@ -1753,7 +1753,7 @@ const App = {
       <td><span class="product-sku">${cu.id}</span></td>
       <td>
         <div style="display:flex;align-items:center;gap:10px">
-          ${cu.avatar ? `<img src="${cu.avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">` : `<div class="customer-avatar-cell" style="background:${cu.gender==='Nữ'?'#FCE7F3':cu.gender==='Nam'?'#DBEAFE':avatarColor(cu.name)};color:${cu.gender==='Nữ'?'#BE185D':cu.gender==='Nam'?'#1E40AF':'#fff'}">${cu.name[0].toUpperCase()}</div>`}
+          ${cu.avatar ? `<img src="${cu.avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">` : `<div class="customer-avatar-cell" style="background:${cu.gender==='Nữ'?'#FCE7F3':cu.gender==='Nam'?'#C8E6C9':avatarColor(cu.name)};color:${cu.gender==='Nữ'?'#BE185D':cu.gender==='Nam'?'#1B5E20':'#fff'}">${cu.name[0].toUpperCase()}</div>`}
           <span style="font-weight:600">${cu.name}</span>
         </div>
       </td>
@@ -1820,7 +1820,7 @@ const App = {
   // SVG avatars by gender
   avatarSvg(gender) {
     if(gender === 'Nữ') return `<svg viewBox="0 0 80 80" width="60" height="60"><circle cx="40" cy="40" r="40" fill="#FCE7F3"/><circle cx="40" cy="30" r="13" fill="#BE185D"/><path d="M18 68c0-12.15 9.85-22 22-22s22 9.85 22 22" fill="#BE185D"/></svg>`;
-    return `<svg viewBox="0 0 80 80" width="60" height="60"><circle cx="40" cy="40" r="40" fill="#DBEAFE"/><circle cx="40" cy="30" r="13" fill="#1E40AF"/><path d="M18 68c0-12.15 9.85-22 22-22s22 9.85 22 22" fill="#1E40AF"/></svg>`;
+    return `<svg viewBox="0 0 80 80" width="60" height="60"><circle cx="40" cy="40" r="40" fill="#C8E6C9"/><circle cx="40" cy="30" r="13" fill="#1B5E20"/><path d="M18 68c0-12.15 9.85-22 22-22s22 9.85 22 22" fill="#1B5E20"/></svg>`;
   },
 
   customerModal(id) {
@@ -3204,7 +3204,7 @@ const App = {
           <td style="font-weight:600">${u.displayName}${u.username===this.user?.username?' <span style="color:#2E7D32;font-size:0.7rem">Tôi</span>':''}</td>
           <td>${u.username}</td>
           <td>${u.phone||'—'}</td>
-          <td><span style="background:${u.role==='Admin'?'#DBEAFE':'#F3F4F6'};color:${u.role==='Admin'?'#1E40AF':'#374151'};padding:2px 8px;border-radius:4px;font-size:0.78rem">${u.role}</span></td>
+          <td><span style="background:${u.role==='Admin'?'#C8E6C9':'#F3F4F6'};color:${u.role==='Admin'?'#1B5E20':'#374151'};padding:2px 8px;border-radius:4px;font-size:0.78rem">${u.role}</span></td>
           <td><span style="color:${u.status==='active'?'#059669':'#DC2626'}">${u.status==='active'?'Đang hoạt động':'Ngừng'}</span></td>
           <td><div class="table-actions">
             <button class="btn-icon edit-u" data-u="${u.username}" title="Sửa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -3326,7 +3326,7 @@ const App = {
         <div class="form-row">
           <div class="form-group"><label>Tên vai trò</label><input class="form-control" id="rf-name" value="${r?.name||''}" ${r?'readonly style="opacity:0.6"':''} placeholder="VD: Nhân viên bán hàng" required></div>
         </div>
-        ${isAdmin ? '<div style="padding:16px;background:#DBEAFE;border-radius:8px;color:#1E40AF;font-weight:600">⭐ Admin có tất cả quyền — không thể chỉnh sửa</div>' : `
+        ${isAdmin ? '<div style="padding:16px;background:#C8E6C9;border-radius:8px;color:#1B5E20;font-weight:600">⭐ Admin có tất cả quyền — không thể chỉnh sửa</div>' : `
           <div style="margin-top:8px">
             ${this.PERMISSION_MODULES.map(mod => `
               <div style="margin-bottom:12px">
