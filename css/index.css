@@ -2012,6 +2012,7 @@ ul, ol { list-style: none; }
 .rpt-card.purple::before { background: #8B5CF6; }
 .rpt-card.orange::before { background: #F59E0B; }
 .rpt-card.red::before { background: #EF4444; }
+.rpt-card.skyblue::before { background: #229ff4; }
 .rpt-card-label {
   font-size: 0.8rem;
   color: var(--text-secondary);
