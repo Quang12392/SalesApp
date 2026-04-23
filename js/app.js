@@ -1360,11 +1360,7 @@ const App = {
     if (!c.querySelector('#o-search')) {
       c.innerHTML = `
         <div class="orders-sticky-header">
-          <div class="toolbar-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
-          </div>
-          <div class="orders-filter-row">
+          <div class="orders-filter-row" style="display:flex;align-items:center;gap:8px;justify-content:space-between">
             <select class="orders-time-filter" id="o-time-filter">
               <option value="all">Tất cả</option>
               <option value="today">Hôm nay</option>
@@ -1379,8 +1375,12 @@ const App = {
             </button>
           </div>
           <div class="orders-summary-bar" id="o-summary">
-            <span>Tổng tiền hàng: <strong>0đ</strong></span>
             <span>0 đơn hàng</span>
+            <span>Tổng tiền hàng: <strong>0đ</strong></span>
+          </div>
+          <div class="toolbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
           </div>
         </div>
         <div class="orders-card-list" id="o-card-list"></div>
@@ -1509,8 +1509,8 @@ const App = {
     const summaryEl = document.getElementById('o-summary');
     if (summaryEl) {
       summaryEl.innerHTML = `
-        <span>Tổng tiền hàng: <strong>${fmtd(totalRevenue)}</strong></span>
         <span>${list.length} đơn hàng</span>
+        <span>Tổng tiền hàng: <strong>${fmtd(totalRevenue)}</strong></span>
       `;
     }
     document.querySelectorAll('.view-order').forEach(b => b.addEventListener('click', () => this.viewOrder(b.dataset.id)));
