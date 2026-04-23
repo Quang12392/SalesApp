@@ -800,18 +800,18 @@ const App = {
     if (!c.querySelector('#p-toolbar')) {
       c.innerHTML = `
         <div class="products-sticky-header" id="p-toolbar">
-          <div class="toolbar-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="p-search" placeholder="Tìm sản phẩm, mã SKU..." value="${this.pSearch}">
-          </div>
-          <div class="products-summary-bar" id="p-summary">
-            <span>Tổng tồn: <strong>0</strong></span>
-            <span>0 sản phẩm</span>
-          </div>
           <button class="btn btn-primary products-add-btn" id="btn-add-product">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Thêm sản phẩm
           </button>
+          <div class="products-summary-bar" id="p-summary">
+            <span>0 sản phẩm</span>
+            <span>Tổng tồn: <strong>0</strong></span>
+          </div>
+          <div class="toolbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="p-search" placeholder="Tìm sản phẩm, mã SKU..." value="${this.pSearch}">
+          </div>
         </div>
         <div class="table-wrapper products-desktop-table">
           <table class="data-table">
@@ -845,8 +845,8 @@ const App = {
     const pSummary = document.getElementById('p-summary');
     if (pSummary) {
       pSummary.innerHTML = `
-        <span>Tổng tồn: <strong>${totalStock.toLocaleString('vi-VN')}</strong></span>
         <span>${list.length} sản phẩm</span>
+        <span>Tổng tồn: <strong>${totalStock.toLocaleString('vi-VN')}</strong></span>
       `;
     }
 
@@ -1672,15 +1672,15 @@ const App = {
     if (!c.querySelector('#c-search')) {
       c.innerHTML = `
         <div class="customers-sticky-header">
-          <div class="toolbar-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="c-search" placeholder="Tìm khách hàng, SĐT..." value="${this.cSearch}">
-          </div>
           <button class="btn btn-primary products-add-btn" id="btn-add-cust">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Thêm khách hàng
           </button>
           <div id="c-summary" style="font-weight:600;color:var(--text-secondary);font-size:0.85rem;padding-top:4px;display:flex;justify-content:space-between"></div>
+          <div class="toolbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="c-search" placeholder="Tìm khách hàng, SĐT..." value="${this.cSearch}">
+          </div>
         </div>
         <div class="customer-card-list" id="c-card-list"></div>
         <div class="table-wrapper customer-table-desktop">
@@ -1715,7 +1715,7 @@ const App = {
     });
     const totalSpent = list.reduce((s, cu) => s + (cu.totalSpent || spendMap[cu.id] || 0), 0);
     const sumEl = document.getElementById('c-summary');
-    if (sumEl) sumEl.innerHTML = `<span>Tổng bán: <span style="color:var(--primary);font-weight:700">${fmtd(totalSpent)}</span></span><span>${list.length} khách hàng</span>`;
+    if (sumEl) sumEl.innerHTML = `<span>${list.length} khách hàng</span><span>Tổng bán: <span style="color:var(--primary);font-weight:700">${fmtd(totalSpent)}</span></span>`;
 
     const cardList = document.getElementById('c-card-list');
     if (cardList) {
