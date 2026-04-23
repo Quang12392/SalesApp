@@ -795,13 +795,13 @@ ul, ol { list-style: none; }
 }
 .pos-search-bar {
   display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  padding: 16px 16px; border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 .pos-search-bar svg { width: 20px; height: 20px; color: var(--text-muted); flex-shrink: 0; }
 .pos-search-bar input {
   flex: 1; border: none; outline: none;
-  font-size: 0.95rem; background: transparent;
+  font-size: 1.05rem; background: transparent;
 }
 .pos-search-bar input::placeholder { color: var(--text-muted); }
 
@@ -881,17 +881,17 @@ ul, ol { list-style: none; }
   background: var(--bg-body); flex-shrink: 0;
 }
 .pos-customer-section {
-  padding: 10px 12px; background: white;
+  padding: 14px 12px; background: white;
   border-bottom: 1px solid var(--border);
   position: relative;
 }
 .pos-customer-search-wrap {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 10px; border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--border);
   border-radius: var(--radius-md); background: var(--bg-body);
 }
 .pos-customer-search-wrap input {
-  flex: 1; border: none; outline: none; font-size: 0.85rem;
+  flex: 1; border: none; outline: none; font-size: 1rem;
   background: transparent;
 }
 .pos-customer-list {
@@ -1250,10 +1250,10 @@ ul, ol { list-style: none; }
   
   /* "Thêm SP" button in cart view */
   .pos-add-more-bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 12px; background: var(--primary-bg);
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 12px; background: var(--primary-bg);
     border-bottom: 1px solid var(--border);
-    color: var(--primary); font-weight: 600; font-size: 0.85rem;
+    color: var(--primary); font-weight: 600; font-size: 1rem;
     cursor: pointer;
   }
   .pos-add-more-bar:active { background: var(--primary-bg-strong); }
@@ -1793,15 +1793,16 @@ ul, ol { list-style: none; }
 /* Drafts panel */
 .pos-drafts-bar {
   display: flex;
-  padding: 4px 12px;
+  padding: 10px 12px;
   background: #FFFBEB;
   border-bottom: 1px solid #FDE68A;
+  cursor: pointer;
 }
 .pos-drafts-toggle {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 8px;
   background: none; border: none;
-  color: #92400E; font-size: 0.8rem; font-weight: 600;
-  cursor: pointer; padding: 4px 8px;
+  color: #92400E; font-size: 0.95rem; font-weight: 600;
+  cursor: pointer; padding: 6px 8px;
   border-radius: 4px; transition: 0.15s;
 }
 .pos-drafts-toggle:hover {

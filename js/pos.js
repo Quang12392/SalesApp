@@ -40,7 +40,7 @@ const POS = {
     document.getElementById('btn-checkout').addEventListener('click', () => this.checkout());
     document.getElementById('btn-save-draft').addEventListener('click', () => this.saveDraft());
     document.getElementById('btn-capture-cart').addEventListener('click', () => this.captureCart());
-    document.getElementById('pos-drafts-toggle').addEventListener('click', (e) => {
+    document.getElementById('pos-drafts-bar').addEventListener('click', (e) => {
       e.stopPropagation();
       const panel = document.getElementById('pos-drafts-panel');
       const isHidden = !panel || panel.style.display === 'none' || getComputedStyle(panel).display === 'none';

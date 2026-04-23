@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/index.css?v=173">
+  <link rel="stylesheet" href="css/index.css?v=174">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
@@ -283,8 +283,8 @@
       </div>
     </div>
     <!-- Drafts bar (top, always accessible) -->
-    <div class="pos-drafts-bar" id="pos-drafts-bar" style="display:none">
-      <button class="pos-drafts-toggle" id="pos-drafts-toggle">
+    <div class="pos-drafts-bar" id="pos-drafts-bar" style="display:none;cursor:pointer" id="pos-drafts-toggle-bar">
+      <button class="pos-drafts-toggle" id="pos-drafts-toggle" style="pointer-events:none;width:100%;justify-content:flex-start">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
         Đơn tạm (<span id="pos-drafts-count">0</span>)
       </button>
@@ -448,8 +448,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/app.js?v=173"></script>
-  <script src="js/pos.js?v=173"></script>
+  <script src="js/app.js?v=174"></script>
+  <script src="js/pos.js?v=174"></script>
 
   <script>
   // ── IndexedDB Cache Layer ──
