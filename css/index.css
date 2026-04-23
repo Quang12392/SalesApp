@@ -1214,14 +1214,14 @@ ul, ol { list-style: none; }
   /* Customer section — moved to pos-products by JS on mobile */
   .pos-products > .pos-customer-section {
     background: white; border-bottom: 1px solid var(--border);
-    padding: 6px 12px; position: relative;
+    padding: 12px 12px; position: relative;
   }
-  .pos-products > .pos-customer-section .pos-customer-search-wrap { padding: 4px 8px; font-size: 0.8rem; }
-  .pos-products > .pos-customer-section .pos-customer-search-wrap input { font-size: 0.8rem; }
+  .pos-products > .pos-customer-section .pos-customer-search-wrap { padding: 10px 12px; font-size: 1rem; }
+  .pos-products > .pos-customer-section .pos-customer-search-wrap input { font-size: 1rem; }
   .pos-products > .pos-customer-section .pos-customer-list {
     left: 8px; right: 8px;
   }
-  .pos-products > .pos-customer-section .pos-selected-customer { margin-top: 4px; padding: 4px 8px; font-size: 0.8rem; }
+  .pos-products > .pos-customer-section .pos-selected-customer { margin-top: 4px; padding: 8px 10px; font-size: 0.9rem; }
   
   /* Product list = single column */
   .pos-product-list, .pos-product-list.view-compact, .pos-product-list.view-list { grid-template-columns: 1fr !important; gap: 0 !important; }
