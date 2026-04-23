@@ -1609,8 +1609,8 @@ ul, ol { list-style: none; }
     display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;
   }
   .pmc-sku { font-size: 0.72rem; color: var(--text-secondary); }
-  .pmc-row3 { display: flex; justify-content: flex-end; margin-top: -2px; }
-  .pmc-actions { display: flex; gap: 8px; }
+  .pmc-row3 { display: none !important; }
+  .pmc-actions { display: none !important; }
 
   /* Hide hamburger menu on mobile (using bottom nav instead) */
   .mobile-menu-toggle { display: none !important; }
