@@ -1856,7 +1856,7 @@ const App = {
           </div>
           <div class="form-group"><label>Facebook</label><input class="form-control" id="cf-facebook" value="${cu?.facebook||''}" placeholder="Link hoặc tên FB"></div>
         </div>
-        <div class="form-group"><label>Địa chỉ</label><input class="form-control" id="cf-addr" value="${cu?.address||''}" placeholder="Nhập địa chỉ"></div>
+        <div class="form-group"><label>Địa chỉ</label><textarea class="form-control" id="cf-addr" rows="2" placeholder="Nhập địa chỉ" style="resize:vertical">${cu?.address||''}</textarea></div>
         <div class="form-group"><label>Ghi chú</label><textarea class="form-control" id="cf-note" rows="2" placeholder="Ghi chú về khách hàng..." style="resize:vertical">${cu?.note||''}</textarea></div>
         <input type="hidden" id="cf-avatar-data" value="${avatarUrl}">
       </form>
