@@ -1058,14 +1058,14 @@ ul, ol { list-style: none; }
 .btn-capture-cart svg { width: 16px; height: 16px; }
 .btn-checkout {
   flex: 1.5; padding: 14px;
-  background: var(--success); color: white;
+  background: var(--primary); color: white;
   border-radius: var(--radius-md);
   font-size: 1rem; font-weight: 700;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+  box-shadow: 0 4px 12px rgba(46,125,50,0.3);
   transition: var(--transition);
 }
-.btn-checkout:hover:not(:disabled) { background: #059669; transform: translateY(-1px); }
+.btn-checkout:hover:not(:disabled) { background: #1B5E20; transform: translateY(-1px); }
 .btn-checkout:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-checkout svg { width: 20px; height: 20px; }
 
