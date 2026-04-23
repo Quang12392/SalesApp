@@ -1226,12 +1226,12 @@ ul, ol { list-style: none; }
   /* Product list = single column */
   .pos-product-list, .pos-product-list.view-compact, .pos-product-list.view-list { grid-template-columns: 1fr !important; gap: 0 !important; }
   .pos-p-card, .view-compact .pos-p-card { 
-    padding: 10px 12px; gap: 10px; border-radius: 0; border: none; 
+    padding: 8px 12px; gap: 10px; border-radius: 0; border: none; 
     border-bottom: 1px solid var(--border-light);
     flex-direction: row !important; align-items: center !important; text-align: left !important;
   }
-  .pos-p-img, .view-compact .pos-p-img { width: 40px; height: 40px; margin: 0 !important; }
-  .pos-p-name, .view-compact .pos-p-name { font-size: 0.85rem !important; white-space: normal !important; }
+  .pos-p-img, .view-compact .pos-p-img { width: 48px; height: 48px; margin: 0 !important; }
+  .pos-p-name, .view-compact .pos-p-name { font-size: 1.02rem !important; white-space: normal !important; }
   .pos-p-sku, .view-compact .pos-p-sku { display: block !important; }
   .pos-p-bottom, .view-compact .pos-p-bottom { justify-content: space-between !important; }
   .pos-view-toggle { display: none !important; }
