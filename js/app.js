@@ -2052,7 +2052,7 @@ const App = {
       const ctx = cvs.getContext('2d'), dpr = devicePixelRatio||1;
       const rr = cvs.getBoundingClientRect();
       cvs.width = rr.width*dpr; cvs.height = rr.height*dpr; ctx.scale(dpr,dpr);
-      const w=rr.width, h=rr.height, p={t:30,r:20,b:40,l:65};
+      const w=rr.width, h=rr.height, p={t:30,r:20,b:60,l:65};
       const cw=w-p.l-p.r, ch=h-p.t-p.b;
       if(!data.length){ctx.fillStyle='#999';ctx.font='14px "Be Vietnam Pro"';ctx.fillText('Không có dữ liệu',w/2-50,h/2);return;}
       const mx=Math.max(...data)*1.2||1, bw=Math.min(cw/data.length*0.6,50), gap=cw/data.length;
@@ -2077,8 +2077,8 @@ const App = {
           ctx.lineTo(x+bw,p.t+ch);ctx.lineTo(x,p.t+ch);ctx.closePath();ctx.fill();
           ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
           // Label below
-          ctx.fillStyle='#6B7280';ctx.font='10px "Be Vietnam Pro"';ctx.textAlign='center';
-          ctx.fillText(labels[i]||'',x+bw/2,p.t+ch+16);
+          ctx.fillStyle='#6B7280';ctx.font='10px "Be Vietnam Pro"';ctx.textAlign='right';
+          ctx.save();ctx.translate(x+bw/2,p.t+ch+8);ctx.rotate(-Math.PI/4);ctx.fillText(labels[i]||'',0,0);ctx.restore();
           // Value above bar on hover
           if(isHover){
             const txt = fmtd(v);
