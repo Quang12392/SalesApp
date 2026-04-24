@@ -200,7 +200,7 @@ ul, ol { list-style: none; }
   max-width: 1400px; margin: 0 auto;
   height: 100%; display: flex;
   align-items: center; justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 10px;
 }
 .header-left { display: flex; align-items: center; }
 .header-logo { display: flex; align-items: center; gap: 10px; }
@@ -214,6 +214,16 @@ ul, ol { list-style: none; }
 }
 .header-icon-btn:hover { background: rgba(255,255,255,0.15); color: white; }
 .header-icon-btn svg { width: 20px; height: 20px; }
+
+/* Avatar with status dot */
+.header-avatar-wrap { position: relative; display: inline-block; }
+.avatar-status-dot {
+  position: absolute; bottom: -1px; right: -1px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #F59E0B; border: 2px solid var(--primary);
+}
+.avatar-status-dot.online { background: #22C55E; }
+.avatar-status-dot.offline { background: #EF4444; }
 .notif-badge {
   position: absolute; top: 0; right: -2px;
   min-width: 18px; height: 18px; padding: 0 5px;
