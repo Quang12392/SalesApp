@@ -1972,8 +1972,8 @@ ul, ol { list-style: none; }
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: none;
-  background: transparent;
+  border: 1.5px solid #FDE68A;
+  background: #FFFBEB;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.88rem;
@@ -1982,11 +1982,13 @@ ul, ol { list-style: none; }
   text-align: left;
   font-family: inherit;
 }
-.report-type-btn:hover { background: var(--bg-secondary); }
+.report-type-btn:hover { background: #FEF3C7; border-color: #F59E0B; }
 .report-type-btn.active {
-  background: var(--primary-bg-strong);
-  color: var(--primary);
+  background: #FEF3C7;
+  color: #92400E;
   font-weight: 600;
+  border-color: #F59E0B;
+  box-shadow: 0 0 0 2px rgba(245,158,11,0.2);
 }
 .report-type-btn svg { stroke: currentColor; flex-shrink: 0; }
 .report-main { flex: 1; min-width: 0; }
