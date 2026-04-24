@@ -2131,8 +2131,8 @@ const App = {
       cvs.width=rr.width*dpr; cvs.height=rr.height*dpr; ctx.scale(dpr,dpr);
       const w=rr.width, h=rr.height, total=data.reduce((a,b)=>a+b,0);
       if(!total){ctx.fillStyle='#999';ctx.font='14px "Be Vietnam Pro"';ctx.fillText('Không có dữ liệu',w/2-50,h/2);return;}
-      const cx=w*0.35, cy=h/2, radius=Math.min(cx-20,cy-20);
-      const lx=w*0.65;
+      const cx=w*0.28, cy=h/2, radius=Math.min(cx-10,cy-20);
+      const lx=w*0.55;
 
       // Build slice angles
       const slices = [];
