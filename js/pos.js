@@ -634,34 +634,43 @@ const POS = {
       document.getElementById('img-x-close').onmouseover = (e) => e.currentTarget.style.background = '#FEE2E2';
       document.getElementById('img-x-close').onmouseout = (e) => e.currentTarget.style.background = 'none';
 
-      // Save button — use File System API or open in new window
+      // Save button — cross-platform (including iOS)
       document.getElementById('img-save-btn').onclick = async () => {
         try {
           const blob = await (await fetch(dataUrl)).blob();
-          // Try modern File System Access API (shows native Save dialog)
+          const safeName = custName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+          const safeDate = dateStr.replace(/\//g, '');
+          const timeStamp = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+          const fileName = 'DonHang_' + safeName + '_' + safeDate + '_' + timeStamp + '.png';
+
+          // Method 1: File System Access API (Chrome desktop)
           if (window.showSaveFilePicker) {
-            const safeName = custName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-            const safeDate = dateStr.replace(/\//g, '');
-            const timeStamp = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
             const handle = await window.showSaveFilePicker({
-              suggestedName: 'DonHang_' + safeName + '_' + safeDate + '_' + timeStamp + '.png',
+              suggestedName: fileName,
               types: [{ description: 'PNG Image', accept: { 'image/png': ['.png'] } }]
             });
             const writable = await handle.createWritable();
             await writable.write(blob);
             await writable.close();
-            App.toast('success', 'Da luu anh thanh cong!');
-          } else {
-            // Fallback: open in new tab
-            const blobUrl = URL.createObjectURL(blob);
-            window.open(blobUrl, '_blank');
-            App.toast('info', 'Anh da mo trong tab moi. Nhan giu chuot phai de luu!');
+            App.toast('success', 'Đã lưu ảnh thành công!');
+            return;
           }
+
+          // Method 2: Download link (Android Chrome + iOS Safari)
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = fileName;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(blobUrl); }, 1000);
+          App.toast('success', 'Đang tải ảnh...');
         } catch (e) {
           if (e.name !== 'AbortError') {
-            // Last fallback: open data URL
+            // Last fallback: open image in new tab
             window.open(dataUrl, '_blank');
-            App.toast('info', 'Nhan giu chuot phai vao anh de luu!');
+            App.toast('info', 'Nhấn giữ ảnh → Lưu hình ảnh!');
           }
         }
       };
