@@ -3234,10 +3234,10 @@ const App = {
     const u = username ? this.users.find(x => x.username === username) : null;
     document.getElementById('modal-title').textContent = u ? 'Sửa tài khoản' : 'Tạo tài khoản mới';
     document.getElementById('modal-body').innerHTML = `
-      <form class="modal-form" id="uf">
+      <form class="modal-form" id="uf" autocomplete="off">
         <div class="form-row">
-          <div class="form-group"><label>Tên đăng nhập</label><input class="form-control" id="uf-user" value="${u?.username||''}" ${u?'readonly style="opacity:0.6"':''} placeholder="username" required></div>
-          <div class="form-group"><label>Mật khẩu${u?' (để trống = giữ cũ)':''}</label><div style="position:relative"><input class="form-control" id="uf-pass" type="password" placeholder="${u?'Không đổi':'Nhập mật khẩu'}" ${u?'':'required'} style="padding-right:36px"><button type="button" onclick="const i=document.getElementById('uf-pass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'👁':'👁‍🗨'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px;opacity:0.6">👁</button></div></div>
+          <div class="form-group"><label>Tên đăng nhập</label><input class="form-control" id="uf-user" value="${u?.username||''}" ${u?'readonly style="opacity:0.6"':''} placeholder="username" required autocomplete="off"></div>
+          <div class="form-group"><label>Mật khẩu${u?' (để trống = giữ cũ)':''}</label><div style="position:relative"><input class="form-control" id="uf-pass" type="password" placeholder="${u?'Không đổi':'Nhập mật khẩu'}" ${u?'':'required'} style="padding-right:36px" autocomplete="new-password"><button type="button" onclick="const i=document.getElementById('uf-pass');i.type=i.type==='password'?'text':'password';this.innerHTML=i.type==='password'?'👁':'👁‍🗨'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px;opacity:0.6">👁</button></div></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Tên hiển thị</label><input class="form-control" id="uf-name" value="${u?.displayName||''}" placeholder="Tên nhân viên" required></div>
