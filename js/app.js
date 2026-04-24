@@ -198,7 +198,6 @@ const App = {
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('app-shell').style.display = 'flex';
     const dn = this.user.displayName;
-    document.getElementById('header-username').textContent = dn;
     document.getElementById('header-avatar').textContent = dn[0];
     document.getElementById('dropdown-name').textContent = dn;
     document.getElementById('dropdown-role').textContent = this.user.role || 'Nhân viên';
