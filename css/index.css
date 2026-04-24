@@ -1418,6 +1418,9 @@ ul, ol { list-style: none; }
     width: 100% !important; height: 100dvh !important; 
     height: -webkit-fill-available !important;
     margin: 0 !important;
+    padding-top: env(safe-area-inset-top) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    box-sizing: border-box !important;
   }
   .modal-header {
     position: sticky; top: 0; z-index: 10;
@@ -1442,7 +1445,6 @@ ul, ol { list-style: none; }
   .modal-footer { 
     position: sticky; bottom: 0; z-index: 10; 
     background: white; padding: 10px 12px !important;
-    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
     flex-wrap: wrap; gap: 6px !important; justify-content: center !important;
     overflow-x: hidden;
   }
