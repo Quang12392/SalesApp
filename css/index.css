@@ -612,7 +612,7 @@ ul, ol { list-style: none; }
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   position: sticky;
-  top: calc(var(--header-h) + var(--nav-h) + 52px);
+  top: calc(var(--header-h) + var(--nav-h));
   z-index: 98;
   overflow: hidden;
   text-overflow: ellipsis;
