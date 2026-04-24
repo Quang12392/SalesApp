@@ -2013,6 +2013,22 @@ ul, ol { list-style: none; }
 .rpt-card.orange::before { background: #F59E0B; }
 .rpt-card.red::before { background: #EF4444; }
 .rpt-card.skyblue::before { background: #229ff4; }
+
+/* Financial summary flex layout */
+.fin-summary { display: flex; flex-direction: column; gap: 0; }
+.fin-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+.fin-row:last-child { border-bottom: none; }
+.fin-row span:first-child { white-space: nowrap; }
+.fin-row span:last-child { white-space: nowrap; text-align: right; }
+.fin-row.fin-total {
+  font-size: 1.1rem; font-weight: 700;
+  background: var(--bg-secondary); padding: 12px 8px;
+  margin: 0 -8px; border-radius: var(--radius-sm);
+}
 .rpt-card-label {
   font-size: 0.8rem;
   color: var(--text-secondary);
