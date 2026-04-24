@@ -695,7 +695,7 @@ const POS = {
           try {
             const blob = await (await fetch(dataUrl)).blob();
             const file = new File([blob], 'DonHang.png', { type: 'image/png' });
-            await navigator.share({ title: 'Don hang', files: [file] });
+            await navigator.share({ files: [file] });
           } catch (e) { /* user cancelled */ }
         };
       }
