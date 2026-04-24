@@ -1412,7 +1412,7 @@ ul, ol { list-style: none; }
 
   /* ── Modal — centered popup, avoids all safe areas ── */
   .modal-overlay { 
-    padding: 90px 12px !important;
+    padding: 190px 12px !important;
     align-items: center !important;
     justify-content: center !important;
   }
