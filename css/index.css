@@ -2073,9 +2073,9 @@ ul, ol { list-style: none; }
   }
   .report-filter-group { margin-bottom: 0; min-width: auto; }
   .report-filter-group h4 { font-size: 0.8rem; margin-bottom: 4px; }
-  .report-type-list { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-  .report-type-btn { padding: 6px 10px; font-size: 0.78rem; white-space: nowrap; }
-  .report-type-btn svg { width: 14px; height: 14px; }
+  .report-type-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .report-type-btn { padding: 6px 8px; font-size: 0.75rem; white-space: nowrap; justify-content: center; gap: 4px; }
+  .report-type-btn svg { width: 13px; height: 13px; }
   .rpt-view-toggle { gap: 4px; }
   .rpt-view-btn { padding: 6px 10px; font-size: 0.78rem; }
   .report-summary-cards { grid-template-columns: 1fr 1fr; }
