@@ -1410,22 +1410,17 @@ ul, ol { list-style: none; }
   /* Actions — ẩn, click cả row để xem */
   .oc-actions { display: none; }
 
-  /* ── Modal — bulletproof for ALL iOS devices ── */
+  /* ── Modal — mobile full-screen (JS sets --modal-h) ── */
   .modal-overlay { 
     padding: 0 !important;
   }
   .modal-container { 
-    position: fixed !important;
-    top: env(safe-area-inset-top, 0px) !important;
-    bottom: env(safe-area-inset-bottom, 0px) !important;
-    left: 0 !important;
-    right: 0 !important;
     border-radius: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
     max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
     margin: 0 !important;
+    overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
   }

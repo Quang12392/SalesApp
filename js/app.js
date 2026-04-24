@@ -3459,7 +3459,15 @@ const App = {
   },
 
   // ═════════ MODAL & TOAST ═════════
-  openModal() { document.getElementById('modal-overlay').style.display = 'flex'; document.body.style.overflow = 'hidden'; },
+  openModal() {
+    document.getElementById('modal-overlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    // Fix iOS: set modal height to exact visible viewport
+    if (window.innerWidth <= 768) {
+      const container = document.querySelector('.modal-container');
+      if (container) container.style.height = window.innerHeight + 'px';
+    }
+  },
   closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
   toast(type, msg) {
     const c = document.getElementById('toast-container');
