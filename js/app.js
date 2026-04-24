@@ -208,8 +208,28 @@ const App = {
     document.getElementById('dropdown-name').textContent = dn;
     document.getElementById('dropdown-role').textContent = this.user.role || 'Nhân viên';
 
+    // Load avatar
+    this.loadUserAvatar();
+
     // Permission enforcement — hide nav items
     this.enforcePermissions();
+  },
+
+  async loadUserAvatar() {
+    const key = 'avatar_' + this.user.username;
+    const avatarData = await this.getProductImage(key);
+    if (avatarData) {
+      this.setAvatarImage(avatarData);
+    }
+  },
+
+  setAvatarImage(dataUrl) {
+    // Header avatar
+    const ha = document.getElementById('header-avatar');
+    ha.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    // Dropdown avatar
+    const da = document.getElementById('dropdown-avatar-img');
+    if (da) da.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
   },
 
   enforcePermissions() {
@@ -344,6 +364,25 @@ const App = {
         this.autoSync();
       });
     }
+    // Avatar upload
+    document.getElementById('btn-change-avatar')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('avatar-upload-input').click();
+    });
+    document.getElementById('avatar-upload-input')?.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const dataUrl = ev.target.result;
+        const key = 'avatar_' + this.user.username;
+        await this.saveProductImage(key, dataUrl);
+        this.setAvatarImage(await this.getProductImage(key));
+        this.toast('success', 'Đã cập nhật ảnh đại diện!');
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
     // Logout
     document.getElementById('btn-logout').addEventListener('click', () => this.logout());
     // User dropdown
