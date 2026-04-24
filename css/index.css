@@ -1410,22 +1410,28 @@ ul, ol { list-style: none; }
   /* Actions — ẩn, click cả row để xem */
   .oc-actions { display: none; }
 
-  /* ── Modal — safe full-screen ── */
-  .modal-overlay { padding: 0 !important; align-items: stretch !important; }
-  .modal-container { 
-    border-radius: 0 !important; 
-    max-width: 100% !important; max-height: 100dvh !important; 
-    width: 100% !important; height: 100dvh !important; 
-    height: -webkit-fill-available !important;
-    margin: 0 !important;
+  /* ── Modal — auto-fit all devices (iOS safe areas) ── */
+  .modal-overlay { 
+    padding: 0 !important; 
+    align-items: stretch !important;
     padding-top: env(safe-area-inset-top) !important;
     padding-bottom: env(safe-area-inset-bottom) !important;
     box-sizing: border-box !important;
   }
+  .modal-container { 
+    border-radius: 0 !important; 
+    max-width: 100% !important;
+    width: 100% !important;
+    /* NO fixed height — let flex stretch fill available space */
+    height: auto !important;
+    max-height: none !important;
+    flex: 1 !important;
+    margin: 0 !important;
+  }
   .modal-header {
     position: sticky; top: 0; z-index: 10;
     background: white; padding: 12px 16px !important;
-    min-height: 48px;
+    min-height: 48px; flex-shrink: 0;
   }
   .modal-close { 
     min-width: 36px; min-height: 36px; 
@@ -1434,6 +1440,7 @@ ul, ol { list-style: none; }
   .modal-body { 
     padding: 12px !important; overflow-y: auto; -webkit-overflow-scrolling: touch;
     overflow-x: auto; word-break: break-word;
+    flex: 1; min-height: 0;
   }
   .modal-body > div { max-width: 100%; }
   /* Batch table inside modal */
@@ -1445,6 +1452,7 @@ ul, ol { list-style: none; }
   .modal-footer { 
     position: sticky; bottom: 0; z-index: 10; 
     background: white; padding: 10px 12px !important;
+    flex-shrink: 0;
     flex-wrap: wrap; gap: 6px !important; justify-content: center !important;
     overflow-x: hidden;
   }
