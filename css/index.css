@@ -1412,7 +1412,7 @@ ul, ol { list-style: none; }
 
   /* ── Modal — centered popup, avoids all safe areas ── */
   .modal-overlay { 
-    padding: 16px !important;
+    padding: 40px 16px !important;
     align-items: center !important;
     justify-content: center !important;
   }
@@ -1420,7 +1420,7 @@ ul, ol { list-style: none; }
     border-radius: 16px !important;
     max-width: 100% !important;
     width: 100% !important;
-    max-height: 85vh !important;
+    max-height: 75vh !important;
     margin: 0 !important;
     overflow: hidden !important;
     display: flex !important;
