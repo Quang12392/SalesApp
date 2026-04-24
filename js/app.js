@@ -6,6 +6,12 @@ const DEMO_USERS = [
   // Đăng nhập qua Google Sheets API — không dùng tài khoản mặc định
 ];
 
+// ── DEFAULT API URL (hardcoded for convenience) ──
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMKMCfjn5kJhJsZsgIgjLWj_kmGflCQZIGFpFiXNi0gsByrqGZVcfGXFRK9/exec';
+// Auto-set if not already configured
+if (!localStorage.getItem('khs_api_url')) {
+  localStorage.setItem('khs_api_url', DEFAULT_API_URL);
+}
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
 function fmtd(n) { return fmt(n) + 'đ'; }
