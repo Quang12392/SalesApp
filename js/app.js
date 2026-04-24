@@ -7,9 +7,9 @@ const DEMO_USERS = [
 ];
 
 // ── DEFAULT API URL (hardcoded for convenience) ──
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMKMCfjn5kJhJsZsgIgjLWj_kmGflCQZIGFpFiXNi0gsByrqGZVcfGXFRK9/exec';
-// Auto-set if not already configured
-if (!localStorage.getItem('khs_api_url')) {
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5BcmgjL3g7Rl9P8wh0OnbwdmymVRP3wvNk66KUsyzKSgERuUSoqgzDA/exec';
+// Auto-set or update if URL changed
+if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
 // ── UTILS ──
