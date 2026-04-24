@@ -2124,9 +2124,9 @@ ul, ol { list-style: none; }
 }
 .return-header h2 { font-size: 1.1rem; font-weight: 700; color: #1F2937; margin: 0; }
 .return-close {
-  width: 32px; height: 32px; border: none; background: #F3F4F6; border-radius: 8px;
+  width: 32px; height: 32px; border: none; background: #FEE2E2; border-radius: 8px;
   font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
+  transition: all 0.15s; color: #EF4444;
 }
 .return-close:hover { background: #EF4444; color: #fff; }
 .return-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
