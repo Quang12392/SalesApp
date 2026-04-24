@@ -643,7 +643,20 @@ const POS = {
           const timeStamp = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
           const fileName = 'DonHang_' + safeName + '_' + safeDate + '_' + timeStamp + '.png';
 
-          // Method 1: File System Access API (Chrome desktop)
+          // Detect iOS
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+          // iOS: use Share API → user picks "Lưu hình ảnh" to save to Photos
+          if (isIOS && navigator.share) {
+            const file = new File([blob], fileName, { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              await navigator.share({ files: [file] });
+              App.toast('success', 'Đã chia sẻ ảnh!');
+              return;
+            }
+          }
+
+          // Desktop Chrome: File System Access API
           if (window.showSaveFilePicker) {
             const handle = await window.showSaveFilePicker({
               suggestedName: fileName,
@@ -656,7 +669,7 @@ const POS = {
             return;
           }
 
-          // Method 2: Download link (Android Chrome + iOS Safari)
+          // Android + others: Download link
           const blobUrl = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = blobUrl;
