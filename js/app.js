@@ -218,18 +218,24 @@ const App = {
   async loadUserAvatar() {
     const key = 'avatar_' + this.user.username;
     const avatarData = await this.getProductImage(key);
-    if (avatarData) {
+    if (avatarData && typeof avatarData === 'string' && avatarData.startsWith('data:image')) {
       this.setAvatarImage(avatarData);
+    } else {
+      // No avatar — ensure we show the initial letter
+      const dn = this.user.displayName;
+      document.getElementById('header-avatar').textContent = dn[0];
+      const da = document.getElementById('dropdown-avatar-img');
+      if (da) da.textContent = dn[0];
     }
   },
 
   setAvatarImage(dataUrl) {
     // Header avatar
     const ha = document.getElementById('header-avatar');
-    ha.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    ha.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent='${(this.user?.displayName||'U')[0]}'">`;
     // Dropdown avatar
     const da = document.getElementById('dropdown-avatar-img');
-    if (da) da.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    if (da) da.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent='${(this.user?.displayName||'U')[0]}'">`;
   },
 
   enforcePermissions() {
@@ -3542,7 +3548,7 @@ const App = {
           body: JSON.stringify({ action: 'saveImage', sku: productId, base64: compressed })
         }).catch(e => console.warn('Cloud save image failed:', e));
       }
-      this.toast('success', 'Đã lưu ảnh sản phẩm!');
+      if (!productId.startsWith('avatar_')) this.toast('success', 'Đã lưu ảnh sản phẩm!');
     } catch(e) { console.error('Save image error:', e); }
   },
 
