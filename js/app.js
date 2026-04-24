@@ -3462,10 +3462,24 @@ const App = {
   openModal() {
     document.getElementById('modal-overlay').style.display = 'flex';
     document.body.style.overflow = 'hidden';
-    // Fix iOS: set modal height to exact visible viewport
+    // Fix iOS: measure safe areas and set exact modal dimensions
     if (window.innerWidth <= 768) {
       const container = document.querySelector('.modal-container');
-      if (container) container.style.height = window.innerHeight + 'px';
+      if (container) {
+        // Read actual safe-area values via temporary element
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;';
+        probe.style.top = 'env(safe-area-inset-top, 0px)';
+        probe.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)';
+        document.body.appendChild(probe);
+        const cs = getComputedStyle(probe);
+        const safeTop = parseInt(cs.top) || 0;
+        const safeBottom = parseInt(cs.paddingBottom) || 0;
+        document.body.removeChild(probe);
+        // Set modal to fill only the safe zone
+        container.style.height = (window.innerHeight - safeTop - safeBottom) + 'px';
+        container.style.marginTop = safeTop + 'px';
+      }
     }
   },
   closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
