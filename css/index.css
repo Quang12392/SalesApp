@@ -1542,11 +1542,11 @@ ul, ol { list-style: none; }
     padding: 10px 4px; flex: 1 1 0; min-width: 0;
     flex-direction: column; gap: 2px; text-align: center;
   }
-  .pm-icon { font-style: normal; font-size: 1.2rem; line-height: 1; margin-right: 0; }
-  .pm-text { font-size: 0.65rem; font-weight: 500; white-space: nowrap; }
+  .pm-icon { font-style: normal; font-size: 1.56rem; line-height: 1; margin-right: 0; }
+  .pm-text { font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
   
   .pos-tax-wrap { gap: 6px; }
-  .pos-tax-option, .pos-tax-san-option { flex: 1 1 0; padding: 10px 6px; font-size: 0.85rem; text-align: center; justify-content: center; }
+  .pos-tax-option, .pos-tax-san-option { flex: 1 1 0; padding: 10px 6px; font-size: 1.02rem; text-align: center; justify-content: center; }
   
   /* Orders sticky header - use fixed position on mobile */
   .orders-sticky-header {
