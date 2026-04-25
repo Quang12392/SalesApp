@@ -1007,7 +1007,7 @@ ul, ol { list-style: none; }
 }
 .pos-total-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 0; font-size: 0.85rem; color: var(--text-secondary);
+  padding: 6px 0; font-size: 0.85rem; color: #111; font-weight: 600;
 }
 .pos-total-row.total {
   padding: 10px 0; margin-top: 4px;
