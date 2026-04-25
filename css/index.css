@@ -190,11 +190,12 @@ ul, ol { list-style: none; }
 /* ═══════════════════════════════════════════════════════════════
    APP HEADER (Blue bar)
    ═══════════════════════════════════════════════════════════════ */
-.app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+.app-shell { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
 .app-header {
   height: var(--header-h); background: var(--primary);
   color: white; flex-shrink: 0;
   position: sticky; top: 0; z-index: 110;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 .header-inner {
   max-width: 1400px; margin: 0 auto;
@@ -1155,9 +1156,9 @@ ul, ol { list-style: none; }
    MOBILE
    ═══════════════════════════════════════════════════════════════ */
 .mobile-nav {
-  display: none; position: fixed;
-  bottom: 0; left: 0; right: 0;
+  display: none;
   height: var(--mobile-nav-h);
+  flex-shrink: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-sizing: content-box;
   background: white; border-top: 1px solid var(--border);
@@ -1206,7 +1207,8 @@ ul, ol { list-style: none; }
   }
   .mobile-menu-toggle svg { width: 20px; height: 20px; }
   .mobile-nav { display: flex; }
-  .page-container { padding: 12px; padding-bottom: calc(var(--mobile-nav-h) + 28px); }
+  .app-shell { height: 100vh; height: 100dvh; overflow: hidden; }
+  .page-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; padding-bottom: 12px; }
   .login-container { flex-direction: column; }
   .login-left { min-height: 200px; padding: 32px 24px; }
   .login-features { display: none; }
