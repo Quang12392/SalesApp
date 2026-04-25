@@ -1039,10 +1039,10 @@ ul, ol { list-style: none; }
 /* Tax checkbox */
 .pos-tax-wrap { margin: 6px 0; }
 .pos-tax-option {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 14px; border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 8px 14px; border: 1.5px solid var(--border);
   border-radius: var(--radius-md); cursor: pointer;
-  font-size: 0.8rem; font-weight: 500; transition: var(--transition);
+  font-size: 0.85rem; font-weight: 500; transition: var(--transition);
 }
 .pos-tax-option:has(input:checked) {
   border-color: #D32F2F; background: #FFEBEE; color: #D32F2F; font-weight: 600;
