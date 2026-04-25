@@ -1536,7 +1536,7 @@ ul, ol { list-style: none; }
   .toolbar-left { flex-direction: column; gap: 8px; }
   .toolbar-search input { width: 100%; }
   .pos-payment-methods { flex-direction: row; flex-wrap: nowrap; gap: 4px; }
-  .pos-payment-option { padding: 8px 2px; font-size: 0.72rem; flex: 1 1 0; min-width: 0; }
+  .pos-payment-option { padding: 8px 2px; font-size: 0.68rem; flex: 1 1 0; min-width: 0; white-space: nowrap; }
   .pos-tax-wrap { gap: 4px; }
   .pos-tax-option, .pos-tax-san-option { padding: 8px 6px; font-size: 0.78rem; }
   
