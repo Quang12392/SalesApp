@@ -427,7 +427,9 @@ const App = {
       }, { passive: true });
       pc.addEventListener('touchend', async () => {
         if (ptr.classList.contains('active')) {
+          ptr.classList.add('loading');
           await this.autoSync();
+          ptr.classList.remove('loading');
           this.toast('success', 'Đã cập nhật dữ liệu!');
         }
         pulling = false; ptr.classList.remove('active');
