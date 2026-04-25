@@ -1543,8 +1543,6 @@ ul, ol { list-style: none; }
     background: var(--primary-bg); font-size: 0.8rem;
   }
   .orders-summary-bar strong { color: var(--primary); font-size: 0.9rem; }
-  /* Push table content below fixed header */
-  .orders-sticky-header + .orders-card-list { padding-top: 110px; }
 
   /* Hide desktop table, show mobile cards */
   .orders-desktop-table { display: none !important; }
