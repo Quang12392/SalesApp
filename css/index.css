@@ -1036,11 +1036,11 @@ ul, ol { list-style: none; }
 .pos-payment-option:hover { border-color: var(--primary-light); }
 .pos-payment-option.active { border-color: var(--primary); background: var(--primary-bg); color: var(--primary); font-weight: 600; }
 .pos-payment-option input[type="radio"] { display: none; }
-/* Tax checkbox */
-.pos-tax-wrap { margin: 6px 0; }
+/* Tax checkbox + Thuế Sàn row */
+.pos-tax-wrap { margin: 6px 0; display: flex; gap: 6px; }
 .pos-tax-option {
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  width: 100%; padding: 8px 14px; border: 1.5px solid var(--border);
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 14px; border: 1.5px solid var(--border);
   border-radius: var(--radius-md); cursor: pointer;
   font-size: 0.85rem; font-weight: 500; transition: var(--transition);
 }
@@ -1048,6 +1048,10 @@ ul, ol { list-style: none; }
   border-color: #D32F2F; background: #FFEBEE; color: #D32F2F; font-weight: 600;
 }
 .pos-tax-option input[type="checkbox"] { display: none; }
+.pos-tax-san-option {
+  flex: 1; justify-content: center; font-size: 0.85rem;
+}
+.pos-tax-san-option.active { border-color: #D32F2F; background: #FFEBEE; color: #D32F2F; font-weight: 600; }
 .pos-qr-upload-section { margin-bottom:8px; }
 .pos-qr-upload-box {
   width:100%; height:80px; border:2px dashed var(--border); border-radius:var(--radius-md);
