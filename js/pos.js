@@ -145,6 +145,7 @@ const POS = {
       o.classList.toggle('active', i === 0);
       o.querySelector('input').checked = i === 0;
     });
+    document.getElementById('pos-tax-check').checked = false;
     this.renderProducts('');
     this.renderCart();
     this.updateTotals();
@@ -795,6 +796,7 @@ const POS = {
     const finalTotal = Math.max(0, subtotal - discount);
     const payment = document.querySelector('input[name="pos-payment"]:checked').value;
     const note = document.getElementById('pos-note').value;
+    const tax = document.getElementById('pos-tax-check').checked;
     const now = new Date();
     const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -843,6 +845,7 @@ const POS = {
         finalTotal,
         payment,
         note,
+        tax,
         createdBy: App.user.displayName
       };
       fetch(apiUrl, {
