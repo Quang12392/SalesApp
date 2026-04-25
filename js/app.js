@@ -425,8 +425,16 @@ const App = {
         if (dy > 60 && pc.scrollTop <= 0) { ptr.classList.add('active'); }
         else { ptr.classList.remove('active'); }
       }, { passive: true });
-      pc.addEventListener('touchend', () => {
-        if (ptr.classList.contains('active')) { location.reload(); }
+      pc.addEventListener('touchend', async () => {
+        if (ptr.classList.contains('active')) {
+          try {
+            await this.autoSync();
+            this.route();
+            this.toast('success', 'Đã cập nhật dữ liệu!');
+          } catch(e) {
+            this.toast('error', 'Lỗi kết nối!');
+          }
+        }
         pulling = false; ptr.classList.remove('active');
       });
     }
