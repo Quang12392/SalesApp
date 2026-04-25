@@ -1537,8 +1537,8 @@ ul, ol { list-style: none; }
   .toolbar-search input { width: 100%; }
   .pos-payment-methods { flex-direction: row; flex-wrap: nowrap; gap: 4px; }
   .pos-payment-option { padding: 8px 2px; font-size: 0.68rem; flex: 1 1 0; min-width: 0; white-space: nowrap; }
-  .pos-tax-wrap { gap: 4px; }
-  .pos-tax-option, .pos-tax-san-option { padding: 8px 6px; font-size: 0.78rem; }
+  .pos-tax-wrap { gap: 6px; }
+  .pos-tax-option, .pos-tax-san-option { flex: 1 1 0; padding: 10px 6px; font-size: 0.85rem; text-align: center; justify-content: center; }
   
   /* Orders sticky header - use fixed position on mobile */
   .orders-sticky-header {
