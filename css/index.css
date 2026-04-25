@@ -1222,7 +1222,7 @@ ul, ol { list-style: none; }
   .mobile-menu-toggle svg { width: 20px; height: 20px; }
   .mobile-nav { display: flex; }
   .app-shell { height: 100vh; height: 100dvh; overflow: hidden; }
-  .page-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; padding-bottom: 12px; }
+  .page-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 12px 12px 12px; }
   .login-container { flex-direction: column; }
   .login-left { min-height: 200px; padding: 32px 24px; }
   .login-features { display: none; }
