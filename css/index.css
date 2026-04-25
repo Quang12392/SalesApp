@@ -1036,6 +1036,8 @@ ul, ol { list-style: none; }
 .pos-payment-option:hover { border-color: var(--primary-light); }
 .pos-payment-option.active { border-color: var(--primary); background: var(--primary-bg); color: var(--primary); font-weight: 600; }
 .pos-payment-option input[type="radio"] { display: none; }
+.pm-icon { font-style: normal; margin-right: 4px; }
+.pm-text { font-weight: 500; }
 /* Tax checkbox + Thuế Sàn row */
 .pos-tax-wrap { margin: 6px 0; display: flex; gap: 6px; }
 .pos-tax-option {
@@ -1535,8 +1537,14 @@ ul, ol { list-style: none; }
   .page-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
   .toolbar-left { flex-direction: column; gap: 8px; }
   .toolbar-search input { width: 100%; }
-  .pos-payment-methods { flex-direction: row; flex-wrap: nowrap; gap: 4px; }
-  .pos-payment-option { padding: 8px 2px; font-size: 0.68rem; flex: 1 1 0; min-width: 0; white-space: nowrap; }
+  .pos-payment-methods { flex-direction: row; flex-wrap: nowrap; gap: 6px; }
+  .pos-payment-option {
+    padding: 10px 4px; flex: 1 1 0; min-width: 0;
+    flex-direction: column; gap: 2px; text-align: center;
+  }
+  .pm-icon { font-style: normal; font-size: 1.2rem; line-height: 1; margin-right: 0; }
+  .pm-text { font-size: 0.65rem; font-weight: 500; white-space: nowrap; }
+  
   .pos-tax-wrap { gap: 6px; }
   .pos-tax-option, .pos-tax-san-option { flex: 1 1 0; padding: 10px 6px; font-size: 0.85rem; text-align: center; justify-content: center; }
   
