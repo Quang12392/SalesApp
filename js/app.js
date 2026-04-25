@@ -410,6 +410,26 @@ const App = {
     document.querySelectorAll('.nav-tab, .mob-nav-item').forEach(el => {
       el.addEventListener('click', () => document.querySelector('.main-nav').classList.remove('open'));
     });
+
+    // Pull-to-refresh for mobile
+    const pc = document.getElementById('page-container');
+    const ptr = document.getElementById('ptr-indicator');
+    if (pc && ptr) {
+      let startY = 0, pulling = false;
+      pc.addEventListener('touchstart', e => {
+        if (pc.scrollTop <= 0) { startY = e.touches[0].pageY; pulling = true; }
+      }, { passive: true });
+      pc.addEventListener('touchmove', e => {
+        if (!pulling) return;
+        const dy = e.touches[0].pageY - startY;
+        if (dy > 60 && pc.scrollTop <= 0) { ptr.classList.add('active'); }
+        else { ptr.classList.remove('active'); }
+      }, { passive: true });
+      pc.addEventListener('touchend', () => {
+        if (ptr.classList.contains('active')) { location.reload(); }
+        pulling = false; ptr.classList.remove('active');
+      });
+    }
   },
 
   // ═════════ DASHBOARD ═════════
