@@ -1535,8 +1535,10 @@ ul, ol { list-style: none; }
   .page-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
   .toolbar-left { flex-direction: column; gap: 8px; }
   .toolbar-search input { width: 100%; }
-  .pos-payment-methods { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-  .pos-payment-option { padding: 6px 2px; font-size: 0.7rem; flex: 1 1 auto; min-width: 0; }
+  .pos-payment-methods { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .pos-payment-option { padding: 10px 4px; font-size: 0.82rem; flex: 1 1 auto; min-width: 0; }
+  .pos-tax-wrap { gap: 6px; }
+  .pos-tax-option, .pos-tax-san-option { padding: 10px 8px; font-size: 0.82rem; }
   
   /* Orders sticky header - use fixed position on mobile */
   .orders-sticky-header {
