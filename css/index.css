@@ -1181,10 +1181,11 @@ ul, ol { list-style: none; }
 .mob-nav-item {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 6px 10px; border-radius: var(--radius-sm);
-  color: var(--text-muted); font-size: 0.93rem; font-weight: 600;
+  color: var(--text-muted); font-size: 0.7rem; font-weight: 600;
+  white-space: nowrap;
   transition: var(--transition); text-decoration: none;
 }
-.mob-nav-item svg { width: 31px; height: 31px; }
+.mob-nav-item svg { width: 26px; height: 26px; }
 .mob-nav-item.active { color: var(--primary); }
 
 /* Bán hàng tab — prominent center button */
