@@ -391,18 +391,19 @@ ul, ol { list-style: none; }
   margin: 0 auto; width: 100%;
   padding: 20px; position: relative;
 }
-/* Pull-to-refresh indicator */
+/* Pull-to-refresh indicator — overlay centered in content */
 .ptr-indicator {
-  display: none; align-items: center; justify-content: center;
-  padding: 16px 0; flex-shrink: 0;
+  display: none; position: absolute;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 50; background: white;
+  width: 44px; height: 44px; border-radius: 50%;
+  align-items: center; justify-content: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
 }
 .ptr-indicator.active { display: flex; }
-.ptr-indicator.loading .ptr-icon { animation: ptr-spin 0.6s linear infinite; }
-.ptr-icon {
-  width: 28px; height: 28px; color: #DC2626;
-  transition: transform 0.2s;
-}
-@keyframes ptr-spin { to { transform: rotate(360deg); } }
+.ptr-indicator.loading { animation: ptr-spin 0.6s linear infinite; }
+.ptr-icon { width: 24px; height: 24px; color: #DC2626; }
+@keyframes ptr-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD
