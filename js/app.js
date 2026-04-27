@@ -2247,15 +2247,15 @@ const App = {
         }
         // Legend
         labels.forEach((l,i) => {
-          const ly=30+i*28;
+          const ly=28+i*30;
           const isH = i===hoverIdx;
           ctx.fillStyle=colors[i%colors.length];
-          ctx.beginPath(); ctx.roundRect(lx,ly,14,14,3); ctx.fill();
-          ctx.fillStyle = isH ? '#111' : '#374151';
-          ctx.font = isH ? 'bold 12px "Be Vietnam Pro"' : '12px "Be Vietnam Pro"';
+          ctx.beginPath(); ctx.roundRect(lx,ly,16,16,4); ctx.fill();
+          ctx.fillStyle = isH ? '#111' : '#1F2937';
+          ctx.font = isH ? 'bold 13px "Be Vietnam Pro"' : '600 13px "Be Vietnam Pro"';
           ctx.textAlign='left';
           const pct = total ? Math.round(data[i]/total*100) : 0;
-          ctx.fillText(`${l}: ${fmtShort(data[i])}`, lx+20, ly+12);
+          ctx.fillText(`${l}: ${fmtShort(data[i])}`, lx+22, ly+13);
         });
         // Tooltip on hover
         if(hoverIdx >= 0){
@@ -2350,7 +2350,7 @@ const App = {
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card red"><div class="rpt-card-label">Giá vốn</div><div class="rpt-card-value">${fmtd(cost)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận</div><div class="rpt-card-value">${fmtd(profit)}</div></div><div class="rpt-card orange"><div class="rpt-card-label">Chiết khấu</div><div class="rpt-card-value">${fmtd(disc)}</div></div></div>`;
     if(view==='chart'){
       el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Cơ cấu doanh thu</h3></div><div class="card-body"><div class="chart-area" style="height:280px"><canvas id="rc6"></canvas></div></div></div>`;
-      this.rptPieChart('rc6',['Giá vốn','Lợi nhuận','Chiết khấu'],[cost,profit,disc],['#2E7D32','#2563EB','#F59E0B']);
+      this.rptPieChart('rc6',['Giá vốn','Lợi nhuận','Chiết khấu'],[cost,profit,disc],['#4CAF50','#1565C0','#FF9800']);
     } else {
       el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Tổng hợp</h3></div><div class="card-body"><div class="fin-summary"><div class="fin-row"><span>Tổng doanh thu</span><span style="color:#05e2e0;font-weight:600">${fmtd(rev)}</span></div><div class="fin-row"><span>Giá vốn hàng bán</span><span style="color:#EF4444;font-weight:600">${fmtd(cost)}</span></div><div class="fin-row"><span>Chiết khấu</span><span>${fmtd(disc)}</span></div><div class="fin-row fin-total"><span>Lợi nhuận gộp</span><span style="color:#2E7D32">${fmtd(profit)}</span></div><div class="fin-row"><span>Biên lợi nhuận</span><span style="font-weight:600">${rev?Math.round(profit/rev*100):0}%</span></div></div></div></div>`;
     }
