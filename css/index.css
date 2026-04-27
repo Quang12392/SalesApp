@@ -2133,17 +2133,35 @@ ul, ol { list-style: none; }
     position: static;
     flex-direction: column;
     display: flex;
-    gap: 8px;
-    padding: 12px;
+    gap: 4px;
+    padding: 10px 12px;
     overflow: visible;
   }
   .report-filter-group { margin-bottom: 0; min-width: auto; }
-  .report-filter-group h4 { font-size: 0.8rem; margin-bottom: 4px; }
-  .report-type-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .report-type-btn { padding: 6px 8px; font-size: 0.75rem; white-space: nowrap; justify-content: center; gap: 4px; }
-  .report-type-btn svg { width: 13px; height: 13px; }
-  .rpt-view-toggle { gap: 4px; }
-  .rpt-view-btn { padding: 6px 10px; font-size: 0.78rem; }
+  .report-filter-group h4 { font-size: 0.7rem; margin-bottom: 3px; letter-spacing: 0.8px; color: #6B7280; }
+  .report-type-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .report-type-btn {
+    padding: 7px 6px; font-size: 0.72rem; white-space: nowrap;
+    justify-content: center; gap: 4px;
+    background: #fff; border: 1px solid #E5E7EB; border-radius: 8px;
+  }
+  .report-type-btn.active {
+    background: #FEF3C7; border-color: #F59E0B; color: #92400E;
+  }
+  /* Tài chính active = red */
+  .report-type-btn[data-type="finance"].active {
+    background: #FEE2E2; border-color: #EF4444; color: #991B1B;
+  }
+  .report-type-btn svg { width: 12px; height: 12px; }
+  .rpt-view-toggle { gap: 4px; margin-bottom: 2px; }
+  .rpt-view-btn {
+    padding: 8px 10px; font-size: 0.78rem; border-radius: 10px;
+    border: 1.5px solid #E5E7EB;
+  }
+  .rpt-view-btn.active {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+  }
+  .report-sidebar .form-control { font-size: 0.8rem; padding: 7px 10px; }
   .report-summary-cards { grid-template-columns: 1fr 1fr; }
 }
 
