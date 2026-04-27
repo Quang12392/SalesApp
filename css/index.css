@@ -2067,9 +2067,15 @@ ul, ol { list-style: none; }
   background: #fff;
   border-radius: 10px;
   padding: 16px 20px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(0,0,0,0.06);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.rpt-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12), 0 6px 20px rgba(0,0,0,0.06);
 }
 .rpt-card::before {
   content: '';
