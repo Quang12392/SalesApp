@@ -1517,10 +1517,18 @@ ul, ol { list-style: none; }
   }
   
   /* ── Report cards ── */
-  .report-summary-cards { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-  .rpt-card-label { font-size: 0.7rem !important; }
-  .rpt-card-value { font-size: 0.85rem !important; }
-  .chart-area { height: 220px !important; }
+  .report-title { font-size: 1.1rem !important; margin-bottom: 10px !important; }
+  .report-summary-cards { grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+  .rpt-card { padding: 10px 14px !important; border-radius: 8px !important; }
+  .rpt-card-label { font-size: 0.68rem !important; margin-bottom: 2px !important; }
+  .rpt-card-value { font-size: 0.92rem !important; }
+  .chart-area { height: 200px !important; }
+  .card { margin-top: 10px !important; }
+  .card-header h3 { font-size: 0.9rem !important; }
+  .card-body { padding: 10px !important; }
+  .fin-row { padding: 8px 0 !important; font-size: 0.85rem !important; }
+  .hbar-label { width: 80px !important; font-size: 0.75rem !important; }
+  .hbar-value { width: 75px !important; font-size: 0.75rem !important; }
   
   /* ── Toolbar ── */
   .page-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
