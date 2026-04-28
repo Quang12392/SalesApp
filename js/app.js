@@ -3642,7 +3642,11 @@ const App = {
     const btn = document.querySelector('.btn-sync-tiktok');
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Đang đồng bộ...'; }
     try {
-      const res = await fetch(this.API + '?action=syncTikTok');
+      const res = await fetch(this.API, {
+        method: 'POST',
+        headers: {'Content-Type':'text/plain'},
+        body: JSON.stringify({ action: 'syncTikTok' })
+      });
       const data = await res.json();
       if (data.success) {
         let msg = data.message || `Đã đồng bộ ${data.synced} đơn`;
