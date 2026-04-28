@@ -1448,6 +1448,10 @@ const App = {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
               Trả hàng
             </button>
+            <button class="btn-sync-tiktok" onclick="App.syncTikTok()" title="Đồng bộ đơn TikTok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m0 0a9 9 0 0 1 9-9m-9 9a9 9 0 0 0 9 9"/></svg>
+              TikTok
+            </button>
           </div>
           <div class="orders-summary-bar" id="o-summary">
             <span>0 đơn hàng</span>
@@ -1532,8 +1536,9 @@ const App = {
         const pf = (o.finalTotal||0) - ct;
         const fi = items[0];
         const mc = items.length - 1;
-        const st = o.status==='completed'?'Hoàn thành':o.status==='pending'?'Chờ xử lý':'Đã hủy';
-        return `<div class="order-mobile-card" data-oid="${o.id}">
+        const st = o.status==='completed'?'Hoàn thành':o.status==='Chờ đối chiếu'?'Chờ đối chiếu':o.status==='pending'?'Chờ xử lý':'Đã hủy';
+        const isTK = o.status === 'Chờ đối chiếu';
+        return `<div class="order-mobile-card ${isTK ? 'tk-pending' : ''}" data-oid="${o.id}">
           <div class="omc-row1">
             <span class="omc-customer">${o.customerName||'Khách lẻ'}</span>
             <span class="omc-total">${fmtd(o.finalTotal)}</span>
@@ -1549,6 +1554,7 @@ const App = {
           <div class="omc-row3">
             <span class="omc-status ${o.status}">${st}</span>
             <span class="omc-profit">LN: ${fmtd(pf)}</span>
+            ${isTK ? `<button class="btn-confirm-tk" onclick="event.stopPropagation();App.confirmTikTokOrder('${o.id}')" title="Xác nhận">✅</button><button class="btn-reject-tk" onclick="event.stopPropagation();App.rejectTikTokOrder('${o.id}')" title="Hủy">❌</button>` : ''}
           </div>
         </div>`;
       }).join('') : '<div class="omc-empty">Không tìm thấy đơn hàng</div>';
@@ -1572,10 +1578,11 @@ const App = {
       <td class="oc-total"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
       <td class="oc-profit" style="color:#1B5E20;font-weight:600">${fmtd(profit)}</td>
       <td class="oc-payment">${o.payment||''}</td>
-      <td class="oc-status"><span class="order-status ${o.status}">${o.status==='completed'?'Hoàn thành':o.status==='pending'?'Chờ xử lý':'Đã hủy'}</span></td>
+      <td class="oc-status"><span class="order-status ${o.status}">${o.status==='completed'?'Hoàn thành':o.status==='Chờ đối chiếu'?'Chờ đối chiếu':o.status==='pending'?'Chờ xử lý':'Đã hủy'}</span></td>
       <td class="oc-date" style="white-space:nowrap;color:var(--text-secondary)">${o.createdAt||''}</td>
       <td class="oc-actions"><div class="table-actions">
         <button class="btn-icon view-order" data-id="${o.id}" title="Xem / In hóa đơn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        ${o.status==='Chờ đối chiếu'?`<button class="btn-icon btn-confirm-tk" onclick="event.stopPropagation();App.confirmTikTokOrder('${o.id}')" title="Xác nhận" style="color:#2E7D32"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg></button>`:''}
       </div></td>
     </tr>`;
     }).join('') : `<tr><td colspan="9" class="table-empty"><p>Không tìm thấy đơn hàng</p></td></tr>`;
@@ -3625,6 +3632,57 @@ const App = {
       const mImg = document.getElementById('pimg-m-' + p.id);
       if (mImg) mImg.src = src;
     }
+  },
+
+  // ═══════════════════════════════════════
+  // TIKTOK SYNC
+  // ═══════════════════════════════════════
+  async syncTikTok() {
+    if (!confirm('Đồng bộ đơn hàng từ TikTok?\n\nĐơn mới sẽ ở trạng thái "Chờ đối chiếu".\nBạn cần xác nhận từng đơn để trừ tồn kho.')) return;
+    const btn = document.querySelector('.btn-sync-tiktok');
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Đang đồng bộ...'; }
+    try {
+      const res = await fetch(this.API + '?action=syncTikTok');
+      const data = await res.json();
+      if (data.success) {
+        let msg = data.message || `Đã đồng bộ ${data.synced} đơn`;
+        if (data.notFound && data.notFound.length) msg += '\n\n⚠️ SKU chưa mapping: ' + data.notFound.join(', ');
+        alert('✅ ' + msg);
+        // Reload orders
+        const orderRes = await fetch(this.API + '?action=getOrders');
+        const orderData = await orderRes.json();
+        if (orderData.success) { this.orders = orderData.data; this.renderOrders(document.getElementById('page-container')); }
+      } else {
+        alert('❌ Lỗi: ' + (data.error || 'Không rõ'));
+      }
+    } catch (err) { alert('❌ Lỗi kết nối: ' + err.message); }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m0 0a9 9 0 0 1 9-9m-9 9a9 9 0 0 0 9 9"/></svg> TikTok'; }
+  },
+
+  async confirmTikTokOrder(orderId) {
+    if (!confirm('Xác nhận đơn ' + orderId + '?\n\nTồn kho sẽ được trừ và đơn chuyển sang "Hoàn thành".')) return;
+    try {
+      const res = await fetch(this.API, {
+        method: 'POST',
+        headers: {'Content-Type':'text/plain'},
+        body: JSON.stringify({ action: 'confirmTikTokOrder', orderId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('✅ ' + data.message);
+        const o = this.orders.find(x => x.id === orderId);
+        if (o) o.status = 'completed';
+        this.updateOrderTable();
+      } else {
+        alert('❌ ' + (data.error || 'Lỗi'));
+      }
+    } catch (err) { alert('❌ Lỗi: ' + err.message); }
+  },
+
+  rejectTikTokOrder(orderId) {
+    if (!confirm('Hủy đơn TikTok ' + orderId + '?')) return;
+    const o = this.orders.find(x => x.id === orderId);
+    if (o) { o.status = 'cancelled'; this.updateOrderTable(); }
   }
 };
 

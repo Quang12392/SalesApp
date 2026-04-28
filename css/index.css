@@ -1998,6 +1998,36 @@ ul, ol { list-style: none; }
 * { scrollbar-width: auto; scrollbar-color: #f5c518 #f5f5f5; }
 
 /* ═══════════════════════════════════════
+   TIKTOK SYNC BUTTON & PENDING ORDERS
+   ═══════════════════════════════════════ */
+.btn-sync-tiktok {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 12px; border: 1.5px solid #111;
+  background: linear-gradient(135deg, #111, #333); color: #fff;
+  border-radius: 8px; cursor: pointer; font-size: 0.78rem;
+  font-weight: 600; font-family: inherit; transition: all 0.15s;
+}
+.btn-sync-tiktok:hover { background: linear-gradient(135deg, #333, #555); }
+.btn-sync-tiktok:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-sync-tiktok svg { width: 14px; height: 14px; }
+
+.order-mobile-card.tk-pending {
+  border-left: 4px solid #F59E0B;
+  background: #FFFBEB;
+}
+.order-status.Chờ\ đối\ chiếu,
+.omc-status.Chờ\ đối\ chiếu {
+  color: #92400E; background: #FEF3C7; padding: 2px 8px;
+  border-radius: 4px; font-size: 0.75rem; font-weight: 600;
+}
+.btn-confirm-tk, .btn-reject-tk {
+  border: none; background: none; cursor: pointer;
+  font-size: 1rem; padding: 2px 4px; border-radius: 4px;
+}
+.btn-confirm-tk:hover { background: #DCFCE7; }
+.btn-reject-tk:hover { background: #FEE2E2; }
+
+/* ═══════════════════════════════════════
    REPORTS PAGE
    ═══════════════════════════════════════ */
 .report-layout {
