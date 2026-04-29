@@ -3173,14 +3173,21 @@ const App = {
     document.getElementById('btn-save-cropped-qr').addEventListener('click', async () => {
       const src = document.getElementById('qr-cropped-img').src;
       if (!src) return;
+      
+      this.toast('info', '⏳ Đang lưu và đồng bộ...');
+      
+      // Nén ảnh trước khi gửi để tránh lỗi "Failed to fetch" do payload quá lớn
+      const compressed = await this.compressImage(src);
+      
       const qrInfo = document.getElementById('qr-decoded-info').value;
       localStorage.setItem('khs_qr_info', qrInfo);
-      await this.saveConfigValue('pos_qr_image', src);
+      await this.saveConfigValue('pos_qr_image', compressed);
+      
       const url = localStorage.getItem('khs_api_url');
       if (url) {
         try {
           // Lưu ảnh QR vào sheet "Ảnh SP" với SKU = __QR_CODE__
-          const r1 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveImage', sku:'__QR_CODE__', base64: src }) });
+          const r1 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveImage', sku:'__QR_CODE__', base64: compressed }) });
           const d1 = await r1.json();
           // Lưu thông tin CK vào sheet "Cấu hình"
           const r2 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: qrInfo }) });
