@@ -3179,10 +3179,24 @@ const App = {
       // Sync lên Google Sheets
       const url = localStorage.getItem('khs_api_url');
       if (url) {
-        fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key:'qr_image', value: src }) }).catch(() => {});
-        fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: qrInfo }) }).catch(() => {});
+        try {
+          const r1 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_image', value: src }) });
+          const d1 = await r1.json();
+          const r2 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: qrInfo }) });
+          const d2 = await r2.json();
+          if (d1.success && d2.success) {
+            this.toast('success', '💾 Đã lưu QR + thông tin (đồng bộ tất cả thiết bị)!');
+          } else {
+            console.error('QR save error:', d1, d2);
+            this.toast('error', '⚠️ Lưu local OK nhưng đồng bộ cloud lỗi: ' + (d1.error || d2.error || 'Không rõ'));
+          }
+        } catch (err) {
+          console.error('QR sync error:', err);
+          this.toast('error', '⚠️ Lưu local OK nhưng đồng bộ cloud lỗi: ' + err.message);
+        }
+      } else {
+        this.toast('success', '💾 Đã lưu QR (chỉ trên thiết bị này)!');
       }
-      this.toast('success', '💾 Đã lưu QR + thông tin (đồng bộ tất cả thiết bị)!');
     });
     // Clear all
     document.getElementById('btn-clear-qr').addEventListener('click', async () => {
