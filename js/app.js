@@ -3210,18 +3210,30 @@ const App = {
       
       const url = localStorage.getItem('khs_api_url');
       if (url) {
+        let errs = [];
         try {
           const r1 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveImage', sku:'__QR_CODE__', base64: compressed }) });
           const d1 = await r1.json();
+          if (!d1.success) errs.push('Lỗi ảnh: ' + d1.error);
+        } catch (err) {
+          errs.push('Lỗi mạng lưu ảnh: ' + err.message);
+        }
+
+        // Delay 1s to prevent Google Apps Script rate limiting
+        await new Promise(r => setTimeout(r, 1000));
+
+        try {
           const r2 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: qrInfo }) });
           const d2 = await r2.json();
-          if (d1.success && d2.success) {
-            this.toast('success', '💾 Đã lưu QR + thông tin (đồng bộ tất cả thiết bị)!');
-          } else {
-            this.toast('error', '⚠️ Lỗi đồng bộ: ' + (d1.error || d2.error || 'Không rõ'));
-          }
+          if (!d2.success) errs.push('Lỗi info: ' + d2.error);
         } catch (err) {
-          this.toast('error', '⚠️ Lỗi: ' + err.message);
+          errs.push('Lỗi mạng lưu info: ' + err.message);
+        }
+
+        if (errs.length > 0) {
+          this.toast('error', '⚠️ Lỗi đồng bộ: ' + errs.join(', '));
+        } else {
+          this.toast('success', '💾 Đã lưu QR + thông tin (đồng bộ tất cả thiết bị)!');
         }
       } else {
         this.toast('success', '💾 Đã lưu QR (chỉ trên thiết bị này)!');
