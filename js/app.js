@@ -3239,6 +3239,14 @@ const App = {
       qrOriginalDataUrl = null;
       await this.saveConfigValue('pos_qr_image', '');
       localStorage.removeItem('khs_qr_info');
+      
+      // Xóa khỏi IndexedDB cục bộ
+      try {
+        const db = await this._openImgDB();
+        const tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').delete('__QR_CODE__');
+      } catch(e) {}
+
       const url = localStorage.getItem('khs_api_url');
       if (url) {
         fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteImage', sku:'__QR_CODE__' }) }).catch(() => {});
@@ -3654,11 +3662,22 @@ const App = {
       if (!json.success || !json.data) return;
       const cloudImages = json.data; // { sku: base64, ... }
       const db = await this._openImgDB();
+      
+      // Xóa các ảnh cũ không còn trên cloud, sau đó thêm ảnh mới
       const tx = db.transaction('images', 'readwrite');
       const store = tx.objectStore('images');
-      for (const [sku, base64] of Object.entries(cloudImages)) {
-        store.put(base64, sku);
-      }
+      
+      const req = store.getAllKeys();
+      req.onsuccess = () => {
+        const localKeys = req.result;
+        for (const key of localKeys) {
+          if (!cloudImages[key]) store.delete(key);
+        }
+        for (const [sku, base64] of Object.entries(cloudImages)) {
+          store.put(base64, sku);
+        }
+      };
+
       this._imgSynced = true;
       console.log(`☁️ Synced ${Object.keys(cloudImages).length} ảnh từ cloud`);
       // Reload images on page
