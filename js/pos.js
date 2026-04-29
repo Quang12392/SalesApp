@@ -581,7 +581,7 @@ const POS = {
     document.body.appendChild(temp);
 
     // Load saved QR code into invoice
-    const savedQR = await App.getConfigValue('pos_qr_image');
+    const savedQR = await App.getProductImage('__QR_CODE__');
     if (savedQR) {
       const qrImg = document.getElementById('inv-capture-qr');
       const box = document.getElementById('inv-capture-qr-box');
@@ -1044,7 +1044,7 @@ const POS = {
       </div>
     `;
     // Load QR + info into popup
-    App.getConfigValue('pos_qr_image').then(saved => {
+    App.getProductImage('__QR_CODE__').then(saved => {
       if (saved) {
         const qr = document.getElementById('inv-popup-qr');
         const box = document.getElementById('inv-popup-qr-box');
