@@ -130,9 +130,9 @@ const App = {
         if (cfg.store_name) localStorage.setItem('khs_store_name', cfg.store_name);
         if (cfg.store_addr) localStorage.setItem('khs_store_addr', cfg.store_addr);
         if (cfg.store_phone) localStorage.setItem('khs_store_phone', cfg.store_phone);
-        // QR: luôn đồng bộ (kể cả xóa/thay đổi)
+        // QR info: đồng bộ từ config
         if (cfg.hasOwnProperty('qr_info')) localStorage.setItem('khs_qr_info', cfg.qr_info || '');
-        if (cfg.hasOwnProperty('qr_image')) this.saveConfigValue('pos_qr_image', cfg.qr_image || '');
+        // QR image: đồng bộ từ sheet "Ảnh SP" (ở syncImagesFromCloud phía dưới)
       }
       this.handleRoute();
       // Sync ảnh từ cloud (background, không block UI)
@@ -3169,30 +3169,29 @@ const App = {
       document.getElementById('btn-process-qr').textContent = '⚡ Xử lý ảnh';
       document.getElementById('btn-process-qr').disabled = false;
     });
-    // Save cropped QR + info text
+    // Save cropped QR + info text → dùng cơ chế Ảnh SP (giống ảnh sản phẩm)
     document.getElementById('btn-save-cropped-qr').addEventListener('click', async () => {
       const src = document.getElementById('qr-cropped-img').src;
       if (!src) return;
-      await this.saveConfigValue('pos_qr_image', src);
       const qrInfo = document.getElementById('qr-decoded-info').value;
       localStorage.setItem('khs_qr_info', qrInfo);
-      // Sync lên Google Sheets
+      await this.saveConfigValue('pos_qr_image', src);
       const url = localStorage.getItem('khs_api_url');
       if (url) {
         try {
-          const r1 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_image', value: src }) });
+          // Lưu ảnh QR vào sheet "Ảnh SP" với SKU = __QR_CODE__
+          const r1 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveImage', sku:'__QR_CODE__', base64: src }) });
           const d1 = await r1.json();
+          // Lưu thông tin CK vào sheet "Cấu hình"
           const r2 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: qrInfo }) });
           const d2 = await r2.json();
           if (d1.success && d2.success) {
             this.toast('success', '💾 Đã lưu QR + thông tin (đồng bộ tất cả thiết bị)!');
           } else {
-            console.error('QR save error:', d1, d2);
-            this.toast('error', '⚠️ Lưu local OK nhưng đồng bộ cloud lỗi: ' + (d1.error || d2.error || 'Không rõ'));
+            this.toast('error', '⚠️ Lỗi đồng bộ: ' + (d1.error || d2.error || 'Không rõ'));
           }
         } catch (err) {
-          console.error('QR sync error:', err);
-          this.toast('error', '⚠️ Lưu local OK nhưng đồng bộ cloud lỗi: ' + err.message);
+          this.toast('error', '⚠️ Lỗi: ' + err.message);
         }
       } else {
         this.toast('success', '💾 Đã lưu QR (chỉ trên thiết bị này)!');
@@ -3210,20 +3209,21 @@ const App = {
       qrOriginalDataUrl = null;
       await this.saveConfigValue('pos_qr_image', '');
       localStorage.removeItem('khs_qr_info');
-      // Sync xóa lên Google Sheets
       const url = localStorage.getItem('khs_api_url');
       if (url) {
-        fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key:'qr_image', value: '' }) }).catch(() => {});
-        fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: '' }) }).catch(() => {});
+        fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteImage', sku:'__QR_CODE__' }) }).catch(() => {});
+        fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: '' }) }).catch(() => {});
       }
       this.toast('success', '🗑 Đã xóa tất cả!');
     });
-    // Load existing saved QR
-    this.getConfigValue('pos_qr_image').then(saved => {
+    // Load existing saved QR từ sheet "Ảnh SP"
+    this.getProductImage('__QR_CODE__').then(saved => {
       if (saved) {
         document.getElementById('qr-cropped-img').src = saved;
         document.getElementById('qr-cropped-img').style.display = 'block';
         document.getElementById('qr-cropped-text').style.display = 'none';
+        // Cập nhật local cache
+        this.saveConfigValue('pos_qr_image', saved);
       }
     });
   },
