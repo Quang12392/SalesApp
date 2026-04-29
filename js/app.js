@@ -130,8 +130,9 @@ const App = {
         if (cfg.store_name) localStorage.setItem('khs_store_name', cfg.store_name);
         if (cfg.store_addr) localStorage.setItem('khs_store_addr', cfg.store_addr);
         if (cfg.store_phone) localStorage.setItem('khs_store_phone', cfg.store_phone);
-        if (cfg.qr_info) localStorage.setItem('khs_qr_info', cfg.qr_info);
-        if (cfg.qr_image) this.saveConfigValue('pos_qr_image', cfg.qr_image);
+        // QR: luôn đồng bộ (kể cả xóa/thay đổi)
+        if (cfg.hasOwnProperty('qr_info')) localStorage.setItem('khs_qr_info', cfg.qr_info || '');
+        if (cfg.hasOwnProperty('qr_image')) this.saveConfigValue('pos_qr_image', cfg.qr_image || '');
       }
       this.handleRoute();
       // Sync ảnh từ cloud (background, không block UI)
