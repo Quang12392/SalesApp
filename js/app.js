@@ -3715,10 +3715,12 @@ const App = {
   // ═══════════════════════════════════════
   async syncTikTok() {
     if (!confirm('Đồng bộ đơn hàng từ TikTok?\n\nĐơn mới sẽ ở trạng thái "Chờ đối chiếu".\nBạn cần xác nhận từng đơn để trừ tồn kho.')) return;
+    const url = localStorage.getItem('khs_api_url');
+    if (!url) { alert('❌ Chưa cấu hình API URL!'); return; }
     const btn = document.querySelector('.btn-sync-tiktok');
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Đang đồng bộ...'; }
     try {
-      const res = await fetch(this.API, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: {'Content-Type':'text/plain'},
         body: JSON.stringify({ action: 'syncTikTok' })
@@ -3729,7 +3731,7 @@ const App = {
         if (data.notFound && data.notFound.length) msg += '\n\n⚠️ SKU chưa mapping: ' + data.notFound.join(', ');
         alert('✅ ' + msg);
         // Reload orders
-        const orderRes = await fetch(this.API + '?action=getOrders');
+        const orderRes = await fetch(url + '?action=getOrders');
         const orderData = await orderRes.json();
         if (orderData.success) { this.orders = orderData.data; this.renderOrders(document.getElementById('page-container')); }
       } else {
@@ -3741,8 +3743,10 @@ const App = {
 
   async confirmTikTokOrder(orderId) {
     if (!confirm('Xác nhận đơn ' + orderId + '?\n\nTồn kho sẽ được trừ và đơn chuyển sang "Hoàn thành".')) return;
+    const url = localStorage.getItem('khs_api_url');
+    if (!url) { alert('❌ Chưa cấu hình API URL!'); return; }
     try {
-      const res = await fetch(this.API, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: {'Content-Type':'text/plain'},
         body: JSON.stringify({ action: 'confirmTikTokOrder', orderId })
