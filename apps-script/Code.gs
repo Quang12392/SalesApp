@@ -1365,7 +1365,7 @@ function syncTikTokOrders() {
     const now = new Date();
     const dateStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
     const orderId = 'TK' + dateStr + String(orderSheet.getLastRow() + 1).padStart(4, '0');
-    const timeStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
+    const timeStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy HH:mm');
 
     // Ghi vào Đơn hàng:
     // G=Tổng tiền (doanh thu gốc), H=Phí sàn (giảm giá), I=Thành tiền (sau trừ phí)
@@ -1416,15 +1416,18 @@ function confirmTikTokOrder(data) {
     return { success: false, error: 'Đơn ' + orderId + ' không ở trạng thái chờ đối chiếu' };
   }
 
-  // Đọc chi tiết đơn → trừ tồn kho
+  // Đọc chi tiết đơn → trừ tồn kho + ghi giá vốn FIFO vào cột G
   const itemSheet = getSheet('Chi tiết đơn');
   const allItems = itemSheet.getDataRange().getValues();
+  let totalCost = 0;
   for (let i = 1; i < allItems.length; i++) {
     if (String(allItems[i][0]).trim() === orderId) {
       const sku = String(allItems[i][1]).trim();
       const qty = parseNum(allItems[i][3]);
       if (sku && qty > 0) {
-        deductBatchesFIFO(sku, qty);
+        const fifoCost = deductBatchesFIFO(sku, qty);
+        itemSheet.getRange(i + 1, 7).setValue(fifoCost);
+        totalCost += fifoCost;
       }
     }
   }
@@ -1432,7 +1435,7 @@ function confirmTikTokOrder(data) {
   // Cập nhật trạng thái → completed
   orderSheet.getRange(orderRow, 11).setValue('completed');
 
-  return { success: true, message: 'Đã xác nhận đơn ' + orderId + ' và trừ tồn kho' };
+  return { success: true, message: 'Đã xác nhận đơn ' + orderId + ' và trừ tồn kho. Giá vốn: ' + totalCost.toLocaleString() + 'đ' };
 }
 
 // Đồng bộ các đơn cụ thể từ Chrome Extension → TẠO 1 ĐƠN TỔNG DUY NHẤT
@@ -1558,12 +1561,34 @@ function syncSpecificTikTokOrders(data) {
   const now = new Date();
   const dateStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
   const orderId = 'TK' + dateStr + String(orderSheet.getLastRow() + 1).padStart(4, '0');
-  const timeStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
+  const timeStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy HH:mm');
   const noteKey = 'TK:' + processedOrderIds.join(',');
+
+  // Tìm hoặc tạo khách hàng "Khách TikTok"
+  const custSheet = getSheet('Khách hàng');
+  const custData = custSheet.getDataRange().getValues();
+  let tkCustId = '';
+  let tkCustName = 'Khách TikTok';
+  for (let c = 1; c < custData.length; c++) {
+    const cName = String(custData[c][3] || '').trim().toLowerCase();
+    if (cName.includes('tiktok') || cName.includes('khách tiktok')) {
+      tkCustId = String(custData[c][2] || '').trim();
+      tkCustName = String(custData[c][3] || '').trim();
+      break;
+    }
+  }
+  if (!tkCustId) {
+    tkCustId = 'KHTK' + String(custSheet.getLastRow()).padStart(4, '0');
+    custSheet.appendRow([
+      'Cá nhân', 'Chi nhánh trung tâm',
+      tkCustId, 'Khách TikTok', '', '',
+      '', '', '', '', '', '', '', '', '', '', '', 'TikTok Sync'
+    ]);
+  }
 
   orderSheet.appendRow([
     orderId, timeStr,
-    '', 'Khách TikTok', '', '',
+    tkCustId, tkCustName, '', '',
     totalRevenue, totalFee, totalRevenue - totalFee,
     'Thuế Sàn', 'Chờ đối chiếu', noteKey, 'TikTok Sync',
     'Thuế Sàn'
