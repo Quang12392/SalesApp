@@ -520,6 +520,26 @@
     } catch(err) { /* IndexedDB not available */ }
   })();
 
+  // ── Force Cache Purge on Version Change ──
+  const APP_VERSION = '270';
+  const storedVersion = localStorage.getItem('khs_app_version');
+  if (storedVersion && storedVersion !== APP_VERSION) {
+    // Version changed — force purge all caches + unregister SW
+    (async () => {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) await r.unregister();
+        const keys = await caches.keys();
+        for (const k of keys) await caches.delete(k);
+        console.log('🔄 Cache purged for version ' + APP_VERSION);
+      } catch(e) {}
+      localStorage.setItem('khs_app_version', APP_VERSION);
+      window.location.reload();
+    })();
+  } else {
+    localStorage.setItem('khs_app_version', APP_VERSION);
+  }
+
   // ── Service Worker Registration (Auto-Update) ──
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
