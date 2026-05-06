@@ -77,6 +77,7 @@ function doPost(e) {
       case 'saveConfig':     result = saveStoreConfig(data); break;
       case 'syncTikTok':         result = syncTikTokOrders(); break;
       case 'confirmTikTokOrder': result = confirmTikTokOrder(data); break;
+      case 'syncSpecificTikTok': result = syncSpecificTikTokOrders(data); break;
       default: result = { success: false, error: 'Unknown action' };
     }
   } catch (err) {
@@ -1432,4 +1433,153 @@ function confirmTikTokOrder(data) {
   orderSheet.getRange(orderRow, 11).setValue('completed');
 
   return { success: true, message: 'Đã xác nhận đơn ' + orderId + ' và trừ tồn kho' };
+}
+
+// Đồng bộ các đơn cụ thể từ Chrome Extension → TẠO 1 ĐƠN TỔNG DUY NHẤT
+function syncSpecificTikTokOrders(data) {
+  const targetOrderIds = data.orderIds || [];
+  if (targetOrderIds.length === 0) return { success: false, error: 'Không có danh sách mã đơn' };
+
+  // Đọc Mapping SKU
+  const mappingSheet = getSheet('Mapping SKU');
+  const mappingData = mappingSheet.getDataRange().getValues();
+  const mapping = {}; 
+  for (let i = 1; i < mappingData.length; i++) {
+    const skuTK = String(mappingData[i][0] || '').trim();
+    if (!skuTK) continue;
+    if (!mapping[skuTK]) mapping[skuTK] = [];
+    mapping[skuTK].push({
+      skuApp: String(mappingData[i][1] || '').trim(),
+      name: String(mappingData[i][2] || '').trim(),
+      price: parseNum(mappingData[i][3]),
+      qtyBase: parseNum(mappingData[i][4]) || 1
+    });
+  }
+
+  // Đọc dữ liệu từ sheet TikTok
+  const tkSS = SpreadsheetApp.openById(TIKTOK_SS_ID);
+  const tkSheet = tkSS.getSheetByName(TIKTOK_SHEET_NAME);
+  if (!tkSheet) return { success: false, error: 'Không tìm thấy sheet "' + TIKTOK_SHEET_NAME + '"' };
+  
+  const lastRow = tkSheet.getLastRow();
+  const startRow = Math.max(2, lastRow - 3000);
+  const numRows = lastRow - startRow + 1;
+  const tkData = tkSheet.getRange(startRow, 1, numRows, 15).getValues();
+
+  // Thu thập tất cả items từ tất cả đơn, gộp theo sellerSku
+  const globalGrouped = {};
+  let totalRevenue = 0;
+  let totalFee = 0;
+  const processedOrderIds = [];
+  const notFoundSkus = [];
+
+  let curId = '';
+  for (let i = 0; i < tkData.length; i++) {
+    const cellId = String(tkData[i][0] || '').trim(); 
+    if (cellId) curId = cellId;
+    if (!curId || !targetOrderIds.includes(curId)) continue;
+    
+    // Bỏ qua đơn hoàn (doanh thu <= 0)
+    const revenue = parseNum(tkData[i][4]);
+    if (revenue <= 0) continue;
+    
+    const sellerSku = String(tkData[i][10] || '').trim(); 
+    if (!sellerSku) continue;
+
+    if (processedOrderIds.indexOf(curId) === -1) {
+      processedOrderIds.push(curId);
+    }
+
+    const qty = parseNum(tkData[i][2]) || 1;
+    const price = parseNum(tkData[i][3]);
+    const fee = parseNum(tkData[i][5]);
+
+    if (!globalGrouped[sellerSku]) {
+      globalGrouped[sellerSku] = {
+        sellerSku: sellerSku,
+        productName: String(tkData[i][1] || '').trim(),
+        qty: qty,
+        price: price,
+        revenue: revenue,
+        fee: fee
+      };
+    } else {
+      globalGrouped[sellerSku].qty += qty;
+      globalGrouped[sellerSku].revenue += revenue;
+      globalGrouped[sellerSku].fee += fee;
+    }
+  }
+
+  if (processedOrderIds.length === 0) {
+    return { success: false, error: 'Không tìm thấy đơn nào trong sheet TikTok' };
+  }
+
+  // Tính tổng và tạo danh sách items cho đơn
+  const orderItems = [];
+  for (const item of Object.values(globalGrouped)) {
+    totalRevenue += item.revenue;
+    totalFee += item.fee;
+
+    const mapped = mapping[item.sellerSku];
+    if (!mapped) {
+      notFoundSkus.push(item.sellerSku);
+      orderItems.push({
+        sku: item.sellerSku,
+        name: item.productName || item.sellerSku,
+        qty: item.qty,
+        price: item.price
+      });
+    } else {
+      for (const m of mapped) {
+        orderItems.push({
+          sku: m.skuApp,
+          name: m.name,
+          qty: item.qty * m.qtyBase,
+          price: m.price || item.price
+        });
+      }
+    }
+  }
+
+  // Gộp lại orderItems theo sku (vì mapping có thể tạo trùng skuApp)
+  const finalItems = {};
+  for (const it of orderItems) {
+    if (!finalItems[it.sku]) {
+      finalItems[it.sku] = { ...it };
+    } else {
+      finalItems[it.sku].qty += it.qty;
+    }
+  }
+
+  // Tạo 1 đơn tổng duy nhất
+  const orderSheet = getSheet('Đơn hàng');
+  const itemSheet = getSheet('Chi tiết đơn');
+  
+  const now = new Date();
+  const dateStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+  const orderId = 'TK' + dateStr + String(orderSheet.getLastRow() + 1).padStart(4, '0');
+  const timeStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
+  const noteKey = 'TK:' + processedOrderIds.join(',');
+
+  orderSheet.appendRow([
+    orderId, timeStr,
+    '', 'Khách TikTok', '', '',
+    totalRevenue, totalFee, totalRevenue - totalFee,
+    'Thuế Sàn', 'Chờ đối chiếu', noteKey, 'TikTok Sync',
+    'Thuế Sàn'
+  ]);
+
+  for (const it of Object.values(finalItems)) {
+    itemSheet.appendRow([orderId, it.sku, it.name, it.qty, it.price, it.qty * it.price]);
+  }
+
+  return {
+    success: true,
+    synced: 1,
+    skipped: 0,
+    orderCount: processedOrderIds.length,
+    itemCount: Object.keys(finalItems).length,
+    notFound: [...new Set(notFoundSkus)],
+    message: 'Đã tạo 1 đơn tổng từ ' + processedOrderIds.length + ' đơn TikTok, ' + Object.keys(finalItems).length + ' sản phẩm.'
+  };
 }
