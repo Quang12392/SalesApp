@@ -742,7 +742,22 @@ function deductBatchesFIFO(sku, qty) {
   // Cập nhật tổng tồn kho trong Sản phẩm
   syncProductFromBatches(sku);
 
-  return totalFifoCost; // Trả về tổng giá vốn FIFO
+  // Fallback: nếu không có lô nào → lấy giá vốn từ sheet Sản phẩm (cột H)
+  if (totalFifoCost === 0 && qty > 0) {
+    try {
+      const prodSheet = getSheet('Sản phẩm');
+      const prodData = prodSheet.getDataRange().getValues();
+      for (let p = 1; p < prodData.length; p++) {
+        if (String(prodData[p][2]).trim() === String(sku).trim()) {
+          const fallbackCost = parseNum(prodData[p][7]); // Cột H = Giá vốn
+          if (fallbackCost > 0) totalFifoCost = fallbackCost * qty;
+          break;
+        }
+      }
+    } catch(e) { /* ignore */ }
+  }
+
+  return totalFifoCost; // Trả về tổng giá vốn FIFO (hoặc fallback từ SP)
 }
 
 // Tính lại tồn kho + giá vốn TB từ các lô còn hàng → cập nhật sheet Sản phẩm
