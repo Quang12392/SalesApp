@@ -107,6 +107,7 @@ const POS = {
   },
 
   open() {
+    document.getElementById('tk-mini-search')?.remove();
     this.cart = [];
     this.selectedCustomer = null;
     this._tiktokOrderId = null;
@@ -213,6 +214,46 @@ const POS = {
 
     this.renderCart();
     this.updateTotals();
+    if (window.innerWidth <= 768) {
+      this.switchMobileView('cart');
+      this._injectTkProductSearch();
+    }
+  },
+
+  _injectTkProductSearch() {
+    document.getElementById('tk-mini-search')?.remove();
+    const cartPanel = document.querySelector('.pos-cart-panel');
+    if (!cartPanel) return;
+    const div = document.createElement('div');
+    div.id = 'tk-mini-search';
+    div.style.cssText = 'padding:8px 12px 0;flex-shrink:0';
+    div.innerHTML = `
+      <div style="position:relative">
+        <input id="tk-mini-input" type="text" placeholder="🔍 Thêm sản phẩm..." autocomplete="off"
+          style="width:100%;padding:8px 12px 8px 34px;border:1px solid #d1fae5;border-radius:10px;font-size:0.88rem;background:#f0fdf4;box-sizing:border-box">
+        <svg style="position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:0.45;pointer-events:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <div id="tk-mini-results" style="max-height:160px;overflow:auto;border:1px solid #d1fae5;border-radius:10px;margin-top:4px;background:#fff;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.08)"></div>`;
+    cartPanel.insertBefore(div, cartPanel.firstChild);
+    document.getElementById('tk-mini-input').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase().trim();
+      const res = document.getElementById('tk-mini-results');
+      if (!q) { res.style.display = 'none'; return; }
+      const matches = App.products.filter(p =>
+        p.name.toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q)
+      ).slice(0, 6);
+      if (!matches.length) { res.style.display = 'none'; return; }
+      res.style.display = 'block';
+      res.innerHTML = matches.map(p => `
+        <div onclick="POS.addToCart('${p.id}');document.getElementById('tk-mini-input').value='';document.getElementById('tk-mini-results').style.display='none'"
+          style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f5f5f5">
+          <div><div style="font-size:0.87rem;font-weight:500">${p.name}</div><div style="font-size:0.73rem;color:#9CA3AF">${p.sku||''}</div></div>
+          <div style="text-align:right;flex-shrink:0;margin-left:8px">
+            <div style="color:#1B5E20;font-weight:600;font-size:0.85rem">${(p.sellPrice||0).toLocaleString('vi-VN')}đ</div>
+            <div style="font-size:0.72rem;color:${p.stock<=0?'#EF4444':'#9CA3AF'}">${p.stock<=0?'Hết':'Kho: '+p.stock}</div>
+          </div>
+        </div>`).join('');
+    });
   },
 
   async _doConfirmTikTok() {
