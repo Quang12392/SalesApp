@@ -1449,10 +1449,6 @@ const App = {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
               Trả hàng
             </button>
-            <button class="btn-sync-tiktok" onclick="App.syncTikTok()" title="Đồng bộ đơn TikTok">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m0 0a9 9 0 0 1 9-9m-9 9a9 9 0 0 0 9 9"/></svg>
-              TikTok
-            </button>
           </div>
           <div class="orders-summary-bar" id="o-summary">
             <span>0 đơn hàng</span>

@@ -75,9 +75,9 @@ function doPost(e) {
       case 'saveImage':      result = saveProductImage(data); break;
       case 'deleteImage':    result = deleteProductImage(data); break;
       case 'saveConfig':     result = saveStoreConfig(data); break;
-      case 'syncTikTok':         result = syncTikTokOrders(); break;
       case 'confirmTikTokOrder': result = confirmTikTokOrder(data); break;
       case 'syncSpecificTikTok': result = syncSpecificTikTokOrders(data); break;
+      case 'fixItemNames':       result = fixItemNames(); break;
       default: result = { success: false, error: 'Unknown action' };
     }
   } catch (err) {
@@ -108,30 +108,60 @@ function parseNum(v) {
   return parseFloat(String(v).replace(/,/g, '')) || 0;
 }
 
+// Ghi 1 dòng vào "Chi tiết đơn" — tên SP lấy từ skuToName map trước khi gọi hàm này
+function appendItemRow(sheet, rowData) {
+  sheet.appendRow(rowData);
+}
+
+// ── Tên header cột "Sản phẩm" — đổi tên header trong Sheet thì sửa ở đây ──
+const PROD_COL = {
+  TYPE:     'Loại hàng',
+  CATEGORY: 'Nhóm hàng(3 Cấp)',
+  SKU:      'Mã hàng',
+  BARCODE:  'Mã vạch',
+  NAME:     'Tên hàng',
+  BRAND:    'Thương hiệu',
+  SELL:     'Giá bán',
+  COST:     'Giá vốn',
+  STOCK:    'Tồn kho',
+  ORD:      'KH đặt',
+  EXP:      'Dự kiến hết hàng'
+};
+
+// Xây map { tênHeader: indexCột } từ dòng header
+function buildColMap(headerRow) {
+  var map = {};
+  for (var i = 0; i < headerRow.length; i++) {
+    var h = String(headerRow[i]).trim();
+    if (h) map[h] = i;
+  }
+  return map;
+}
+
 // ═══════════════════════════════════════
-// PRODUCTS — Mapping theo sheet "Sản phẩm"
-// Cols: A=Loại hàng, B=Nhóm hàng, C=Mã hàng, D=Mã vạch, E=Tên hàng, F=Thương hiệu, G=Giá bán, H=Giá vốn, I=Tồn kho
+// PRODUCTS — đọc theo tên header, không phụ thuộc vị trí cột
 // ═══════════════════════════════════════
 function getProducts() {
   const sheet = getSheet('Sản phẩm');
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return { success: true, data: [] };
 
+  const cm = buildColMap(data[0]);
   const products = [];
   for (let i = 1; i < data.length; i++) {
     const r = data[i];
-    const sku = String(r[2] || '').trim();
+    const sku = String(r[cm[PROD_COL.SKU]] || '').trim();
     if (!sku) continue;
     products.push({
       id: sku,
       sku: sku,
-      name: String(r[4] || '').trim(),
-      category: String(r[1] || '').trim(),
-      sellPrice: parseNum(r[6]),
-      costPrice: parseNum(r[7]),
-      stock: parseNum(r[8]),
+      name: String(r[cm[PROD_COL.NAME]] || '').trim(),
+      category: String(cm[PROD_COL.CATEGORY] !== undefined ? r[cm[PROD_COL.CATEGORY]] : '').trim(),
+      sellPrice: parseNum(r[cm[PROD_COL.SELL]]),
+      costPrice: parseNum(r[cm[PROD_COL.COST]]),
+      stock: parseNum(r[cm[PROD_COL.STOCK]]),
       unit: 'hộp',
-      brand: String(r[5] || '').trim(),
+      brand: String(cm[PROD_COL.BRAND] !== undefined ? r[cm[PROD_COL.BRAND]] : '').trim(),
       rowIndex: i + 1
     });
   }
@@ -140,32 +170,35 @@ function getProducts() {
 
 function addProduct(data) {
   const sheet = getSheet('Sản phẩm');
+  const allData = sheet.getDataRange().getValues();
+  const cm = buildColMap(allData[0]);
   const sku = String(data.sku || '').trim();
   const stock = parseNum(data.stock);
   const cost = parseNum(data.costPrice);
-  
+
   // Kiểm tra trùng SKU
   if (sku) {
-    const allData = sheet.getDataRange().getValues();
     for (let i = 1; i < allData.length; i++) {
-      if (String(allData[i][2]).trim() === sku) {
+      if (String(allData[i][cm[PROD_COL.SKU]]).trim() === sku) {
         return { success: false, error: 'Mã hàng (SKU) "' + sku + '" đã tồn tại! Vui lòng dùng mã khác.' };
       }
     }
   }
-  
-  sheet.appendRow([
-    'Hàng hóa',
-    data.category || '',
-    sku,
-    '',
-    data.name || '',
-    data.brand || '',
-    data.sellPrice || 0,
-    cost,
-    stock,
-    0, '--'
-  ]);
+
+  // Xây dòng mới theo thứ tự header hiện tại của sheet
+  const row = new Array(allData[0].length).fill('');
+  function setCol(colName, value) { if (cm[colName] !== undefined) row[cm[colName]] = value; }
+  setCol(PROD_COL.TYPE,     'Hàng hóa');
+  setCol(PROD_COL.CATEGORY, data.category || '');
+  setCol(PROD_COL.SKU,      sku);
+  setCol(PROD_COL.NAME,     data.name || '');
+  setCol(PROD_COL.BRAND,    data.brand || '');
+  setCol(PROD_COL.SELL,     data.sellPrice || 0);
+  setCol(PROD_COL.COST,     cost);
+  setCol(PROD_COL.STOCK,    stock);
+  setCol(PROD_COL.ORD,      0);
+  setCol(PROD_COL.EXP,      '--');
+  sheet.appendRow(row);
   
   // Tự tạo lô đầu tiên nếu có tồn kho
   if (sku && stock > 0) {
@@ -188,15 +221,17 @@ function addProduct(data) {
 function updateProduct(data) {
   const sheet = getSheet('Sản phẩm');
   const allData = sheet.getDataRange().getValues();
+  const cm = buildColMap(allData[0]);
   const searchSku = data.oldSku || data.sku;
   for (let i = 1; i < allData.length; i++) {
-    if (String(allData[i][2]).trim() === searchSku) {
+    if (String(allData[i][cm[PROD_COL.SKU]]).trim() === searchSku) {
       const row = i + 1;
-      if (data.newSku !== undefined)    sheet.getRange(row, 3).setValue(data.newSku);
-      if (data.name !== undefined)      sheet.getRange(row, 5).setValue(data.name);
-      if (data.category !== undefined)  sheet.getRange(row, 2).setValue(data.category);
-      if (data.sellPrice !== undefined) sheet.getRange(row, 7).setValue(data.sellPrice);
-      if (data.costPrice !== undefined) sheet.getRange(row, 8).setValue(data.costPrice);
+      if (data.newSku !== undefined)    sheet.getRange(row, cm[PROD_COL.SKU] + 1).setValue(data.newSku);
+      if (data.name !== undefined)      sheet.getRange(row, cm[PROD_COL.NAME] + 1).setValue(data.name);
+      if (data.category !== undefined && cm[PROD_COL.CATEGORY] !== undefined)
+        sheet.getRange(row, cm[PROD_COL.CATEGORY] + 1).setValue(data.category);
+      if (data.sellPrice !== undefined) sheet.getRange(row, cm[PROD_COL.SELL] + 1).setValue(data.sellPrice);
+      if (data.costPrice !== undefined) sheet.getRange(row, cm[PROD_COL.COST] + 1).setValue(data.costPrice);
       
       // ── BƯỚC 1: Đồng bộ SKU + tên + giá sang sheet Lô hàng TRƯỚC ──
       const finalSku = data.newSku || searchSku;
@@ -229,10 +264,10 @@ function updateProduct(data) {
         if (diff > 0) {
           var now2 = new Date();
           var adjTime = Utilities.formatDate(now2, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy HH:mm');
-          var adjCost = parseNum(data.costPrice || allData[i][7]);
+          var adjCost = parseNum(data.costPrice || allData[i][cm[PROD_COL.COST]]);
           batchSheet2.appendRow([
             'LOT-ADJ-' + sku + '-' + Utilities.formatDate(now2, 'Asia/Ho_Chi_Minh', 'ddMMyyyyHHmm'),
-            sku, data.name || allData[i][4], diff, diff, adjCost,
+            sku, data.name || allData[i][cm[PROD_COL.NAME]], diff, diff, adjCost,
             adjTime, 'Hệ thống', 'Điều chỉnh tồn kho +' + diff
           ]);
         } else if (diff < 0) {
@@ -259,8 +294,9 @@ function updateProduct(data) {
 function deleteProduct(data) {
   const sheet = getSheet('Sản phẩm');
   const allData = sheet.getDataRange().getValues();
+  const cm = buildColMap(allData[0]);
   for (let i = 1; i < allData.length; i++) {
-    if (String(allData[i][2]).trim() === data.sku) {
+    if (String(allData[i][cm[PROD_COL.SKU]]).trim() === data.sku) {
       sheet.deleteRow(i + 1);
       // Zero hết tồn kho lô — giữ lại lịch sử để phục vụ trả hàng
       try {
@@ -268,13 +304,13 @@ function deleteProduct(data) {
         const batchData = batchSheet.getDataRange().getValues();
         for (let b = 1; b < batchData.length; b++) {
           if (String(batchData[b][1]).trim() === data.sku && parseNum(batchData[b][4]) > 0) {
-            batchSheet.getRange(b + 1, 5).setValue(0); // SL còn = 0
+            batchSheet.getRange(b + 1, 5).setValue(0);
             batchSheet.getRange(b + 1, 9).setValue('SP đã xóa - giữ lịch sử');
           }
         }
       } catch(e) {}
       // Ghi thông báo
-      addNotificationRow('product_del', '🗑️ Xóa SP: ' + String(allData[i][4]) + ' (' + data.sku + ')', '', data.sku);
+      addNotificationRow('product_del', '🗑️ Xóa SP: ' + String(allData[i][cm[PROD_COL.NAME]]) + ' (' + data.sku + ')', '', data.sku);
 
       return { success: true, message: 'Đã xóa SP (lô hàng giữ lại lịch sử)' };
     }
@@ -527,7 +563,7 @@ function createOrder(data) {
     for (const item of data.items) {
       // deductBatchesFIFO trả về tổng giá vốn FIFO chính xác
       const fifoCost = deductBatchesFIFO(item.sku, item.qty);
-      itemSheet.appendRow([orderId, item.sku || '', item.name, item.qty, item.price, item.qty * item.price, fifoCost]);
+      appendItemRow(itemSheet, [orderId, item.sku || '', item.name, item.qty, item.price, item.qty * item.price, fifoCost]);
     }
   }
 
@@ -684,15 +720,16 @@ function initBatches() {
   const timeStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy HH:mm');
   let count = 0;
 
+  const prodCm = buildColMap(prodData[0]);
   for (let i = 1; i < prodData.length; i++) {
-    const sku = String(prodData[i][2]).trim();
-    const stock = parseNum(prodData[i][8]);
-    const cost = parseNum(prodData[i][7]);
+    const sku = String(prodData[i][prodCm[PROD_COL.SKU]]).trim();
+    const stock = parseNum(prodData[i][prodCm[PROD_COL.STOCK]]);
+    const cost = parseNum(prodData[i][prodCm[PROD_COL.COST]]);
     if (!sku || stock <= 0 || existingSkus.has(sku)) continue;
 
     const batchId = 'LOT-INIT-' + String(count + 1).padStart(3, '0');
     batchSheet.appendRow([
-      batchId, sku, String(prodData[i][4]), stock, stock, cost,
+      batchId, sku, String(prodData[i][prodCm[PROD_COL.NAME]]), stock, stock, cost,
       timeStr, 'Hệ thống', 'Lô khởi tạo từ tồn kho cũ'
     ]);
     count++;
@@ -742,14 +779,15 @@ function deductBatchesFIFO(sku, qty) {
   // Cập nhật tổng tồn kho trong Sản phẩm
   syncProductFromBatches(sku);
 
-  // Fallback: nếu không có lô nào → lấy giá vốn từ sheet Sản phẩm (cột H)
+  // Fallback: nếu không có lô nào → lấy giá vốn từ sheet Sản phẩm
   if (totalFifoCost === 0 && qty > 0) {
     try {
       const prodSheet = getSheet('Sản phẩm');
       const prodData = prodSheet.getDataRange().getValues();
+      const prodCm = buildColMap(prodData[0]);
       for (let p = 1; p < prodData.length; p++) {
-        if (String(prodData[p][2]).trim() === String(sku).trim()) {
-          const fallbackCost = parseNum(prodData[p][7]); // Cột H = Giá vốn
+        if (String(prodData[p][prodCm[PROD_COL.SKU]]).trim() === String(sku).trim()) {
+          const fallbackCost = parseNum(prodData[p][prodCm[PROD_COL.COST]]);
           if (fallbackCost > 0) totalFifoCost = fallbackCost * qty;
           break;
         }
@@ -781,10 +819,11 @@ function syncProductFromBatches(sku) {
   // Cập nhật sheet Sản phẩm
   const prodSheet = getSheet('Sản phẩm');
   const prodData = prodSheet.getDataRange().getValues();
+  const prodCm = buildColMap(prodData[0]);
   for (let i = 1; i < prodData.length; i++) {
-    if (String(prodData[i][2]).trim() === String(sku).trim()) {
-      prodSheet.getRange(i + 1, 9).setValue(totalQty);  // Cột I = Tồn kho
-      prodSheet.getRange(i + 1, 8).setValue(avgCost);    // Cột H = Giá vốn
+    if (String(prodData[i][prodCm[PROD_COL.SKU]]).trim() === String(sku).trim()) {
+      prodSheet.getRange(i + 1, prodCm[PROD_COL.STOCK] + 1).setValue(totalQty);
+      prodSheet.getRange(i + 1, prodCm[PROD_COL.COST] + 1).setValue(avgCost);
       break;
     }
   }
@@ -835,13 +874,13 @@ function handleReturnOrder(data) {
       
       // Kiểm tra SP còn tồn tại không
       var prodExists = false;
+      var prodCm = buildColMap(prodData[0]);
       for (var pi = 1; pi < prodData.length; pi++) {
-        if (String(prodData[pi][2]).trim() === sku) { prodExists = true; break; }
+        if (String(prodData[pi][prodCm[PROD_COL.SKU]]).trim() === sku) { prodExists = true; break; }
       }
-      
+
       // Khôi phục SP từ Lô hàng nếu đã bị xóa
       if (!prodExists && sku) {
-        // Lấy thông tin từ lô hàng
         var batchData = batchSheet.getDataRange().getValues();
         var bName = item.name || '', bCost = 0, bSell = 0;
         for (var bi = 1; bi < batchData.length; bi++) {
@@ -851,11 +890,17 @@ function handleReturnOrder(data) {
             bSell = parseNum(batchData[bi][10]) || bSell;
           }
         }
-        // Tạo lại SP
-        prodSheet.appendRow([
-          'Hàng hóa', 'Dùng ngoài', sku, '', bName, '',
-          bSell || item.price || 0, bCost, 0
-        ]);
+        // Tạo lại SP theo header hiện tại
+        var newRow = new Array(prodData[0].length).fill('');
+        function setCol3(colName, value) { if (prodCm[colName] !== undefined) newRow[prodCm[colName]] = value; }
+        setCol3(PROD_COL.TYPE,     'Hàng hóa');
+        setCol3(PROD_COL.CATEGORY, 'Dùng ngoài');
+        setCol3(PROD_COL.SKU,      sku);
+        setCol3(PROD_COL.NAME,     bName);
+        setCol3(PROD_COL.SELL,     bSell || item.price || 0);
+        setCol3(PROD_COL.COST,     bCost);
+        setCol3(PROD_COL.STOCK,    0);
+        prodSheet.appendRow(newRow);
       }
       
       // Lấy giá vốn gốc từ Chi tiết đơn hoặc lô hàng
@@ -1254,17 +1299,22 @@ function formatNumbers() {
   // Set locale VN
   ss.setSpreadsheetLocale('vi_VN');
   
-  // Format sheet Sản phẩm — cột G(Giá bán), H(Giá vốn), I(Tồn kho)
+  // Format sheet Sản phẩm — đọc theo header, không phụ thuộc vị trí cột
   const prodSheet = ss.getSheetByName('Sản phẩm');
   if (prodSheet) {
     const lastRow = prodSheet.getLastRow();
     if (lastRow > 1) {
-      // Giá bán (G) & Giá vốn (H) — format tiền
-      prodSheet.getRange(2, 7, lastRow - 1, 2).setNumberFormat('#.##0');
-      // Tồn kho (I) — format số nguyên
-      prodSheet.getRange(2, 9, lastRow - 1, 1).setNumberFormat('#.##0');
-      // KH đặt (J)
-      prodSheet.getRange(2, 10, lastRow - 1, 1).setNumberFormat('#.##0');
+      const headers = prodSheet.getRange(1, 1, 1, prodSheet.getLastColumn()).getValues()[0];
+      const cm = buildColMap(headers);
+      var fmtCol = function(colName, fmt) {
+        if (cm[colName] !== undefined) {
+          prodSheet.getRange(2, cm[colName] + 1, lastRow - 1, 1).setNumberFormat(fmt);
+        }
+      };
+      fmtCol(PROD_COL.SELL,  '#.##0');
+      fmtCol(PROD_COL.COST,  '#.##0');
+      fmtCol(PROD_COL.STOCK, '#.##0');
+      fmtCol(PROD_COL.ORD,   '#.##0');
     }
   }
   
@@ -1293,7 +1343,18 @@ function syncTikTokOrders() {
     });
   }
 
-  // 2. Đọc TikTok sheet (chỉ lấy 500 dòng cuối để tránh timeout)
+  // 2. Build map SKU → tên SP từ sheet "Sản phẩm"
+  const prodSheet2 = getSheet('Sản phẩm');
+  const prodData2 = prodSheet2.getDataRange().getValues();
+  const prodCm2 = buildColMap(prodData2[0]);
+  const skuToName = {};
+  for (let i = 1; i < prodData2.length; i++) {
+    const s = String(prodData2[i][prodCm2[PROD_COL.SKU]] || '').trim();
+    const n = String(prodData2[i][prodCm2[PROD_COL.NAME]] || '').trim();
+    if (s) skuToName[s] = n;
+  }
+
+  // 3. Đọc TikTok sheet (chỉ lấy 500 dòng cuối để tránh timeout)
   const tkSS = SpreadsheetApp.openById(TIKTOK_SS_ID);
   const tkSheet = tkSS.getSheetByName(TIKTOK_SHEET_NAME);
   if (!tkSheet) return { success: false, error: 'Không tìm thấy sheet "' + TIKTOK_SHEET_NAME + '"' };
@@ -1368,7 +1429,7 @@ function syncTikTokOrders() {
         for (const m of mapped) {
           orderItems.push({
             sku: m.skuApp,
-            name: m.name,
+            name: skuToName[m.skuApp] || m.name,
             qty: item.qty * m.qtyBase,
             price: item.price // Dùng giá TikTok thực tế, không dùng giá mapping
           });
@@ -1394,7 +1455,7 @@ function syncTikTokOrders() {
 
     // Ghi chi tiết đơn (CHƯA trừ tồn kho)
     for (const it of orderItems) {
-      itemSheet.appendRow([orderId, it.sku, it.name, it.qty, it.price, it.qty * it.price]);
+      appendItemRow(itemSheet, [orderId, it.sku, it.name, it.qty, it.price, it.qty * it.price]);
     }
 
     synced++;
@@ -1474,11 +1535,22 @@ function syncSpecificTikTokOrders(data) {
     });
   }
 
+  // Build map SKU → tên SP từ sheet "Sản phẩm"
+  const prodSheetS = getSheet('Sản phẩm');
+  const prodDataS = prodSheetS.getDataRange().getValues();
+  const prodCmS = buildColMap(prodDataS[0]);
+  const skuToNameS = {};
+  for (let i = 1; i < prodDataS.length; i++) {
+    const s = String(prodDataS[i][prodCmS[PROD_COL.SKU]] || '').trim();
+    const n = String(prodDataS[i][prodCmS[PROD_COL.NAME]] || '').trim();
+    if (s) skuToNameS[s] = n;
+  }
+
   // Đọc dữ liệu từ sheet TikTok
   const tkSS = SpreadsheetApp.openById(TIKTOK_SS_ID);
   const tkSheet = tkSS.getSheetByName(TIKTOK_SHEET_NAME);
   if (!tkSheet) return { success: false, error: 'Không tìm thấy sheet "' + TIKTOK_SHEET_NAME + '"' };
-  
+
   const lastRow = tkSheet.getLastRow();
   const startRow = Math.max(2, lastRow - 3000);
   const numRows = lastRow - startRow + 1;
@@ -1551,7 +1623,7 @@ function syncSpecificTikTokOrders(data) {
       for (const m of mapped) {
         orderItems.push({
           sku: m.skuApp,
-          name: m.name,
+          name: skuToNameS[m.skuApp] || m.name,
           qty: item.qty * m.qtyBase,
           price: m.price || item.price
         });
@@ -1610,7 +1682,7 @@ function syncSpecificTikTokOrders(data) {
   ]);
 
   for (const it of Object.values(finalItems)) {
-    itemSheet.appendRow([orderId, it.sku, it.name, it.qty, it.price, it.qty * it.price]);
+    appendItemRow(itemSheet, [orderId, it.sku, it.name, it.qty, it.price, it.qty * it.price]);
   }
 
   return {
@@ -1622,4 +1694,39 @@ function syncSpecificTikTokOrders(data) {
     notFound: [...new Set(notFoundSkus)],
     message: 'Đã tạo 1 đơn tổng từ ' + processedOrderIds.length + ' đơn TikTok, ' + Object.keys(finalItems).length + ' sản phẩm.'
   };
+}
+
+// Sửa tất cả #ERROR! trong cột Tên SP của "Chi tiết đơn" — chạy 1 lần sau deploy
+function fixItemNames() {
+  var itemSheet = getSheet('Chi tiết đơn');
+  var prodSheet = getSheet('Sản phẩm');
+  var prodData = prodSheet.getDataRange().getValues();
+  var prodCm = buildColMap(prodData[0]);
+  var skuToName = {};
+  for (var i = 1; i < prodData.length; i++) {
+    var s = String(prodData[i][prodCm[PROD_COL.SKU]] || '').trim();
+    var n = String(prodData[i][prodCm[PROD_COL.NAME]] || '').trim();
+    if (s) skuToName[s] = n;
+  }
+
+  var lastRow = itemSheet.getLastRow();
+  if (lastRow < 2) return { success: true, fixed: 0 };
+
+  var skuCol = itemSheet.getRange(2, 2, lastRow - 1, 1).getValues();       // Cột B: Mã SP
+  var nameCol = itemSheet.getRange(2, 3, lastRow - 1, 1).getDisplayValues(); // Cột C: Tên SP (hiển thị)
+
+  var fixed = 0;
+  for (var r = 0; r < nameCol.length; r++) {
+    var displayed = String(nameCol[r][0] || '').trim();
+    if (displayed === '#ERROR!' || displayed === '') {
+      var sku = String(skuCol[r][0] || '').trim();
+      var correctName = skuToName[sku] || sku;
+      if (correctName) {
+        itemSheet.getRange(r + 2, 3).setValue(correctName);
+        fixed++;
+      }
+    }
+  }
+
+  return { success: true, fixed: fixed, message: 'Đã sửa ' + fixed + ' dòng tên sản phẩm.' };
 }
