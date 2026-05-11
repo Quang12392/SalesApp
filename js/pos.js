@@ -185,7 +185,7 @@ const POS = {
     // Pre-fill cart
     this.cart = (o.items || []).map(item => {
       const p = App.products.find(x => x.sku === item.sku) || App.products.find(x => x.name === item.name);
-      return { id: p ? p.id : item.sku, sku: item.sku, name: item.name, price: item.price, qty: item.qty, unit: p ? (p.unit || '') : '', maxStock: p ? p.stock : 0 };
+      return { id: p ? p.id : item.sku, sku: item.sku, name: p ? p.name : item.name, price: item.price, qty: item.qty, unit: p ? (p.unit || '') : '', maxStock: p ? p.stock : 0 };
     });
 
     // Pre-fill customer
