@@ -213,7 +213,6 @@ const POS = {
 
     this.renderCart();
     this.updateTotals();
-    if (window.innerWidth <= 768) this.switchMobileView('cart');
   },
 
   async _doConfirmTikTok() {
