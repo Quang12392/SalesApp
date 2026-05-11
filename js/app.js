@@ -3741,10 +3741,28 @@ const App = {
     POS.openWithTikTokOrder(orderId);
   },
 
-  rejectTikTokOrder(orderId) {
+  async rejectTikTokOrder(orderId) {
     if (!confirm('Hủy đơn TikTok ' + orderId + '?')) return;
-    const o = this.orders.find(x => x.id === orderId);
-    if (o) { o.status = 'cancelled'; this.updateOrderTable(); }
+    const url = localStorage.getItem('khs_api_url');
+    if (!url) { this.toast('error', '❌ Chưa cấu hình API URL!'); return; }
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'cancelTikTokOrder', orderId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const o = this.orders.find(x => x.id === orderId);
+        if (o) o.status = 'cancelled';
+        this.updateOrderTable();
+        this.toast('success', '✅ Đã hủy đơn ' + orderId);
+      } else {
+        this.toast('error', '❌ ' + (data.error || 'Lỗi hủy đơn'));
+      }
+    } catch (e) {
+      this.toast('error', '❌ Lỗi kết nối: ' + e.message);
+    }
   }
 };
 
