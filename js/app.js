@@ -3741,26 +3741,8 @@ const App = {
     if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m0 0a9 9 0 0 1 9-9m-9 9a9 9 0 0 0 9 9"/></svg> TikTok'; }
   },
 
-  async confirmTikTokOrder(orderId) {
-    if (!confirm('Xác nhận đơn ' + orderId + '?\n\nTồn kho sẽ được trừ và đơn chuyển sang "Hoàn thành".')) return;
-    const url = localStorage.getItem('khs_api_url');
-    if (!url) { alert('❌ Chưa cấu hình API URL!'); return; }
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type':'text/plain'},
-        body: JSON.stringify({ action: 'confirmTikTokOrder', orderId })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('✅ ' + data.message);
-        const o = this.orders.find(x => x.id === orderId);
-        if (o) o.status = 'completed';
-        this.updateOrderTable();
-      } else {
-        alert('❌ ' + (data.error || 'Lỗi'));
-      }
-    } catch (err) { alert('❌ Lỗi: ' + err.message); }
+  confirmTikTokOrder(orderId) {
+    POS.openWithTikTokOrder(orderId);
   },
 
   rejectTikTokOrder(orderId) {

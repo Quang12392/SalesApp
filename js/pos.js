@@ -109,6 +109,8 @@ const POS = {
   open() {
     this.cart = [];
     this.selectedCustomer = null;
+    this._tiktokOrderId = null;
+    this._resetCheckoutBtn();
     document.getElementById('pos-overlay').style.display = 'flex';
     // Delay pushState so it doesn't conflict with hash routing (#pos → #orders)
     setTimeout(() => {
@@ -162,6 +164,86 @@ const POS = {
     setTimeout(() => document.getElementById('pos-product-search').focus(), 200);
 
     this.applyViewMode();
+  },
+
+  _resetCheckoutBtn() {
+    const btn = document.getElementById('btn-checkout');
+    if (!btn) return;
+    btn.style.background = '';
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> THANH TOÁN`;
+  },
+
+  openWithTikTokOrder(orderId) {
+    const o = App.orders.find(x => x.id === orderId);
+    if (!o) { App.toast('error', 'Không tìm thấy đơn ' + orderId); return; }
+
+    this.open();
+    this._tiktokOrderId = orderId;
+
+    // Pre-fill cart
+    this.cart = (o.items || []).map(item => {
+      const p = App.products.find(x => x.sku === item.sku) || App.products.find(x => x.name === item.name);
+      return { id: p ? p.id : item.sku, sku: item.sku, name: item.name, price: item.price, qty: item.qty, unit: p ? (p.unit || '') : '', maxStock: p ? p.stock : 0 };
+    });
+
+    // Pre-fill customer
+    if (o.customerName && o.customerName !== 'Khách lẻ') {
+      this.selectedCustomer = { id: o.customerId || '', name: o.customerName, phone: '', address: '' };
+      this.showSelectedCustomer();
+    }
+
+    // Pre-fill discount
+    const discount = (o.total || 0) - (o.finalTotal || 0);
+    if (discount > 0) document.getElementById('pos-discount').value = discount.toLocaleString('vi-VN');
+
+    // Pre-select payment
+    document.querySelectorAll('.pos-payment-option').forEach(opt => {
+      opt.classList.remove('active');
+      const radio = opt.querySelector('input[name="pos-payment"]');
+      if (radio) { radio.checked = radio.value === o.payment; if (radio.checked) opt.classList.add('active'); }
+    });
+
+    // Change checkout button to TikTok confirm mode
+    const btn = document.getElementById('btn-checkout');
+    if (btn) {
+      btn.style.background = 'linear-gradient(135deg, #1B5E20, #2E7D32)';
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> XÁC NHẬN ĐƠN`;
+    }
+
+    this.renderCart();
+    this.updateTotals();
+    if (window.innerWidth <= 768) this.switchMobileView('cart');
+  },
+
+  async _doConfirmTikTok() {
+    const orderId = this._tiktokOrderId;
+    const url = localStorage.getItem('khs_api_url');
+    if (!url) { App.toast('error', '❌ Chưa cấu hình API URL!'); return; }
+
+    const btn = document.getElementById('btn-checkout');
+    if (btn) { btn.disabled = true; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Đang xác nhận...`; }
+
+    try {
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'confirmTikTokOrder', orderId }) });
+      const data = await res.json();
+      if (data.success) {
+        const o = App.orders.find(x => x.id === orderId);
+        if (o) o.status = 'completed';
+        this._tiktokOrderId = null;
+        this.cart = [];
+        this.close(true);
+        App.toast('success', '✅ ' + (data.message || 'Đã xác nhận đơn ' + orderId));
+        App.updateOrderTable();
+        setTimeout(() => App.autoSync(), 2000);
+      } else {
+        App.toast('error', '❌ ' + (data.error || 'Lỗi xác nhận'));
+        if (btn) { btn.disabled = false; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> XÁC NHẬN ĐƠN`; }
+      }
+    } catch (err) {
+      App.toast('error', '❌ Lỗi kết nối: ' + err.message);
+      if (btn) { btn.disabled = false; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> XÁC NHẬN ĐƠN`; }
+    }
   },
 
   close(force) {
@@ -766,6 +848,8 @@ const POS = {
 
   checkout() {
     if (!this.cart.length) return;
+
+    if (this._tiktokOrderId) { this._doConfirmTikTok(); return; }
 
     // Check if offline — auto save as draft
     if (!navigator.onLine) {
