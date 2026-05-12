@@ -856,8 +856,8 @@ ul, ol { list-style: none; }
 .pos-p-sku { font-size: 0.7rem; color: var(--text-muted); font-family: monospace; }
 .pos-p-bottom { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; }
 .pos-p-price { font-weight: 700; color: var(--primary); font-size: 0.9rem; }
-.pos-p-stock { font-size: 0.7rem; color: var(--text-secondary); }
-.pos-p-stock.low { color: var(--warning); }
+.pos-p-stock { font-size: 0.9rem; color: var(--text-primary); font-weight: 700; }
+.pos-p-stock.low { color: var(--text-primary); }
 .pos-p-stock.out { color: var(--danger); }
 
 /* Product in cart — highlighted */
@@ -889,7 +889,7 @@ ul, ol { list-style: none; }
 .view-compact .pos-p-sku { display:none; }
 .view-compact .pos-p-bottom { margin-top:4px; justify-content:center; gap:6px; flex-wrap:wrap; }
 .view-compact .pos-p-price { font-size:0.8rem; }
-.view-compact .pos-p-stock { font-size:0.65rem; }
+.view-compact .pos-p-stock { font-size:0.8rem; }
 
 /* List view — single column rows */
 .view-list { grid-template-columns: 1fr; gap:4px; }
