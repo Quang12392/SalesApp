@@ -403,6 +403,28 @@ const POS = {
     });
   },
 
+  clearProductSearch({ focus = false, render = true } = {}) {
+    const search = document.getElementById('pos-product-search');
+    if (!search) return;
+    search.value = '';
+    if (render) this.renderProducts('');
+    if (focus) search.focus();
+  },
+
+  openProductSearchBlank() {
+    this.switchMobileView('browse');
+    const reset = () => {
+      const search = document.getElementById('pos-product-search');
+      if (!search) return;
+      search.value = '';
+      this.renderProducts('');
+      search.focus();
+    };
+    reset();
+    requestAnimationFrame(reset);
+    setTimeout(reset, 80);
+  },
+
   addToCart(productId) {
     const p = App.products.find(x => x.id === productId);
     if (!p) return;
@@ -426,6 +448,7 @@ const POS = {
     }
     this.renderCart();
     this.updateTotals();
+    this.clearProductSearch({ focus: window.innerWidth > 768 });
   },
 
   // Mobile POS: toggle between browse (product list) and cart (checkout) views
@@ -466,8 +489,9 @@ const POS = {
       if (draftsPanel) draftsPanel.style.display = 'none';
       
       this._mobileView = 'browse';
-      // Re-render products to show cart highlights
-      this.renderProducts(document.getElementById('pos-product-search').value);
+      // Start every add-more pass with a blank search box.
+      this.clearProductSearch();
+      this.renderProducts('');
       // Focus search
       setTimeout(() => document.getElementById('pos-product-search')?.focus(), 100);
     }
@@ -488,10 +512,8 @@ const POS = {
     }
     this.renderCart();
     this.updateTotals();
-    // Re-render products to update highlights
-    if (this._mobileView === 'browse') {
-      this.renderProducts(document.getElementById('pos-product-search').value);
-    }
+    // Re-render products to update highlights and start the next search blank.
+    this.clearProductSearch();
     if (!this.cart.length && this._isMobile?.()) this.switchMobileView('browse');
   },
 
@@ -514,7 +536,7 @@ const POS = {
     }
     // Mobile: add "Thêm SP" button at top of cart
     const addMoreBtn = this._isMobile?.() && this._mobileView === 'cart'
-      ? `<div class="pos-add-more-bar" onclick="POS.switchMobileView('browse')">
+      ? `<div class="pos-add-more-bar" onclick="POS.openProductSearchBlank()">
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
            <span>Thêm sản phẩm...</span>
          </div>`
