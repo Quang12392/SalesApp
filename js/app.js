@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '282';
+const KHS_APP_VERSION = '283';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -937,14 +937,12 @@ const App = {
           <div class="pmc-body">
             <img class="pmc-thumb" id="pimg-m-${p.id}" src="" alt="">
             <div class="pmc-info">
-              <div class="pmc-row1">
-                <span class="pmc-name">${p.name}</span>
-                <span class="pmc-price">${fmt(p.sellPrice)}</span>
-              </div>
-              <div class="pmc-row2">
-                <span class="pmc-sku">${p.sku}</span>
-                <span class="stock-badge ${st.c}">${st.t}</span>
-              </div>
+              <div class="pmc-name">${p.name}</div>
+              <div class="pmc-sku">${p.sku}</div>
+            </div>
+            <div class="pmc-side">
+              <div class="pmc-price">${fmt(p.sellPrice)}</div>
+              <span class="stock-badge ${st.c}">${st.t}</span>
             </div>
           </div>
           <div class="pmc-row3">
