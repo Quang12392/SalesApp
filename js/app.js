@@ -12,6 +12,8 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
+const KHS_APP_VERSION = '281';
+window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
 function fmtd(n) { return fmt(n) + 'đ'; }
@@ -69,7 +71,7 @@ const App = {
           banner.id = 'sw-update-banner';
           banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-size:0.9rem;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
           banner.innerHTML = `
-            <span>🔄 Có bản cập nhật mới!</span>
+            <span>🔄 Có bản cập nhật mới! Ver ${KHS_APP_VERSION}</span>
             <button onclick="location.reload()" style="background:#fff;color:#1B5E20;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.85rem">Cập nhật ngay</button>
           `;
           document.body.prepend(banner);
@@ -2621,11 +2623,18 @@ const App = {
     const body = document.getElementById('notif-panel-body');
     if (!body) return;
     const lastSeen = localStorage.getItem('kh_lastSeenNotifId') || '';
+    const versionHtml = `<div class="notif-item">
+      <span class="notif-icon">🔄</span>
+      <div class="notif-content">
+        <div class="notif-msg">Phiên bản hiện tại: Ver ${KHS_APP_VERSION}</div>
+        <div class="notif-meta">Local và app deploy dùng cùng version frontend sau khi push</div>
+      </div>
+    </div>`;
     if (!this.notifications.length) {
-      body.innerHTML = '<div class="notif-empty">Không có thông báo</div>';
+      body.innerHTML = versionHtml + '<div class="notif-empty">Không có thông báo</div>';
       return;
     }
-    let html = '';
+    let html = versionHtml;
     let passedLastSeen = false;
     for (const n of this.notifications) {
       if (n.id === lastSeen) passedLastSeen = true;
