@@ -1,5 +1,5 @@
 // Service Worker for QLBH Kieu Huong Store - PWA Offline Support
-const CACHE_NAME = 'khs-v302';
+const CACHE_NAME = 'khs-v303';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -11,23 +11,10 @@ const STATIC_ASSETS = [
   './assets/icons/icon-512.png'
 ];
 
-// CDN resources to cache
-const CDN_ASSETS = [
-  'https://cdn.jsdelivr.net/npm/chart.js',
-  'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
-];
-
 // Install - cache all static assets
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(async cache => {
-      await cache.addAll(STATIC_ASSETS);
-      // Try CDN assets but don't fail if offline
-      for (const url of CDN_ASSETS) {
-        try { await cache.add(url); } catch(err) { console.log('CDN cache skip:', url); }
-      }
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
