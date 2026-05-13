@@ -1289,6 +1289,26 @@ ul, ol { list-style: none; }
   .pos-p-name, .view-compact .pos-p-name { font-size: 1.02rem !important; white-space: normal !important; }
   .pos-p-sku, .view-compact .pos-p-sku { display: block !important; }
   .pos-p-bottom, .view-compact .pos-p-bottom { justify-content: space-between !important; }
+  .pos-p-stock, .view-compact .pos-p-stock {
+    min-width: 62px;
+    display: inline-flex;
+    justify-content: center;
+    text-align: center;
+    background: #E8F8EA;
+    color: #0B6B1E;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .pos-p-stock.low, .view-compact .pos-p-stock.low {
+    background: #E8F8EA;
+    color: #0B6B1E;
+  }
+  .pos-p-stock.out, .view-compact .pos-p-stock.out {
+    background: #FEEEEE;
+    color: var(--danger);
+  }
   .pos-view-toggle { display: none !important; }
   
   /* Cart = bottom sheet (without customer section) */
