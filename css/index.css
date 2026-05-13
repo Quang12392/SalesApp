@@ -1497,9 +1497,9 @@ ul, ol { list-style: none; }
   .pos-totals { padding: 8px 12px 0; }
   .pos-total-row.total { padding: 6px 0; margin-top: 0; font-size: 1rem; }
 
-  /* Cart actions — compact (-30% height) để tăng không gian hiển thị sản phẩm */
+  /* Cart actions — đồng đều chiều cao với Thuế/Thuế Sàn, 3 nút rộng bằng nhau */
   .pos-note-wrap { margin-bottom: 6px; }
-  .btn-save-draft, .btn-capture-cart, .btn-checkout { padding: 7px 8px; font-size: 0.78rem; }
+  .btn-save-draft, .btn-capture-cart, .btn-checkout { padding: 10px 4px; font-size: 0.8rem; flex: 1; }
   .btn-save-draft svg { width: 14px; height: 14px; }
   .btn-capture-cart svg { width: 12px; height: 12px; }
   .btn-checkout svg { width: 15px; height: 15px; }
