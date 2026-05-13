@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '284';
+const KHS_APP_VERSION = '285';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -2386,7 +2386,7 @@ const App = {
       <div class="rpt-card blue"><div class="rpt-card-label">Tổng tồn kho</div><div class="rpt-card-value">${totalQty.toLocaleString('vi-VN')} SP</div></div>
       <div class="rpt-card red"><div class="rpt-card-label">Tổng giá vốn tồn kho</div><div class="rpt-card-value">${fmtd(totalCost)}</div></div>
       <div class="rpt-card green"><div class="rpt-card-label">Tổng doanh thu dự kiến</div><div class="rpt-card-value">${fmtd(totalRev)}</div></div>
-      <div class="rpt-card purple"><div class="rpt-card-label">Lợi nhuận dự kiến</div><div class="rpt-card-value">${fmtd(totalProfit)}</div></div>
+      <div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận dự kiến</div><div class="rpt-card-value">${fmtd(totalProfit)}</div></div>
     </div>`;
 
     let content = '';
