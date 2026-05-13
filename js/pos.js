@@ -135,11 +135,11 @@ const POS = {
         cartPanel.classList.remove('mobile-cart-view');
         cartPanel.classList.add('collapsed');
       }
-      // Move customer section above product list
+      // Mobile browse view: customer search stays above product search.
       const custSection = document.querySelector('.pos-customer-section');
       const searchBar = posProducts?.querySelector('.pos-search-bar');
       if (custSection && searchBar) {
-        searchBar.insertAdjacentElement('afterend', custSection);
+        searchBar.insertAdjacentElement('beforebegin', custSection);
         custSection.style.display = '';
       }
     }
