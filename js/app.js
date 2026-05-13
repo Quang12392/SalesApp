@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '301';
+const KHS_APP_VERSION = '302';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -82,13 +82,17 @@ const App = {
         };
         const pendingNotice = localStorage.getItem('khs_pending_update_notice');
         if (pendingNotice === KHS_APP_VERSION) showUpdateBanner(pendingNotice);
+        // Hiện banner khi version thay đổi so với lần truy cập trước (hoạt động cả khi hard reload)
+        const lastVersion = localStorage.getItem('khs_last_version');
+        if (lastVersion && lastVersion !== KHS_APP_VERSION) showUpdateBanner(KHS_APP_VERSION);
+        localStorage.setItem('khs_last_version', KHS_APP_VERSION);
         // New SW waiting
         if (reg.waiting) showUpdateBanner();
         reg.addEventListener('updatefound', () => {
           const newSW = reg.installing;
           if (!newSW) return;
           newSW.addEventListener('statechange', () => {
-            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            if (newSW.state === 'installed') {
               showUpdateBanner();
             }
           });
