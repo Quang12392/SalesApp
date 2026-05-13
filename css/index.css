@@ -1009,6 +1009,10 @@ ul, ol { list-style: none; }
   display: flex; justify-content: space-between; align-items: center;
   padding: 6px 0; font-size: 0.85rem; color: #111; font-weight: 600;
 }
+#pos-total-qty {
+  color: #7C3AED;
+  font-weight: 800;
+}
 .pos-total-row.total {
   padding: 10px 0; margin-top: 4px;
   border-top: 1px solid var(--border);
