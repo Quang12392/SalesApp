@@ -1,5 +1,5 @@
 // Service Worker for QLBH Kieu Huong Store - PWA Offline Support
-const CACHE_NAME = 'khs-v303';
+const CACHE_NAME = 'khs-v304';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -29,23 +29,13 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Fetch - Network first, fallback to cache (stale-while-revalidate)
+// Fetch - chỉ xử lý same-origin, để browser tự lo CDN/cross-origin
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // Bỏ qua cross-origin (CDN, Google Fonts, Apps Script...) → browser cache lo
+  if (!e.request.url.startsWith(self.location.origin)) return;
 
-  // For API calls (Google Apps Script) - network only, cache response
-  if (e.request.url.includes('script.google.com')) {
-    e.respondWith(
-      fetch(e.request).then(response => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        return response;
-      }).catch(() => caches.match(e.request))
-    );
-    return;
-  }
-
-  // For local assets - NETWORK FIRST, fallback to cache
+  // Same-origin: network first, fallback to cache
   e.respondWith(
     fetch(e.request).then(response => {
       if (response.ok) {
