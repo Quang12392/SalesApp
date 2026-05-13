@@ -1296,14 +1296,14 @@ ul, ol { list-style: none; }
   /* "Thêm SP" button in cart view */
   .pos-add-more-bar {
     display: flex; align-items: center; gap: 10px;
-    padding: 16px 16px; background: white;
+    padding: 16px 16px; background: var(--primary-bg);
     border-bottom: 1px solid var(--border);
-    color: var(--text-muted); font-weight: 400; font-size: 1.05rem;
+    color: var(--primary); font-weight: 600; font-size: 1.05rem;
     cursor: pointer;
   }
-  .pos-add-more-bar svg { width: 20px; height: 20px; color: var(--text-muted); flex-shrink: 0; }
-  .pos-add-more-bar span { color: var(--text-muted); }
-  .pos-add-more-bar:active { background: #F9FAFB; }
+  .pos-add-more-bar svg { width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; }
+  .pos-add-more-bar span { color: var(--primary); }
+  .pos-add-more-bar:active { background: var(--primary-bg-strong); }
   
   /* === Mobile Cart Full View === */
   .pos-cart-panel.mobile-cart-view {
