@@ -1014,7 +1014,8 @@ ul, ol { list-style: none; }
   white-space: normal;
   line-height: 1.25;
 }
-.pos-cart-item-price { font-size: 0.75rem; color: var(--text-secondary); }
+.pos-cart-item-price { font-size: 0.9rem; color: var(--text-secondary); }
+.pos-cart-item-price span:not(.pos-price-edit) { font-size: 0.75rem; }
 .pos-cart-qty {
   display: flex; align-items: center; gap: 4px;
 }
