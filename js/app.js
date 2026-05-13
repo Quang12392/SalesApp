@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '289';
+const KHS_APP_VERSION = '290';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -65,17 +65,23 @@ const App = {
         if (!reg) return;
         // Check for updates every 5 minutes
         setInterval(() => reg.update(), 5 * 60 * 1000);
-        const showUpdateBanner = () => {
+        const showUpdateBanner = (version = KHS_APP_VERSION) => {
           if (document.getElementById('sw-update-banner')) return;
           const banner = document.createElement('div');
           banner.id = 'sw-update-banner';
           banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-size:0.9rem;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
           banner.innerHTML = `
-            <span>🔄 Có bản cập nhật mới! Ver ${KHS_APP_VERSION}</span>
-            <button onclick="location.reload()" style="background:#fff;color:#1B5E20;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.85rem">Cập nhật ngay</button>
+            <span>🔄 Có bản cập nhật mới! Ver ${version}</span>
+            <button id="sw-update-dismiss" style="background:#fff;color:#1B5E20;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.85rem">Cập nhật ngay</button>
           `;
           document.body.prepend(banner);
+          document.getElementById('sw-update-dismiss')?.addEventListener('click', () => {
+            localStorage.removeItem('khs_pending_update_notice');
+            location.reload();
+          });
         };
+        const pendingNotice = localStorage.getItem('khs_pending_update_notice');
+        if (pendingNotice === KHS_APP_VERSION) showUpdateBanner(pendingNotice);
         // New SW waiting
         if (reg.waiting) showUpdateBanner();
         reg.addEventListener('updatefound', () => {
