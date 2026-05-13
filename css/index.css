@@ -1010,7 +1010,7 @@ ul, ol { list-style: none; }
   padding: 6px 0; font-size: 0.85rem; color: #111; font-weight: 600;
 }
 #pos-total-qty {
-  color: #7C3AED;
+  color: #EF4444;
   font-weight: 800;
 }
 .pos-total-row.total {
