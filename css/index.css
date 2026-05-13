@@ -1499,7 +1499,7 @@ ul, ol { list-style: none; }
 
   /* Cart actions — đồng đều chiều cao với Thuế/Thuế Sàn, 3 nút rộng bằng nhau */
   .pos-note-wrap { margin-bottom: 6px; }
-  .btn-save-draft, .btn-capture-cart, .btn-checkout { padding: 10px 4px; font-size: 0.8rem; flex: 1; }
+  .btn-save-draft, .btn-capture-cart, .btn-checkout { padding: 10px 4px; font-size: 1rem; flex: 1; }
   .btn-save-draft svg { width: 14px; height: 14px; }
   .btn-capture-cart svg { width: 12px; height: 12px; }
   .btn-checkout svg { width: 15px; height: 15px; }
