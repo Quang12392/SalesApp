@@ -1482,7 +1482,7 @@ ul, ol { list-style: none; }
     justify-self: end;
     align-self: start;
   }
-  .pos-cart-panel.mobile-cart-view .pos-totals { flex-shrink: 0; }
+  .pos-cart-panel.mobile-cart-view .pos-totals { flex-shrink: 0; padding-bottom: 0; }
   .pos-cart-panel.mobile-cart-view .pos-actions { flex-shrink: 0; }
   .pos-cart-panel.collapsed { display: none !important; }
   .pos-cart-panel.collapsed .pos-cart-items,
@@ -1494,12 +1494,15 @@ ul, ol { list-style: none; }
   .pos-cart-panel.collapsed .pos-order-note { display: none; }
   
   /* Cart summary bar (always visible) */
-  .pos-totals { padding: 8px 12px; }
+  .pos-totals { padding: 8px 12px 0; }
   .pos-total-row.total { padding: 6px 0; margin-top: 0; font-size: 1rem; }
-  
-  /* Cart actions */
-  .pos-actions { padding: 8px 12px; gap: 6px; }
-  .pos-actions .btn { padding: 10px; font-size: 0.85rem; }
+
+  /* Cart actions — compact (-30% height) để tăng không gian hiển thị sản phẩm */
+  .pos-note-wrap { margin-bottom: 6px; }
+  .btn-save-draft, .btn-capture-cart, .btn-checkout { padding: 7px 8px; font-size: 0.78rem; }
+  .btn-save-draft svg { width: 14px; height: 14px; }
+  .btn-capture-cart svg { width: 12px; height: 12px; }
+  .btn-checkout svg { width: 15px; height: 15px; }
   
   /* Cart items scrollable */
   .pos-cart-items { max-height: 30vh; }
