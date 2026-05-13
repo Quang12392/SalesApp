@@ -1375,6 +1375,7 @@ ul, ol { list-style: none; }
   /* "Thêm SP" button in cart view */
   .pos-add-more-bar {
     display: flex; align-items: center; gap: 10px;
+    position: sticky; top: 0; z-index: 5;
     padding: 16px 16px; background: var(--primary-bg);
     border-bottom: 1px solid var(--border);
     color: var(--primary); font-weight: 600; font-size: 1.05rem;
