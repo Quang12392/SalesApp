@@ -547,27 +547,123 @@ const POS = {
       const stock = product ? product.stock : 999;
       const overStock = item.qty > stock;
       return `
-      <div class="pos-cart-item">
-        <button class="pos-cart-remove" onclick="POS.removeFromCart('${item.id}')" title="Xóa sản phẩm">✕</button>
-        <img class="pos-cart-thumb" id="cartimg-${item.id}" src="" alt="">
-        <div class="pos-cart-info">
-          <div class="pos-cart-item-name">${item.name}</div>
-          <div class="pos-cart-item-price">
-            <span class="pos-price-edit" onclick="POS.editPrice('${item.id}')" title="Click để sửa giá">${fmtd(item.price)}</span>
-            <span> × ${item.qty}</span>
+      <div class="pos-cart-swipe">
+        <button class="pos-cart-delete-action" onclick="POS.removeFromCart('${item.id}')" title="Xóa sản phẩm" aria-label="Xóa sản phẩm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6"/>
+            <path d="M14 11v6"/>
+            <path d="M9 6V4h6v2"/>
+          </svg>
+        </button>
+        <div class="pos-cart-item">
+          <img class="pos-cart-thumb" id="cartimg-${item.id}" src="" alt="">
+          <div class="pos-cart-info">
+            <div class="pos-cart-item-name">${item.name}</div>
+            <div class="pos-cart-item-price">
+              <span class="pos-price-edit" onclick="POS.editPrice('${item.id}')" title="Click để sửa giá">${fmtd(item.price)}</span>
+              <span> × ${item.qty}</span>
+            </div>
           </div>
+          <div class="pos-cart-qty">
+            <button onclick="POS.updateQty('${item.id}',-1)" class="${item.qty <= 1 ? 'remove' : ''}">−</button>
+            <span class="pos-qty-edit ${overStock ? 'overstock' : ''}" onclick="POS.editQty('${item.id}')" title="Click để nhập số lượng">${item.qty}</span>
+            <button onclick="POS.updateQty('${item.id}',1)">+</button>
+          </div>
+          <div class="pos-cart-item-total">${fmtd(item.price * item.qty)}</div>
         </div>
-        <div class="pos-cart-qty">
-          <button onclick="POS.updateQty('${item.id}',-1)" class="${item.qty <= 1 ? 'remove' : ''}">−</button>
-          <span class="pos-qty-edit ${overStock ? 'overstock' : ''}" onclick="POS.editQty('${item.id}')" title="Click để nhập số lượng">${item.qty}</span>
-          <button onclick="POS.updateQty('${item.id}',1)">+</button>
-        </div>
-        <div class="pos-cart-item-total">${fmtd(item.price * item.qty)}</div>
       </div>`;
     }).join('');
 
+    this.bindCartSwipe();
+
     // Load cart item images
     this.loadCartImages();
+  },
+
+  bindCartSwipe() {
+    const list = document.getElementById('pos-cart-items');
+    const rows = [...document.querySelectorAll('#pos-cart-items .pos-cart-swipe')];
+    if (!list || !rows.length) return;
+
+    const closeRows = except => rows.forEach(row => {
+      if (row !== except) row.classList.remove('is-open');
+      const item = row.querySelector('.pos-cart-item');
+      if (item) item.style.transform = '';
+    });
+
+    if (!this._cartSwipeDocBound) {
+      document.addEventListener('pointerdown', e => {
+        if (!e.target.closest('#pos-cart-items .pos-cart-swipe')) {
+          document.querySelectorAll('#pos-cart-items .pos-cart-swipe.is-open').forEach(row => row.classList.remove('is-open'));
+        }
+      });
+      this._cartSwipeDocBound = true;
+    }
+
+    rows.forEach(row => {
+      const item = row.querySelector('.pos-cart-item');
+      const actionWidth = row.querySelector('.pos-cart-delete-action')?.offsetWidth || 72;
+      if (!item) return;
+
+      let startX = 0;
+      let startY = 0;
+      let baseX = 0;
+      let latestX = 0;
+      let dragging = false;
+      let moved = false;
+
+      const finish = e => {
+        if (!dragging) return;
+        dragging = false;
+        item.classList.remove('dragging');
+        try { item.releasePointerCapture(e.pointerId); } catch (_) {}
+        item.style.transform = '';
+        row.classList.toggle('is-open', latestX < -(actionWidth * 0.45));
+        setTimeout(() => { moved = false; }, 0);
+      };
+
+      item.addEventListener('pointerdown', e => {
+        if (e.button !== undefined && e.button !== 0) return;
+        if (e.target.closest('button,input,.pos-price-edit,.pos-qty-edit')) return;
+        closeRows(row);
+        startX = e.clientX;
+        startY = e.clientY;
+        baseX = row.classList.contains('is-open') ? -actionWidth : 0;
+        latestX = baseX;
+        dragging = true;
+        moved = false;
+        item.classList.add('dragging');
+        try { item.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      item.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (!moved && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+          finish(e);
+          return;
+        }
+        if (Math.abs(dx) < 4) return;
+        moved = true;
+        e.preventDefault();
+        latestX = Math.max(-actionWidth, Math.min(0, baseX + dx));
+        item.style.transform = `translateX(${latestX}px)`;
+      });
+
+      item.addEventListener('pointerup', finish);
+      item.addEventListener('pointercancel', finish);
+      item.addEventListener('click', e => {
+        if (moved) {
+          e.preventDefault();
+          e.stopPropagation();
+        } else if (row.classList.contains('is-open') && !e.target.closest('button,input,.pos-price-edit,.pos-qty-edit')) {
+          row.classList.remove('is-open');
+        }
+      });
+    });
   },
 
   async loadCartImages() {
