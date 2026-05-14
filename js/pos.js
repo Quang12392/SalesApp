@@ -991,6 +991,13 @@ const POS = {
       `).join('');
     }
     dd.style.display = 'block';
+    if (window.innerWidth <= 768) {
+      const wrap = document.querySelector('.pos-customer-search-wrap');
+      if (wrap) {
+        const r = wrap.getBoundingClientRect();
+        Object.assign(dd.style, { position:'fixed', top:r.bottom+'px', left:(r.left+8)+'px', right:(window.innerWidth-r.right+8)+'px', width:'auto', zIndex:'9999' });
+      }
+    }
   },
 
   selectCustomer(id) {
@@ -1006,7 +1013,9 @@ const POS = {
   },
 
   showSelectedCustomer() {
-    document.getElementById('pos-customer-dropdown').style.display = 'none';
+    const dd = document.getElementById('pos-customer-dropdown');
+    dd.style.display = 'none';
+    dd.style.position = ''; dd.style.top = ''; dd.style.left = ''; dd.style.right = ''; dd.style.width = ''; dd.style.zIndex = '';
     document.getElementById('pos-customer-search').value = '';
     // Hide search bar, show only selected name
     const section = document.querySelector('.pos-customer-section');
