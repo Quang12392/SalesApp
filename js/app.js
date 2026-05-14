@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '316';
+const KHS_APP_VERSION = '317';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -75,11 +75,11 @@ const App = {
             <button id="sw-update-dismiss" style="background:#fff;color:#1B5E20;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.85rem">Cập nhật ngay</button>
           `;
           document.body.prepend(banner);
-          document.getElementById('sw-update-dismiss')?.addEventListener('click', async () => {
+          document.getElementById('sw-update-dismiss')?.addEventListener('click', () => {
             const btn = document.getElementById('sw-update-dismiss');
             if (btn) { btn.textContent = '⏳ Đang tải...'; btn.disabled = true; }
             localStorage.removeItem('khs_pending_update_notice');
-            try { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.unregister(); } catch(_) {}
+            if (navigator.serviceWorker) navigator.serviceWorker.getRegistration().then(r => r?.unregister()).catch(() => {});
             location.replace(location.origin + location.pathname);
           });
         };
