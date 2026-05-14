@@ -1,5 +1,5 @@
 // Service Worker for QLBH Kieu Huong Store - PWA Offline Support
-const CACHE_NAME = 'khs-v307';
+const CACHE_NAME = 'khs-v308';
 const STATIC_ASSETS = [
   './index.html',
   './css/index.css?v=307',
@@ -28,13 +28,15 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Fetch - chỉ xử lý same-origin, để browser tự lo CDN/cross-origin
+// Fetch - SW chỉ lo sub-resources, không intercept navigation (index.html)
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  // Bỏ qua cross-origin (CDN, Google Fonts, Apps Script...) → browser cache lo
+  // Navigation (F5, link click) → browser tự lo, không qua SW để tránh chậm
+  if (e.request.mode === 'navigate') return;
+  // Cross-origin (CDN, Fonts, Apps Script) → browser cache lo
   if (!e.request.url.startsWith(self.location.origin)) return;
 
-  // Versioned assets (?v=): cache-first — đã cache khi install, không bao giờ thay đổi
+  // Versioned assets (?v=): cache-first — không bao giờ thay đổi giữa các version
   if (e.request.url.includes('?v=')) {
     e.respondWith(
       caches.match(e.request).then(cached =>
@@ -47,13 +49,10 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // index.html, manifest, icons: network-first để luôn nhận bản mới
+  // Manifest, icons: network-first với fallback cache
   e.respondWith(
     fetch(e.request).then(response => {
-      if (response.ok) {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-      }
+      if (response.ok) caches.open(CACHE_NAME).then(c => c.put(e.request, response.clone()));
       return response;
     }).catch(() =>
       caches.match(e.request).then(cached => cached || new Response('Offline', { status: 503 }))
