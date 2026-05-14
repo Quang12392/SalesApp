@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '314';
+const KHS_APP_VERSION = '315';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -80,7 +80,7 @@ const App = {
             if (btn) { btn.textContent = '⏳ Đang tải...'; btn.disabled = true; }
             localStorage.removeItem('khs_pending_update_notice');
             try { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.unregister(); } catch(_) {}
-            window.location.href = window.location.href;
+            location.replace(location.origin + location.pathname);
           });
         };
         const pendingNotice = localStorage.getItem('khs_pending_update_notice');
