@@ -1318,7 +1318,7 @@ ul, ol { list-style: none; }
   /* Customer section — moved to pos-products by JS on mobile */
   .pos-products > .pos-customer-section {
     background: white; border-bottom: 1px solid var(--border);
-    padding: 12px 12px; position: relative;
+    padding: 12px 12px; position: relative; z-index: 2;
   }
   .pos-products > .pos-customer-section .pos-customer-search-wrap { padding: 10px 12px; font-size: 1rem; }
   .pos-products > .pos-customer-section .pos-customer-search-wrap input { font-size: 1rem; }
