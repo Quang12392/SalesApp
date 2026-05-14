@@ -1,11 +1,10 @@
 // Service Worker for QLBH Kieu Huong Store - PWA Offline Support
-const CACHE_NAME = 'khs-v306';
+const CACHE_NAME = 'khs-v307';
 const STATIC_ASSETS = [
-  './',
   './index.html',
-  './css/index.css?v=302',
-  './js/app.js?v=302',
-  './js/pos.js?v=302',
+  './css/index.css?v=307',
+  './js/app.js?v=307',
+  './js/pos.js?v=307',
   './manifest.json',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png'
@@ -35,7 +34,20 @@ self.addEventListener('fetch', (e) => {
   // Bỏ qua cross-origin (CDN, Google Fonts, Apps Script...) → browser cache lo
   if (!e.request.url.startsWith(self.location.origin)) return;
 
-  // Same-origin: network first, fallback to cache
+  // Versioned assets (?v=): cache-first — đã cache khi install, không bao giờ thay đổi
+  if (e.request.url.includes('?v=')) {
+    e.respondWith(
+      caches.match(e.request).then(cached =>
+        cached || fetch(e.request).then(response => {
+          if (response.ok) caches.open(CACHE_NAME).then(c => c.put(e.request, response.clone()));
+          return response;
+        })
+      )
+    );
+    return;
+  }
+
+  // index.html, manifest, icons: network-first để luôn nhận bản mới
   e.respondWith(
     fetch(e.request).then(response => {
       if (response.ok) {
@@ -57,7 +69,6 @@ self.addEventListener('sync', (e) => {
 });
 
 async function syncPendingOrders() {
-  // Read pending orders from IndexedDB and sync to server
   try {
     const db = await openDB();
     const tx = db.transaction('pendingSync', 'readonly');
@@ -69,7 +80,6 @@ async function syncPendingOrders() {
         for (const item of items) {
           try {
             await fetch(item.url, { method: 'POST', body: JSON.stringify(item.data) });
-            // Remove from pending after success
             const dtx = db.transaction('pendingSync', 'readwrite');
             dtx.objectStore('pendingSync').delete(item.id);
           } catch(err) { /* will retry next sync */ }
