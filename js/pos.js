@@ -1000,9 +1000,10 @@ const POS = {
     dd.style.display = 'block';
     if (window.innerWidth <= 768) {
       const wrap = document.querySelector('.pos-customer-search-wrap');
-      if (wrap) {
-        const r = wrap.getBoundingClientRect();
-        Object.assign(dd.style, { position:'fixed', top:r.bottom+'px', left:(r.left+8)+'px', right:(window.innerWidth-r.right+8)+'px', width:'auto', zIndex:'9999' });
+      const section = document.querySelector('.pos-products .pos-customer-section') || document.querySelector('.pos-customer-section');
+      if (wrap && section) {
+        const wr = wrap.getBoundingClientRect(), sr = section.getBoundingClientRect();
+        Object.assign(dd.style, { position:'fixed', top:wr.bottom+'px', left:sr.left+'px', right:(window.innerWidth-sr.right)+'px', width:'auto', zIndex:'9999' });
       }
     }
   },
