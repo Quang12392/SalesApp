@@ -142,6 +142,13 @@ const POS = {
         searchBar.insertAdjacentElement('beforebegin', custSection);
         custSection.style.display = '';
       }
+      // Move drafts bar into customer section → side-by-side layout
+      if (custSection) {
+        const draftsBar = document.getElementById('pos-drafts-bar');
+        const draftsPanel = document.getElementById('pos-drafts-panel');
+        if (draftsBar && draftsBar.parentElement !== custSection) custSection.appendChild(draftsBar);
+        if (draftsPanel && draftsPanel.parentElement !== custSection) custSection.appendChild(draftsPanel);
+      }
     }
 
     document.querySelectorAll('.pos-payment-option').forEach((o, i) => {
