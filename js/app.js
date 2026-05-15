@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '325';
+const KHS_APP_VERSION = '326';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -2115,6 +2115,7 @@ const App = {
             </select>
             <div id="rpt-custom-dates" class="report-custom-range" style="display:${this.reportPeriod==='custom'?'flex':'none'}">
               <input type="date" id="rpt-from" value="${this.reportCustomFrom}">
+              <span>→</span>
               <input type="date" id="rpt-to" value="${this.reportCustomTo}">
             </div>
           </div>

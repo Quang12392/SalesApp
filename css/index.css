@@ -2290,12 +2290,13 @@ ul, ol { list-style: none; }
   font-weight: 600;
 }
 .report-custom-range {
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   margin-top: 8px;
 }
 .report-custom-range input {
-  width: 100%;
+  min-width: 0;
+  flex: 1;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -2305,6 +2306,11 @@ ul, ol { list-style: none; }
   font-family: inherit;
   font-weight: 500;
   outline: none;
+}
+.report-custom-range span {
+  color: var(--text-muted);
+  font-weight: 700;
+  flex: 0 0 auto;
 }
 .report-custom-range input:focus {
   border-color: var(--primary);
