@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '317';
+const KHS_APP_VERSION = '318';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -2064,6 +2064,7 @@ const App = {
               <button class="report-type-btn ${this.reportType==='products'?'active':''}" data-type="products"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Hàng hóa</button>
               <button class="report-type-btn ${this.reportType==='customers'?'active':''}" data-type="customers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Khách hàng</button>
               <button class="report-type-btn ${this.reportType==='finance'?'active':''}" data-type="finance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><ellipse cx="12" cy="18" rx="7" ry="3"/><ellipse cx="12" cy="14" rx="7" ry="3"/><ellipse cx="12" cy="10" rx="7" ry="3"/><ellipse cx="12" cy="6" rx="7" ry="3"/></svg> Tài chính</button>
+              <button class="report-type-btn ${this.reportType==='inventory'?'active':''}" data-type="inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4z"/><path d="M3.3 7L12 12l8.7-5"/><path d="M12 22V12"/></svg> Kiểm kho</button>
             </div>
           </div>
           <div class="report-filter-group">
@@ -2134,6 +2135,10 @@ const App = {
       case 'products': this.reportProducts(el,orders,v); break;
       case 'customers': this.reportCustomers(el,orders,v); break;
       case 'finance': this.reportFinance(el,orders,v); break;
+      case 'inventory':
+        this.inventoryView = v === 'table' ? 'table' : 'chart';
+        this.renderInventory(el);
+        break;
     }
   },
 
@@ -2375,6 +2380,7 @@ const App = {
   // ═════════ INVENTORY ═════════
   inventoryView: 'chart',
   renderInventory(c) {
+    this._lastInventoryContainer = c;
     const prods = this.products.filter(p => p.stock > 0);
     const totalQty = prods.reduce((s,p) => s + (p.stock||0), 0);
     const totalCost = prods.reduce((s,p) => s + (p.costPrice||0)*(p.stock||0), 0);
@@ -2553,7 +2559,8 @@ const App = {
           this.toast('success', res.message);
           close();
           await this.autoSync();
-          this.renderInventory(document.getElementById('page-container'));
+          const target = this._lastInventoryContainer?.isConnected ? this._lastInventoryContainer : document.getElementById('page-container');
+          this.renderInventory(target);
         } else { this.toast('error', res.error); saveBtn.textContent = '📦 Nhập kho'; saveBtn.disabled = false; }
       } catch(e) { this.toast('error', 'Lỗi: '+e.message); saveBtn.textContent = '📦 Nhập kho'; saveBtn.disabled = false; }
     });
