@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '323';
+const KHS_APP_VERSION = '324';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -1433,7 +1433,7 @@ const App = {
   },
 
   // ═════════ ORDERS ═════════
-  oSearch: '', oFilter: 'all', oTime: 'all',
+  oSearch: '', oFilter: 'all', oTime: 'month', oCustomFrom: '', oCustomTo: '',
 
   renderOrders(c) {
     // Only build full layout once
@@ -1442,17 +1442,23 @@ const App = {
         <div class="orders-sticky-header">
           <div class="orders-filter-row" style="display:flex;align-items:center;gap:8px;justify-content:space-between">
             <select class="orders-time-filter" id="o-time-filter">
-              <option value="all">Tất cả</option>
-              <option value="today">Hôm nay</option>
-              <option value="yesterday">Hôm qua</option>
-              <option value="week">Tuần này</option>
-              <option value="month" selected>Tháng này</option>
-              <option value="lastmonth">Tháng trước</option>
+              <option value="all" ${this.oTime==='all'?'selected':''}>Tất cả</option>
+              <option value="today" ${this.oTime==='today'?'selected':''}>Hôm nay</option>
+              <option value="yesterday" ${this.oTime==='yesterday'?'selected':''}>Hôm qua</option>
+              <option value="week" ${this.oTime==='week'?'selected':''}>Tuần này</option>
+              <option value="month" ${this.oTime==='month'?'selected':''}>Tháng này</option>
+              <option value="lastmonth" ${this.oTime==='lastmonth'?'selected':''}>Tháng trước</option>
+              <option value="custom" ${this.oTime==='custom'?'selected':''}>Tùy chỉnh thời gian</option>
             </select>
             <button class="btn-return-orders" onclick="App.openReturnFromOrders()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
               Trả hàng
             </button>
+          </div>
+          <div class="orders-custom-range" id="o-custom-range" style="display:${this.oTime==='custom'?'flex':'none'}">
+            <input type="date" id="o-from" value="${this.oCustomFrom}">
+            <span>→</span>
+            <input type="date" id="o-to" value="${this.oCustomTo}">
           </div>
           <div class="orders-summary-bar" id="o-summary">
             <span>0 đơn hàng</span>
@@ -1475,10 +1481,35 @@ const App = {
         </div>
       `;
       document.getElementById('o-search').addEventListener('input', e => { this.oSearch = e.target.value; this.updateOrderTable(); });
-      document.getElementById('o-time-filter').addEventListener('change', e => { this.oTime = e.target.value; this.updateOrderTable(); });
-      this.oTime = 'month'; // default
+      const syncCustomRange = () => {
+        const rangeEl = document.getElementById('o-custom-range');
+        if (rangeEl) rangeEl.style.display = this.oTime === 'custom' ? 'flex' : 'none';
+      };
+      document.getElementById('o-time-filter').addEventListener('change', e => {
+        this.oTime = e.target.value;
+        if (this.oTime === 'custom' && (!this.oCustomFrom || !this.oCustomTo)) this._setOrderCustomDefaults();
+        syncCustomRange();
+        this.updateOrderTable();
+      });
+      document.getElementById('o-from').addEventListener('change', e => { this.oCustomFrom = e.target.value; this.updateOrderTable(); });
+      document.getElementById('o-to').addEventListener('change', e => { this.oCustomTo = e.target.value; this.updateOrderTable(); });
+      syncCustomRange();
     }
     this.updateOrderTable();
+  },
+
+  _formatDateInput(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  },
+
+  _setOrderCustomDefaults() {
+    const range = this._getDateRange('month');
+    this.oCustomFrom = this._formatDateInput(range.start);
+    this.oCustomTo = this._formatDateInput(range.end);
+    const fromEl = document.getElementById('o-from');
+    const toEl = document.getElementById('o-to');
+    if (fromEl) fromEl.value = this.oCustomFrom;
+    if (toEl) toEl.value = this.oCustomTo;
   },
 
   _getDateRange(period) {
@@ -1502,6 +1533,15 @@ const App = {
         const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const e = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
         return { start: s, end: e };
+      }
+      case 'custom': {
+        let from = this.oCustomFrom || document.getElementById('o-from')?.value;
+        let to = this.oCustomTo || document.getElementById('o-to')?.value;
+        if (!from && !to) return null;
+        if (from && to && from > to) [from, to] = [to, from];
+        const start = from ? new Date(`${from}T00:00:00`) : new Date(0);
+        const end = to ? new Date(`${to}T23:59:59`) : now;
+        return { start, end };
       }
       default: return null;
     }

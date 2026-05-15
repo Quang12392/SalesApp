@@ -1805,6 +1805,15 @@ ul, ol { list-style: none; }
     font-size: 0.8rem; background: var(--primary-bg); color: var(--primary);
     font-weight: 600; cursor: pointer;
   }
+  .orders-custom-range {
+    align-items: center; gap: 6px; margin: 0 0 6px;
+  }
+  .orders-custom-range input {
+    min-width: 0; flex: 1;
+    padding: 7px 9px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: #fff; color: var(--text-primary); font-size: 0.8rem; font-weight: 600;
+  }
+  .orders-custom-range span { color: var(--text-muted); font-weight: 700; }
   .orders-summary-bar {
     display: flex; justify-content: space-between; align-items: center;
     padding: 6px 10px; border-radius: var(--radius-sm);
