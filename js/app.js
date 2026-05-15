@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '319';
+const KHS_APP_VERSION = '320';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -2379,6 +2379,9 @@ const App = {
   },
   // ═════════ INVENTORY ═════════
   inventoryView: 'chart',
+  inventoryDetailSearch: '',
+  inventoryDetailFilter: 'all',
+  inventoryDetailSort: 'stockDesc',
   renderInventory(c) {
     this._lastInventoryContainer = c;
     const isReportEmbedded = c?.id === 'report-content';
@@ -2389,6 +2392,8 @@ const App = {
     const totalProfit = totalRev - totalCost;
     const allProds = this.products.slice().sort((a,b) => (b.stock||0) - (a.stock||0));
     const top10 = allProds.filter(p=>p.stock>0).slice(0,10);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
     const viewToggle = isReportEmbedded ? '' : `<div class="rpt-view-toggle" style="margin-bottom:16px">
       <button class="rpt-view-btn ${this.inventoryView==='chart'?'active':''}" data-inv-view="chart">
@@ -2449,20 +2454,79 @@ const App = {
     } else {
       const outOfStock = this.products.filter(p => (p.stock||0) <= 0);
       const lowStock = this.products.filter(p => p.stock > 0 && p.stock <= 3);
-      content = `<div class="card" style="margin-top:16px"><div class="card-header"><h3>Chi tiết tồn kho (${this.products.length} SP)</h3></div><div class="card-body">
-        <table class="data-table"><thead><tr><th>Sản phẩm</th><th style="text-align:right">Tồn kho</th><th style="text-align:right">Giá vốn TB</th><th style="text-align:right">Giá bán</th><th style="text-align:right">Tổng vốn</th><th style="text-align:right">Tổng DT</th></tr></thead>
-        <tbody>${allProds.map(p => {
-          const st = p.stock||0, cp = p.costPrice||0, sp = p.sellPrice||0;
-          const badge = st<=0?'out-of-stock':st<=3?'low-stock':'in-stock';
-          const label = st<=0?'Hết hàng':'Còn '+st;
-          return `<tr><td>${p.name}</td><td style="text-align:right"><span class="stock-badge ${badge}">${label}</span></td><td style="text-align:right">${fmtd(cp)}</td><td style="text-align:right">${fmtd(sp)}</td><td style="text-align:right">${fmtd(cp*st)}</td><td style="text-align:right;font-weight:600">${fmtd(sp*st)}</td></tr>`;
-        }).join('')}</tbody>
+      const detailSort = this.inventoryDetailSort || 'stockDesc';
+      const detailProducts = this.products.slice().sort((a,b) => {
+        const av = (a.stock||0), bv = (b.stock||0);
+        const aValue = (a.costPrice||0) * av, bValue = (b.costPrice||0) * bv;
+        const aProfit = ((a.sellPrice||0) - (a.costPrice||0)) * av;
+        const bProfit = ((b.sellPrice||0) - (b.costPrice||0)) * bv;
+        if (detailSort === 'stockAsc') return av - bv;
+        if (detailSort === 'valueDesc') return bValue - aValue;
+        if (detailSort === 'profitDesc') return bProfit - aProfit;
+        if (detailSort === 'nameAsc') return String(a.name||'').localeCompare(String(b.name||''), 'vi');
+        return bv - av;
+      });
+      const detailRows = detailProducts.map(p => {
+        const st = p.stock||0, cp = p.costPrice||0, sp = p.sellPrice||0;
+        const status = st<=0?'out':st<=3?'low':'in';
+        const badge = status==='out'?'out-of-stock':status==='low'?'low-stock':'in-stock';
+        const label = st<=0?'Hết hàng':'Còn '+st;
+        const search = norm(`${p.name || ''} ${p.sku || ''}`);
+        const rowCost = cp * st;
+        const rowRev = sp * st;
+        const rowProfit = rowRev - rowCost;
+        return {
+          table: `<tr data-inv-detail-item data-status="${status}" data-search="${esc(search)}"><td><div style="font-weight:700">${esc(p.name)}</div><div style="font-size:0.78rem;color:#64748B;margin-top:2px">${esc(p.sku||'')}</div></td><td style="text-align:right"><span class="stock-badge ${badge}">${label}</span></td><td style="text-align:right">${fmtd(cp)}</td><td style="text-align:right">${fmtd(sp)}</td><td style="text-align:right">${fmtd(rowCost)}</td><td style="text-align:right;font-weight:600">${fmtd(rowRev)}</td></tr>`,
+          card: `<article class="inventory-detail-card" data-inv-detail-item data-status="${status}" data-search="${esc(search)}">
+            <div class="inventory-detail-card-head">
+              <div class="inventory-detail-main">
+                <div class="inventory-detail-name" title="${esc(p.name)}">${esc(p.name)}</div>
+                <div class="inventory-detail-sku">${esc(p.sku||'')}</div>
+              </div>
+              <div class="inventory-detail-side">
+                <div class="inventory-detail-price">${fmtd(sp)}</div>
+                <span class="stock-badge ${badge}">${label}</span>
+              </div>
+            </div>
+            <div class="inventory-detail-metrics">
+              <div class="inventory-detail-metric"><span>Giá vốn</span><b>${fmtd(cp)}</b></div>
+              <div class="inventory-detail-metric"><span>Tổng vốn</span><b>${fmtd(rowCost)}</b></div>
+              <div class="inventory-detail-metric"><span>DT dự kiến</span><b>${fmtd(rowRev)}</b></div>
+              <div class="inventory-detail-metric profit"><span>Lãi dự kiến</span><b>${fmtd(rowProfit)}</b></div>
+            </div>
+          </article>`
+        };
+      });
+      content = `<div class="card inventory-detail-card-wrap" style="margin-top:16px"><div class="card-header"><h3>Chi tiết tồn kho (<span id="inv-detail-count">${this.products.length}</span> SP)</h3></div><div class="card-body">
+        <div class="inventory-detail-toolbar">
+          <label class="inventory-detail-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="inv-detail-search" value="${esc(this.inventoryDetailSearch)}" placeholder="Tìm tên sản phẩm hoặc mã SKU...">
+          </label>
+          <select id="inv-detail-filter" class="inventory-detail-select">
+            <option value="all" ${this.inventoryDetailFilter==='all'?'selected':''}>Tất cả trạng thái</option>
+            <option value="in" ${this.inventoryDetailFilter==='in'?'selected':''}>Còn hàng</option>
+            <option value="low" ${this.inventoryDetailFilter==='low'?'selected':''}>Sắp hết</option>
+            <option value="out" ${this.inventoryDetailFilter==='out'?'selected':''}>Hết hàng</option>
+          </select>
+          <select id="inv-detail-sort" class="inventory-detail-select">
+            <option value="stockDesc" ${detailSort==='stockDesc'?'selected':''}>Tồn nhiều nhất</option>
+            <option value="stockAsc" ${detailSort==='stockAsc'?'selected':''}>Tồn ít nhất</option>
+            <option value="valueDesc" ${detailSort==='valueDesc'?'selected':''}>Giá trị tồn cao nhất</option>
+            <option value="profitDesc" ${detailSort==='profitDesc'?'selected':''}>Lãi dự kiến cao nhất</option>
+            <option value="nameAsc" ${detailSort==='nameAsc'?'selected':''}>Tên A-Z</option>
+          </select>
+        </div>
+        <table class="data-table inventory-detail-table"><thead><tr><th>Sản phẩm</th><th style="text-align:right">Tồn kho</th><th style="text-align:right">Giá vốn TB</th><th style="text-align:right">Giá bán</th><th style="text-align:right">Tổng vốn</th><th style="text-align:right">Tổng DT</th></tr></thead>
+        <tbody>${detailRows.map(x => x.table).join('')}</tbody>
         <tfoot><tr style="font-weight:700;background:var(--bg-secondary)"><td>Tổng (${prods.length} SP còn hàng)</td><td style="text-align:right">${totalQty}</td><td></td><td></td><td style="text-align:right;color:#EF4444">${fmtd(totalCost)}</td><td style="text-align:right;color:var(--primary)">${fmtd(totalRev)}</td></tr></tfoot>
         </table>
+        <div class="inventory-detail-mobile">${detailRows.map(x => x.card).join('')}</div>
+        <div class="inventory-detail-empty" id="inv-detail-empty" style="display:none">Không có sản phẩm phù hợp</div>
         <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
-          <div style="font-size:0.85rem;color:#EF4444;font-weight:600">🔴 Hết hàng: ${outOfStock.length} SP</div>
-          <div style="font-size:0.85rem;color:#F59E0B;font-weight:600">🟡 Sắp hết: ${lowStock.length} SP</div>
-          <div style="font-size:0.85rem;color:#1B5E20;font-weight:600">🟢 Còn hàng: ${prods.length} SP</div>
+          <div style="font-size:0.85rem;color:#EF4444;font-weight:600">Hết hàng: ${outOfStock.length} SP</div>
+          <div style="font-size:0.85rem;color:#F59E0B;font-weight:600">Sắp hết: ${lowStock.length} SP</div>
+          <div style="font-size:0.85rem;color:#1B5E20;font-weight:600">Còn hàng: ${prods.length} SP</div>
         </div>
       </div></div>`;
     }
@@ -2474,6 +2538,40 @@ const App = {
       this.inventoryView = btn.dataset.invView;
       this.renderInventory(c);
     }));
+
+    const applyInventoryDetailFilters = () => {
+      const q = norm(this.inventoryDetailSearch);
+      const f = this.inventoryDetailFilter || 'all';
+      const items = c.querySelectorAll('[data-inv-detail-item]');
+      let visibleCards = 0;
+      items.forEach(item => {
+        const matchText = !q || (item.dataset.search || '').includes(q);
+        const matchStatus = f === 'all' || item.dataset.status === f;
+        const visible = matchText && matchStatus;
+        item.hidden = !visible;
+        if (visible && item.classList.contains('inventory-detail-card')) visibleCards++;
+      });
+      const countEl = c.querySelector('#inv-detail-count');
+      if (countEl) countEl.textContent = visibleCards;
+      const emptyEl = c.querySelector('#inv-detail-empty');
+      if (emptyEl) emptyEl.style.display = visibleCards ? 'none' : 'block';
+    };
+    const detailSearchEl = c.querySelector('#inv-detail-search');
+    const detailFilterEl = c.querySelector('#inv-detail-filter');
+    const detailSortEl = c.querySelector('#inv-detail-sort');
+    detailSearchEl?.addEventListener('input', e => {
+      this.inventoryDetailSearch = e.target.value;
+      applyInventoryDetailFilters();
+    });
+    detailFilterEl?.addEventListener('change', e => {
+      this.inventoryDetailFilter = e.target.value;
+      applyInventoryDetailFilters();
+    });
+    detailSortEl?.addEventListener('change', e => {
+      this.inventoryDetailSort = e.target.value;
+      this.renderInventory(c);
+    });
+    applyInventoryDetailFilters();
 
     // Bind import batch button
     document.getElementById('btn-import-batch')?.addEventListener('click', () => this.openImportBatch());
