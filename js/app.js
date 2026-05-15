@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '324';
+const KHS_APP_VERSION = '325';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -2069,9 +2069,12 @@ const App = {
   // ═════════ REPORTS ═════════
   reportType: 'finance',
   reportPeriod: 'thisMonth',
+  reportCustomFrom: '',
+  reportCustomTo: '',
   reportView: 'chart',
 
   renderReports(c) {
+    if (this.reportPeriod === 'custom' && (!this.reportCustomFrom || !this.reportCustomTo)) this._setReportCustomDefaults();
     c.innerHTML = `
       <div class="report-layout">
         <div class="report-sidebar">
@@ -2110,9 +2113,9 @@ const App = {
               <option value="thisYear" ${this.reportPeriod==='thisYear'?'selected':''}>Năm nay</option>
               <option value="custom" ${this.reportPeriod==='custom'?'selected':''}>Tùy chỉnh</option>
             </select>
-            <div id="rpt-custom-dates" style="display:${this.reportPeriod==='custom'?'flex':'none'};gap:6px;margin-top:8px;flex-direction:column">
-              <input type="date" id="rpt-from" class="form-control">
-              <input type="date" id="rpt-to" class="form-control">
+            <div id="rpt-custom-dates" class="report-custom-range" style="display:${this.reportPeriod==='custom'?'flex':'none'}">
+              <input type="date" id="rpt-from" value="${this.reportCustomFrom}">
+              <input type="date" id="rpt-to" value="${this.reportCustomTo}">
             </div>
           </div>
         </div>
@@ -2131,13 +2134,25 @@ const App = {
     }));
     document.getElementById('rpt-period').addEventListener('change', e => {
       this.reportPeriod = e.target.value;
-      document.getElementById('rpt-custom-dates').style.display = this.reportPeriod === 'custom' ? 'flex' : 'none';
+      if (this.reportPeriod === 'custom' && (!this.reportCustomFrom || !this.reportCustomTo)) this._setReportCustomDefaults();
+      const customDates = document.getElementById('rpt-custom-dates');
+      if (customDates) customDates.style.display = this.reportPeriod === 'custom' ? 'flex' : 'none';
       this.updateReport();
     });
-    document.getElementById('rpt-from')?.addEventListener('change', () => this.updateReport());
-    document.getElementById('rpt-to')?.addEventListener('change', () => this.updateReport());
+    document.getElementById('rpt-from')?.addEventListener('change', e => { this.reportCustomFrom = e.target.value; this.updateReport(); });
+    document.getElementById('rpt-to')?.addEventListener('change', e => { this.reportCustomTo = e.target.value; this.updateReport(); });
     document.querySelectorAll('[data-report]').forEach(link => link.addEventListener('click', () => { this.reportType = link.dataset.report; this.renderReports(document.getElementById('page-container')); }));
     this.updateReport();
+  },
+
+  _setReportCustomDefaults() {
+    const now = new Date();
+    this.reportCustomFrom = this._formatDateInput(new Date(now.getFullYear(), now.getMonth(), 1));
+    this.reportCustomTo = this._formatDateInput(now);
+    const fromEl = document.getElementById('rpt-from');
+    const toEl = document.getElementById('rpt-to');
+    if (fromEl) fromEl.value = this.reportCustomFrom;
+    if (toEl) toEl.value = this.reportCustomTo;
   },
 
   getReportDateRange() {
@@ -2150,7 +2165,13 @@ const App = {
       case 'thisMonth': return [new Date(now.getFullYear(),now.getMonth(),1), now];
       case 'lastMonth': return [new Date(now.getFullYear(),now.getMonth()-1,1), new Date(now.getFullYear(),now.getMonth(),0,23,59,59)];
       case 'thisYear': return [new Date(now.getFullYear(),0,1), now];
-      case 'custom': { const f=document.getElementById('rpt-from')?.value, t=document.getElementById('rpt-to')?.value; if(!f||!t) return [new Date(now.getFullYear(),now.getMonth(),1),now]; return [new Date(f), new Date(t+'T23:59:59')]; }
+      case 'custom': {
+        let f = this.reportCustomFrom || document.getElementById('rpt-from')?.value;
+        let t = this.reportCustomTo || document.getElementById('rpt-to')?.value;
+        if (!f || !t) return [new Date(now.getFullYear(),now.getMonth(),1),now];
+        if (f > t) [f, t] = [t, f];
+        return [new Date(`${f}T00:00:00`), new Date(`${t}T23:59:59`)];
+      }
       default: return [new Date(now.getFullYear(),now.getMonth(),1), now];
     }
   },
