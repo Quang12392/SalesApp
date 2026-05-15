@@ -2254,6 +2254,21 @@ ul, ol { list-style: none; }
   margin-bottom: 16px;
   color: var(--text-primary);
 }
+.inventory-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.inventory-title-row .report-title {
+  margin-bottom: 0;
+}
+.inventory-title-batch-btn {
+  flex-shrink: 0;
+  min-width: 128px;
+  justify-content: center;
+}
 .report-summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -2365,6 +2380,13 @@ ul, ol { list-style: none; }
   .rpt-view-btn {
     padding: 8px 10px; font-size: 0.78rem; border-radius: 10px;
     border: 1.5px solid #E5E7EB;
+  }
+  .inventory-title-row {
+    margin-bottom: 10px;
+  }
+  .inventory-title-batch-btn {
+    min-width: 118px;
+    padding-inline: 10px;
   }
   .rpt-view-btn.active {
     background: linear-gradient(135deg, #1B5E20, #2E7D32, #388E3C); color: #fff; border-color: #2E7D32;

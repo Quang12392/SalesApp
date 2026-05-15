@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '318';
+const KHS_APP_VERSION = '319';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -2381,6 +2381,7 @@ const App = {
   inventoryView: 'chart',
   renderInventory(c) {
     this._lastInventoryContainer = c;
+    const isReportEmbedded = c?.id === 'report-content';
     const prods = this.products.filter(p => p.stock > 0);
     const totalQty = prods.reduce((s,p) => s + (p.stock||0), 0);
     const totalCost = prods.reduce((s,p) => s + (p.costPrice||0)*(p.stock||0), 0);
@@ -2389,7 +2390,7 @@ const App = {
     const allProds = this.products.slice().sort((a,b) => (b.stock||0) - (a.stock||0));
     const top10 = allProds.filter(p=>p.stock>0).slice(0,10);
 
-    const viewToggle = `<div class="rpt-view-toggle" style="margin-bottom:16px">
+    const viewToggle = isReportEmbedded ? '' : `<div class="rpt-view-toggle" style="margin-bottom:16px">
       <button class="rpt-view-btn ${this.inventoryView==='chart'?'active':''}" data-inv-view="chart">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg> Biểu đồ
       </button>
@@ -2400,6 +2401,10 @@ const App = {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Lô hàng
       </button>
     </div>`;
+    const batchHeaderButton = isReportEmbedded ? `<button class="rpt-view-btn inventory-title-batch-btn ${this.inventoryView==='batches'?'active':''}" data-inv-view="batches">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4A2 2 0 0 0 13 21l7-4a2 2 0 0 0 1-1z"/></svg>
+      Lô hàng
+    </button>` : '';
 
     const cards = `<div class="report-summary-cards">
       <div class="rpt-card blue"><div class="rpt-card-label">Tổng tồn kho</div><div class="rpt-card-value">${totalQty.toLocaleString('vi-VN')} SP</div></div>
@@ -2462,7 +2467,7 @@ const App = {
       </div></div>`;
     }
 
-    c.innerHTML = `<h2 class="report-title">📦 Kiểm kho</h2>${viewToggle}${cards}${content}`;
+    c.innerHTML = `<div class="inventory-title-row"><h2 class="report-title">📦 Kiểm kho</h2>${batchHeaderButton}</div>${viewToggle}${cards}${content}`;
 
     // Bind view toggle
     document.querySelectorAll('[data-inv-view]').forEach(btn => btn.addEventListener('click', () => {
