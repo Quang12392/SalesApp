@@ -2537,6 +2537,111 @@ ul, ol { list-style: none; }
   .report-summary-cards { grid-template-columns: 1fr 1fr; }
 }
 
+/* Modern report type controls */
+.report-type-list {
+  gap: 7px;
+}
+.report-type-btn {
+  --rpt-accent: #2563EB;
+  --rpt-accent-2: #1D4ED8;
+  --rpt-bg: #EFF6FF;
+  --rpt-glow: rgba(37, 99, 235, 0.18);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 42px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--rpt-bg) 100%);
+  color: #334155;
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  transform: translateY(0);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+.report-type-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 14% 0%, var(--rpt-glow), transparent 48%);
+  opacity: 0.8;
+}
+.report-type-btn[data-type="sales"] {
+  --rpt-accent: #2563EB;
+  --rpt-accent-2: #1D4ED8;
+  --rpt-bg: #EFF6FF;
+  --rpt-glow: rgba(37, 99, 235, 0.18);
+}
+.report-type-btn[data-type="products"] {
+  --rpt-accent: #0F766E;
+  --rpt-accent-2: #0D9488;
+  --rpt-bg: #ECFDF5;
+  --rpt-glow: rgba(15, 118, 110, 0.18);
+}
+.report-type-btn[data-type="customers"] {
+  --rpt-accent: #7C3AED;
+  --rpt-accent-2: #6D28D9;
+  --rpt-bg: #F5F3FF;
+  --rpt-glow: rgba(124, 58, 237, 0.18);
+}
+.report-type-btn[data-type="finance"] {
+  --rpt-accent: #DC2626;
+  --rpt-accent-2: #BE123C;
+  --rpt-bg: #FEF2F2;
+  --rpt-glow: rgba(220, 38, 38, 0.18);
+}
+.report-type-btn[data-type="inventory"] {
+  --rpt-accent: #2E7D32;
+  --rpt-accent-2: #166534;
+  --rpt-bg: #F0FDF4;
+  --rpt-glow: rgba(46, 125, 50, 0.2);
+}
+.report-type-btn svg {
+  stroke: var(--rpt-accent);
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.08));
+}
+.report-type-btn:hover {
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--rpt-bg) 82%);
+  border-color: color-mix(in srgb, var(--rpt-accent) 46%, #FFFFFF);
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.12), 0 0 0 3px var(--rpt-glow);
+  transform: translateY(-1px);
+}
+.report-type-btn.active,
+.report-type-btn[data-type="finance"].active,
+.report-type-btn[data-type="inventory"].active {
+  background: linear-gradient(135deg, var(--rpt-accent), var(--rpt-accent-2));
+  border-color: transparent;
+  color: #FFFFFF;
+  box-shadow: 0 10px 22px var(--rpt-glow), 0 2px 6px rgba(15, 23, 42, 0.14);
+}
+.report-type-btn.active::before {
+  opacity: 0;
+}
+.report-type-btn.active svg {
+  stroke: #FFFFFF;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
+}
+.report-type-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+}
+
+@media (max-width: 768px) {
+  .report-type-list {
+    gap: 6px;
+  }
+  .report-type-btn {
+    min-height: 38px;
+    padding: 8px 8px;
+    border-radius: 10px;
+    font-size: 0.74rem;
+    gap: 5px;
+  }
+  .report-type-btn[data-type="inventory"] {
+    min-height: 39px;
+  }
+}
+
 /* View Toggle */
 .rpt-view-toggle { display: flex; gap: 4px; }
 .rpt-view-btn {
