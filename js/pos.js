@@ -18,17 +18,17 @@ const POS = {
 
   init() {
     document.getElementById('btn-open-pos').addEventListener('click', () => this.open());
-    document.getElementById('pos-close').addEventListener('click', () => this.close());
+    document.getElementById('pos-close').addEventListener('click', () => this.handleBack());
     // Intercept Android back gesture / browser back button
     window.addEventListener('popstate', (e) => {
       if (this._posOpen) {
-        if (this.cart.length > 0) {
-          // Re-push state so back doesn't navigate away
-          history.pushState({ pos: true }, '', location.href);
-          this.showExitConfirm();
-        } else {
+        if (!this.cart.length) {
           this.close(true);
+          return;
         }
+        // Re-push state so back doesn't navigate away while a draft cart is active.
+        history.pushState({ pos: true }, '', location.href);
+        this.handleBack();
       }
     });
     document.getElementById('pos-product-search').addEventListener('input', e => this.renderProducts(e.target.value));
@@ -104,6 +104,16 @@ const POS = {
         }
       });
     }
+  },
+
+  handleBack() {
+    if (this._isMobile?.() && this._mobileView === 'browse' && this.cart.length > 0) {
+      this.switchMobileView('cart');
+      this.renderCart();
+      this.updateTotals();
+      return;
+    }
+    this.close();
   },
 
   open() {
