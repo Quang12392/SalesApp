@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '321';
+const KHS_APP_VERSION = '322';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
@@ -79,8 +79,10 @@ const App = {
             const btn = document.getElementById('sw-update-dismiss');
             if (btn) { btn.textContent = '⏳ Đang tải...'; btn.disabled = true; }
             localStorage.removeItem('khs_pending_update_notice');
+            localStorage.setItem('khs_app_version', KHS_APP_VERSION);
+            localStorage.setItem('khs_last_version', KHS_APP_VERSION);
             if (navigator.serviceWorker) navigator.serviceWorker.getRegistration().then(r => r?.unregister()).catch(() => {});
-            location.replace(location.origin + location.pathname);
+            location.reload();
           });
         };
         const pendingNotice = localStorage.getItem('khs_pending_update_notice');
@@ -89,17 +91,6 @@ const App = {
         const lastVersion = localStorage.getItem('khs_last_version');
         if (lastVersion && lastVersion !== KHS_APP_VERSION) showUpdateBanner(KHS_APP_VERSION);
         localStorage.setItem('khs_last_version', KHS_APP_VERSION);
-        // New SW waiting
-        if (reg.waiting) showUpdateBanner();
-        reg.addEventListener('updatefound', () => {
-          const newSW = reg.installing;
-          if (!newSW) return;
-          newSW.addEventListener('statechange', () => {
-            if (newSW.state === 'installed') {
-              showUpdateBanner();
-            }
-          });
-        });
       });
     }
     // Auto-sync from Google Sheets if API is configured
