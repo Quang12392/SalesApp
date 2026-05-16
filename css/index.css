@@ -2985,11 +2985,13 @@ ul, ol { list-style: none; }
 .return-overlay {
   position: fixed; inset: 0; z-index: 9998; background: rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center;
+  padding: 20px;
   backdrop-filter: blur(4px); animation: fadeIn 0.2s ease;
 }
 .return-modal {
   background: #fff; border-radius: 16px; width: 90%; max-width: 720px;
-  max-height: 85vh; display: flex; flex-direction: column;
+  max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px);
+  overflow: hidden; display: flex; flex-direction: column;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUp 0.3s ease;
 }
 @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -3022,7 +3024,15 @@ ul, ol { list-style: none; }
 }
 .return-order-list .btn-choose:hover { background: #2E7D32; color: #fff; }
 @media (max-width: 768px) {
-  .return-modal { width: 96%; max-height: 90vh; }
+  .return-overlay { padding: 18px 14px; align-items: center; }
+  .return-modal {
+    width: 100%;
+    max-width: 480px;
+    max-height: calc(100vh - 42px);
+    max-height: calc(100dvh - 42px);
+    border-radius: 16px;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.28);
+  }
   .return-order-list table { font-size: 0.78rem; }
   .return-order-list th, .return-order-list td { padding: 8px 6px; }
   .return-order-list .btn-choose { padding: 4px 8px; font-size: 0.72rem; }
@@ -3144,8 +3154,27 @@ ul, ol { list-style: none; }
 
 /* ── Return modal mobile responsive ── */
 @media (max-width: 600px) {
-  .return-modal { max-width: 100%; margin: 0; border-radius: 0; height: 100vh; max-height: 100vh; }
-  .return-body { overflow-y: auto; max-height: calc(100vh - 56px); }
+  .return-overlay {
+    padding: 18px 14px;
+    align-items: center;
+  }
+  .return-modal {
+    max-width: 100%;
+    margin: 0 auto;
+    border-radius: 18px;
+    height: auto;
+    max-height: calc(100vh - 36px);
+    max-height: calc(100dvh - 36px);
+  }
+  .return-header {
+    padding: 16px 18px;
+  }
+  .return-body {
+    overflow-y: auto;
+    max-height: none;
+    min-height: 0;
+    padding: 16px 18px 18px;
+  }
   .return-layout { flex-direction: column; min-height: auto; }
   .return-left { border-right: none; padding-right: 0; border-bottom: 1px solid #E5E7EB; padding-bottom: 12px; margin-bottom: 12px; }
   .return-right { width: 100%; padding-left: 0; }
