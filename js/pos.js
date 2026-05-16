@@ -512,7 +512,7 @@ const POS = {
     const customers = App.customers || [];
     const matches = customers.filter(c => {
       if (!q) return true;
-      return this.normalizeSearch(`${c.name || ''} ${c.phone || ''} ${c.address || ''}`).includes(q);
+      return this.normalizeSearch(`${c.name || ''} ${c.phone || ''}`).includes(q);
     }).slice(0, 80);
 
     if (!matches.length && !rawQuery) {
