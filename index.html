@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/index.css?v=331">
+  <link rel="stylesheet" href="css/index.css?v=332">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
@@ -463,8 +463,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/app.js?v=331"></script>
-  <script src="js/pos.js?v=331"></script>
+  <script src="js/app.js?v=332"></script>
+  <script src="js/pos.js?v=332"></script>
 
   <script>
   // ── IndexedDB Cache Layer ──
@@ -531,7 +531,9 @@
   // ── Force Cache Purge on Version Change ──
   const APP_VERSION = window.KHS_APP_VERSION || '300';
   const storedVersion = localStorage.getItem('khs_app_version');
+  let skipSwRegisterThisLoad = false;
   if (storedVersion && storedVersion !== APP_VERSION) {
+    skipSwRegisterThisLoad = true;
     // Version changed — force purge all caches + unregister SW
     (async () => {
       try {
@@ -550,30 +552,18 @@
   }
 
   // ── Service Worker Registration (Auto-Update) ──
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && !skipSwRegisterThisLoad) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
       console.log('SW registered:', reg.scope);
-      // Check for updates immediately, then every 30 seconds
+      // Check for updates immediately, then occasionally. App.init shows the update notice;
+      // this block must not reload automatically or it can loop after a deploy.
       reg.update();
-      setInterval(() => reg.update(), 30000);
+      setInterval(() => reg.update(), 5 * 60 * 1000);
       // Also check when app comes back to foreground
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update();
       });
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-            console.log('New SW version activated, reloading...');
-            window.location.reload();
-          }
-        });
-      });
     }).catch(err => console.log('SW error:', err));
-    // Force reload when SW controller changes
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
-    });
   }
 
   // ── PWA Install Prompt ──
