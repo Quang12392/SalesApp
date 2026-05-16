@@ -58,8 +58,18 @@ const POS = {
     });
     // Customer search
     const cs = document.getElementById('pos-customer-search');
-    cs.addEventListener('input', e => this.searchCustomers(e.target.value));
-    cs.addEventListener('focus', e => { if (e.target.value) this.searchCustomers(e.target.value); });
+    cs.addEventListener('input', e => {
+      if (this._isMobile?.()) { this.openCustomerSearchPage(e.target.value); return; }
+      this.searchCustomers(e.target.value);
+    });
+    cs.addEventListener('focus', e => {
+      if (this._isMobile?.()) { this.openCustomerSearchPage(e.target.value); return; }
+      if (e.target.value) this.searchCustomers(e.target.value);
+    });
+    cs.addEventListener('click', e => {
+      if (this._isMobile?.()) this.openCustomerSearchPage(e.target.value);
+    });
+    document.getElementById('pos-customer-page-search')?.addEventListener('input', e => this.renderCustomerSearchPage(e.target.value));
     document.getElementById('pos-overlay').addEventListener('click', e => {
       if (!e.target.closest('.pos-customer-section')) document.getElementById('pos-customer-dropdown').style.display = 'none';
     });
@@ -107,6 +117,10 @@ const POS = {
   },
 
   handleBack() {
+    if (this._isMobile?.() && this._mobileView === 'customer') {
+      this.closeCustomerSearchPage();
+      return;
+    }
     if (this._isMobile?.() && this._mobileView === 'browse' && this.cart.length > 0) {
       this.switchMobileView('cart');
       this.renderCart();
@@ -123,6 +137,7 @@ const POS = {
     this._tiktokOrderId = null;
     this._resetCheckoutBtn();
     document.getElementById('pos-overlay').style.display = 'flex';
+    this.hideCustomerSearchPage();
     // Delay pushState so it doesn't conflict with hash routing (#pos → #orders)
     setTimeout(() => {
       this._posOpen = true;
@@ -309,6 +324,7 @@ const POS = {
       this.showExitConfirm();
       return;
     }
+    this.hideCustomerSearchPage();
     // Mobile: move customer back to cart panel
     const custSection = document.querySelector('.pos-customer-section');
     const cartPanel = document.querySelector('.pos-cart-panel');
@@ -440,6 +456,96 @@ const POS = {
     reset();
     requestAnimationFrame(reset);
     setTimeout(reset, 80);
+  },
+
+  escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  },
+
+  normalizeSearch(value) {
+    return String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  },
+
+  openCustomerSearchPage(initialQuery = '') {
+    if (!this._isMobile?.()) return;
+    if (this._mobileView !== 'customer') {
+      this._customerReturnView = this._mobileView || (this.cart.length ? 'cart' : 'browse');
+    }
+    this._mobileView = 'customer';
+    document.getElementById('pos-customer-dropdown').style.display = 'none';
+    document.querySelector('.pos-body')?.classList.add('customer-search-active');
+    document.getElementById('pos-overlay')?.classList.add('customer-search-active');
+    const page = document.getElementById('pos-customer-search-page');
+    const input = document.getElementById('pos-customer-page-search');
+    if (page) page.style.display = 'flex';
+    if (input) input.value = initialQuery || '';
+    this.renderCustomerSearchPage(initialQuery || '');
+    requestAnimationFrame(() => input?.focus());
+  },
+
+  hideCustomerSearchPage() {
+    document.querySelector('.pos-body')?.classList.remove('customer-search-active');
+    document.getElementById('pos-overlay')?.classList.remove('customer-search-active');
+    const page = document.getElementById('pos-customer-search-page');
+    if (page) page.style.display = 'none';
+    const dd = document.getElementById('pos-customer-dropdown');
+    if (dd) dd.style.display = 'none';
+  },
+
+  closeCustomerSearchPage({ restore = true } = {}) {
+    const returnView = this._customerReturnView || (this.cart.length ? 'cart' : 'browse');
+    this.hideCustomerSearchPage();
+    this._customerReturnView = null;
+    if (!restore || !this._isMobile?.()) return;
+    this.switchMobileView(returnView);
+    if (returnView === 'cart') {
+      this.renderCart();
+      this.updateTotals();
+    }
+  },
+
+  renderCustomerSearchPage(query = '') {
+    const list = document.getElementById('pos-customer-page-list');
+    if (!list) return;
+    const rawQuery = String(query || '').trim();
+    const q = this.normalizeSearch(rawQuery);
+    const customers = App.customers || [];
+    const matches = customers.filter(c => {
+      if (!q) return true;
+      return this.normalizeSearch(`${c.name || ''} ${c.phone || ''} ${c.address || ''}`).includes(q);
+    }).slice(0, 80);
+
+    if (!matches.length && !rawQuery) {
+      list.innerHTML = '<div class="pos-customer-page-empty">Chưa có khách hàng</div>';
+      return;
+    }
+
+    const createButton = rawQuery && !matches.length
+      ? `<button type="button" class="pos-customer-page-create" id="pos-customer-page-create">+ Thêm mới: "${this.escapeHtml(rawQuery)}"</button>`
+      : '';
+
+    const rows = matches.map(c => {
+      const name = this.escapeHtml(c.name || 'Khách lẻ');
+      const phone = this.escapeHtml(c.phone || '');
+      const address = this.escapeHtml(c.address || '');
+      const first = this.escapeHtml((c.name || 'K').trim().charAt(0).toUpperCase() || 'K');
+      const selected = this.selectedCustomer?.id && this.selectedCustomer.id === c.id ? 'selected' : '';
+      const meta = [phone, address].filter(Boolean).join(' - ');
+      return `<button type="button" class="pos-customer-page-row ${selected}" data-customer-id="${this.escapeHtml(c.id)}">
+        <span class="pos-customer-page-avatar">${first}</span>
+        <span class="pos-customer-page-info">
+          <span class="pos-customer-page-name">${name}</span>
+          ${meta ? `<span class="pos-customer-page-meta">${meta}</span>` : '<span class="pos-customer-page-meta">Chưa có số điện thoại</span>'}
+        </span>
+        <span class="pos-customer-page-pick">Chọn</span>
+      </button>`;
+    }).join('');
+
+    list.innerHTML = createButton + rows + (!matches.length && rawQuery ? '<div class="pos-customer-page-empty">Không tìm thấy khách hàng phù hợp</div>' : '');
+    list.querySelectorAll('[data-customer-id]').forEach(row => {
+      row.addEventListener('click', () => this.selectCustomer(row.dataset.customerId));
+    });
+    list.querySelector('#pos-customer-page-create')?.addEventListener('click', () => this.setCustomerManual(rawQuery));
   },
 
   addToCart(productId) {
@@ -1023,11 +1129,13 @@ const POS = {
     if (!c) return;
     this.selectedCustomer = { id: c.id, name: c.name, phone: c.phone, address: c.address };
     this.showSelectedCustomer();
+    if (this._isMobile?.() && this._mobileView === 'customer') this.closeCustomerSearchPage();
   },
 
   setCustomerManual(name) {
     this.selectedCustomer = { id: '', name: name, phone: '', address: '' };
     this.showSelectedCustomer();
+    if (this._isMobile?.() && this._mobileView === 'customer') this.closeCustomerSearchPage();
   },
 
   showSelectedCustomer() {
@@ -1050,7 +1158,11 @@ const POS = {
     // Show search bar again
     const section = document.querySelector('.pos-customer-section');
     if (section) section.classList.remove('customer-selected');
-    setTimeout(() => document.getElementById('pos-customer-search')?.focus(), 100);
+    if (this._isMobile?.()) {
+      setTimeout(() => this.openCustomerSearchPage(''), 100);
+    } else {
+      setTimeout(() => document.getElementById('pos-customer-search')?.focus(), 100);
+    }
   },
 
 

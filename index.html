@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/index.css?v=328">
+  <link rel="stylesheet" href="css/index.css?v=329">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
@@ -290,6 +290,13 @@
     </div>
     <div class="pos-drafts-panel" id="pos-drafts-panel" style="display:none"></div>
     <div class="pos-body">
+      <div class="pos-customer-search-page" id="pos-customer-search-page" style="display:none">
+        <div class="pos-customer-page-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <input type="text" id="pos-customer-page-search" placeholder="Tìm khách hàng theo tên hoặc số điện thoại...">
+        </div>
+        <div class="pos-customer-page-list" id="pos-customer-page-list"></div>
+      </div>
       <!-- LEFT: Product Search & List -->
       <div class="pos-products">
         <div class="pos-search-bar">
@@ -456,8 +463,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/app.js?v=328"></script>
-  <script src="js/pos.js?v=328"></script>
+  <script src="js/app.js?v=329"></script>
+  <script src="js/pos.js?v=329"></script>
 
   <script>
   // ── IndexedDB Cache Layer ──

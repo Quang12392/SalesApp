@@ -925,6 +925,125 @@ ul, ol { list-style: none; }
   border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
   max-height: 200px; overflow-y: auto; z-index: 10;
 }
+.pos-customer-search-page {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  background: #fff;
+  min-height: 0;
+}
+.pos-customer-page-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  background: #F1F8F2;
+  color: var(--primary);
+}
+.pos-customer-page-search svg {
+  width: 22px;
+  height: 22px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.pos-customer-page-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  min-width: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.pos-customer-page-search input::placeholder {
+  color: var(--primary);
+  opacity: 0.72;
+}
+.pos-customer-page-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
+}
+.pos-customer-page-row,
+.pos-customer-page-create {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.pos-customer-page-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.pos-customer-page-row.selected {
+  background: #E8F5E9;
+  border-left: 3px solid var(--primary);
+}
+.pos-customer-page-row:active,
+.pos-customer-page-create:active {
+  background: var(--primary-bg);
+}
+.pos-customer-page-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #E8F5E9;
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.pos-customer-page-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pos-customer-page-name {
+  color: var(--text);
+  font-weight: 800;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+.pos-customer-page-meta {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pos-customer-page-pick {
+  color: var(--primary);
+  background: #E8F8EA;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.pos-customer-page-create {
+  padding: 14px 16px;
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 1rem;
+  background: #F1F8F2;
+}
+.pos-customer-page-empty {
+  padding: 40px 16px;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 600;
+}
 .pos-customer-option {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px; cursor: pointer; font-size: 0.85rem;
@@ -1434,6 +1553,19 @@ ul, ol { list-style: none; }
   .nav-dropdown { display: none !important; }
   .header-username { display: none; }
   .pos-body { flex-direction: column; height: calc(100vh - 56px); position: relative; }
+  .pos-overlay.customer-search-active > .pos-drafts-bar,
+  .pos-overlay.customer-search-active > .pos-drafts-panel {
+    display: none !important;
+  }
+  .pos-body.customer-search-active .pos-products,
+  .pos-body.customer-search-active .pos-cart-panel {
+    display: none !important;
+  }
+  .pos-body.customer-search-active .pos-customer-search-page {
+    display: flex !important;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
   
   /* === KiotViet mobile POS layout === */
   /* Search bar stays at top */
