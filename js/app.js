@@ -12,10 +12,10 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '333';
+const KHS_APP_VERSION = '335';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
-function fmt(n) { return new Intl.NumberFormat('vi-VN').format(n || 0); }
+function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
 function fmtd(n) { return fmt(n) + 'đ'; }
 function unfmt(s) { return parseInt(String(s).replace(/\./g,''))||0; }
 function fmtInput(el) { const v=unfmt(el.value); el.value=v?fmt(v):''; }
@@ -2857,6 +2857,11 @@ const App = {
     document.getElementById('return-overlay').style.display = 'none';
   },
 
+  isReturnableOrder(order) {
+    if(!order) return false;
+    return String(order.status || 'completed').trim().toLowerCase() === 'completed';
+  },
+
   returnStep1() {
     document.getElementById('return-step1').style.display = '';
     document.getElementById('return-step2').style.display = 'none';
@@ -2866,7 +2871,7 @@ const App = {
   renderReturnOrders() {
     const q = this.returnSearch.toLowerCase();
     const filtered = this.orders.filter(o => {
-      if(o.status === 'returned') return false;
+      if(!this.isReturnableOrder(o)) return false;
       if(!q) return true;
       return (o.id||'').toLowerCase().includes(q) || (o.customerName||'').toLowerCase().includes(q);
     });
@@ -2916,6 +2921,12 @@ const App = {
   selectReturnOrder(orderId) {
     const order = this.orders.find(o => o.id === orderId);
     if(!order) return;
+    if(!this.isReturnableOrder(order)) {
+      this.toast('error', 'Chỉ đơn hoàn thành mới được trả hàng');
+      this.returnStep1();
+      this.renderReturnOrders();
+      return;
+    }
     this.returnSelectedOrder = order;
     document.getElementById('return-step1').style.display = 'none';
     document.getElementById('return-step2').style.display = '';
@@ -3054,6 +3065,12 @@ const App = {
   async processReturn() {
     const order = this.returnSelectedOrder;
     if(!order) return;
+    if(!this.isReturnableOrder(order)) {
+      this.toast('error', 'Đơn đã hủy hoặc chưa hoàn thành, không thể trả hàng');
+      this.returnStep1();
+      this.renderReturnOrders();
+      return;
+    }
     const items = order.items || [];
     const returnItems = [];
 
