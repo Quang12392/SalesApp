@@ -44,3 +44,32 @@ For POS/frontend fixes, usually commit only:
 - relevant CSS/docs if changed
 
 Do not include `apps-script/Code.gs` unless the Apps Script change is part of the task.
+
+## Apps Script deploy
+
+`apps-script/Code.gs` is the working copy for Apps Script code only. The normal flow is that the user manually opens Apps Script, pastes the updated code, and deploys it there.
+
+Do not commit or push `apps-script/Code.gs` with frontend/app deploy changes unless the user explicitly asks for an Apps Script change to be included.
+
+If Codex changes `apps-script/Code.gs`, the final response must explicitly remind the user that this file was changed and needs to be copied into Apps Script and deployed manually.
+
+## TikTok Mapping SKU price rules
+
+The Google Sheet tab `Mapping SKU` drives TikTok order sync:
+
+- Column A `SKU TikTok`: seller SKU from TikTok.
+- Column B `SKU App`: SalesApp SKU to write into `Chi tiết đơn`.
+- Column C `Tên trên sàn`: display/reference name only.
+- Column D `SL gốc`: number of app units represented by one TikTok SKU.
+- Column E `SKU Quà`: optional gift SKU; gifts are also resolved through `Mapping SKU` and are written with price `0`.
+- Column F `Kiểu giá`: optional pricing mode.
+
+Use `SPLIT_TIKTOK` in column F when one TikTok SKU represents multiple units of the same app SKU and the app line price must be split per base unit. Examples: `2Hop-FIONNA` -> app SKU `1Hop-FIONNA` with `SL gốc = 2`, or `RealyTis-3que` -> app SKU `RealyTis-1que` with `SL gốc = 3`.
+
+Pricing behavior in `apps-script/Code.gs`:
+
+- Blank `Kiểu giá`, simple 1:1 mapping (`SL gốc = 1` and only one app SKU): use the actual TikTok item price.
+- Blank `Kiểu giá`, bundle/combo mapping (`SL gốc > 1` or multiple app SKUs): use the unit price from the TikTok spreadsheet tab `Quy Ước` by `SKU App`, falling back to the TikTok item price if no rule exists.
+- `SPLIT_TIKTOK`: use the TikTok seller SKU price from `Quy Ước` when available, otherwise the actual TikTok item price, then divide by `SL gốc`.
+
+When adding new pack SKUs, prefer `SPLIT_TIKTOK` instead of hard-coding special cases in code. If this pricing logic changes in `apps-script/Code.gs`, copy the updated file into Apps Script and deploy it manually before testing sync from the app.
