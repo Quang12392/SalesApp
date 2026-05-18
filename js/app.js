@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '335';
+const KHS_APP_VERSION = '336';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -1435,6 +1435,16 @@ const App = {
   // ═════════ ORDERS ═════════
   oSearch: '', oFilter: 'all', oTime: 'month', oCustomFrom: '', oCustomTo: '',
 
+  isCancelledOrder(order) {
+    const status = String(order?.status || '').trim().toLowerCase();
+    const normalized = status.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd');
+    return normalized === 'cancelled' || normalized === 'canceled' || normalized === 'da huy';
+  },
+
+  isRevenueOrder(order) {
+    return !!order && !this.isCancelledOrder(order);
+  },
+
   renderOrders(c) {
     // Only build full layout once
     if (!c.querySelector('#o-search')) {
@@ -1574,7 +1584,7 @@ const App = {
           const p = this.products.find(p => p.sku === i.sku) || this.products.find(p => p.name === i.name);
           return s + (p?.costPrice||0) * i.qty;
         }, 0);
-        const pf = (o.finalTotal||0) - ct;
+        const pf = this.isRevenueOrder(o) ? (o.finalTotal||0) - ct : 0;
         const fi = items[0];
         const mc = items.length - 1;
         const st = o.status==='completed'?'Hoàn thành':o.status==='Chờ đối chiếu'?'Chờ đối chiếu':o.status==='pending'?'Chờ xử lý':'Đã hủy';
@@ -1610,7 +1620,7 @@ const App = {
         const prod = this.products.find(p => p.sku === i.sku) || this.products.find(p => p.name === i.name);
         return s + (prod?.costPrice||0) * i.qty;
       }, 0);
-      const profit = (o.finalTotal||0) - costTotal;
+      const profit = this.isRevenueOrder(o) ? (o.finalTotal||0) - costTotal : 0;
       const itemsSummary = items.map(i=>`${i.name||'?'} x${i.qty||0}`).join(', ') || 'Không có SP';
       return `<tr class="order-card" data-oid="${o.id}">
       <td class="oc-id"><span class="product-sku">${o.id||''}</span></td>
@@ -1628,7 +1638,9 @@ const App = {
     </tr>`;
     }).join('') : `<tr><td colspan="9" class="table-empty"><p>Không tìm thấy đơn hàng</p></td></tr>`;
     // Update summary in sticky header
-    const totalRevenue = list.reduce((s, o) => s + (o.finalTotal || 0), 0);
+    const totalRevenue = list
+      .filter(o => this.isRevenueOrder(o))
+      .reduce((s, o) => s + (o.finalTotal || 0), 0);
     const summaryEl = document.getElementById('o-summary');
     if (summaryEl) {
       summaryEl.innerHTML = `
