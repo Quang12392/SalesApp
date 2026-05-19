@@ -869,15 +869,21 @@ const POS = {
       const raw = input.value.replace(/\D/g, '');
       input.value = raw ? parseInt(raw).toLocaleString('vi-VN') : '';
     });
+    let saved = false;
     const save = () => {
+      if (saved) return;
+      saved = true;
       const raw = input.value.replace(/\D/g, '');
-      const newPrice = parseInt(raw) || item.price;
+      const newPrice = raw === '' ? item.price : Math.max(0, parseInt(raw, 10) || 0);
       item.price = newPrice;
       this.renderCart();
       this.updateTotals();
     };
     input.addEventListener('blur', save);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') save();
+      if (e.key === 'Escape') this.renderCart();
+    });
   },
 
   editQty(lineId) {
