@@ -70,9 +70,11 @@ Pricing behavior in `apps-script/Code.gs`:
 
 - Blank `Kiểu giá`, simple 1:1 mapping (`SL gốc = 1` and only one app SKU): use the actual TikTok item price.
 - Blank `Kiểu giá`, bundle/combo mapping (`SL gốc > 1` or multiple app SKUs): use the unit price from the TikTok spreadsheet tab `Quy Ước` by `SKU App`, falling back to the TikTok item price if no rule exists.
-- `SPLIT_TIKTOK`: use the TikTok seller SKU price from `Quy Ước` when available, otherwise the actual TikTok item price, then divide by `SL gốc`.
+- `SPLIT_TIKTOK`: use the `Giá Bán` value already stored on the TikTok order row first, falling back to the TikTok seller SKU price from `Quy Ước` only if the row price is empty, then divide by `SL gốc`.
 
 When adding new pack SKUs, prefer `SPLIT_TIKTOK` instead of hard-coding special cases in code. If this pricing logic changes in `apps-script/Code.gs`, copy the updated file into Apps Script and deploy it manually before testing sync from the app.
+
+`Giá Bán` in the TikTok revenue sheet is a transaction snapshot written by the Telegram bot. Fee Extractor may be run later after prices in `Quy Ước` have changed, so SalesApp sync must not recompute old order prices from the current `Quy Ước` table when a row price already exists. If a seller SKU's price can change over time and the exact order-row price matters, use `SPLIT_TIKTOK` for that SKU, even when `SL gốc = 1`.
 
 ## POS TikTok duplicate SKU rows
 
