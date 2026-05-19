@@ -837,15 +837,16 @@ ul, ol { list-style: none; }
   flex-shrink: 0;
   cursor: pointer;
   color: #fff;
-  background: linear-gradient(135deg, #16A34A, #0B6B1E);
-  box-shadow: 0 8px 18px rgba(22, 163, 74, 0.28), inset 0 1px 0 rgba(255,255,255,0.28);
+  background: var(--primary);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1;
 }
-.pos-add-product-btn svg {
-  color: currentColor;
-  width: 22px;
-  height: 22px;
+.pos-add-product-btn span {
+  display: block;
+  transform: translateY(-1px);
 }
-.pos-add-product-btn:active { transform: translateY(1px) scale(0.98); }
+.pos-add-product-btn:active { filter: brightness(0.92); }
 
 /* View toggle buttons */
 .pos-view-toggle { display:flex; gap:2px; margin-left:8px; flex-shrink:0; }
@@ -1590,6 +1591,7 @@ ul, ol { list-style: none; }
   .pos-products > .pos-search-bar {
     background: var(--primary-bg);
     color: var(--primary);
+    padding-right: 10px;
   }
   .pos-products > .pos-search-bar svg { color: var(--primary); }
   .pos-products > .pos-search-bar input {
@@ -1600,9 +1602,9 @@ ul, ol { list-style: none; }
   .pos-products > .pos-search-bar input::placeholder { color: var(--primary); opacity: 0.75; }
   .pos-products > .pos-search-bar .pos-add-product-btn {
     display: flex;
-    width: 54px;
-    height: 46px;
-    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 2px;
     margin-left: auto;
   }
   
