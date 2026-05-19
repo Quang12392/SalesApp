@@ -90,6 +90,7 @@ const POS = {
       if (this._isMobile?.()) this.openCustomerSearchPage(e.target.value);
     });
     document.getElementById('pos-customer-page-search')?.addEventListener('input', e => this.renderCustomerSearchPage(e.target.value));
+    document.getElementById('pos-add-customer-btn')?.addEventListener('click', () => this.openNewCustomerModal());
     document.getElementById('pos-overlay').addEventListener('click', e => {
       if (!e.target.closest('.pos-customer-section')) document.getElementById('pos-customer-dropdown').style.display = 'none';
     });
@@ -576,6 +577,28 @@ const POS = {
       row.addEventListener('click', () => this.selectCustomer(row.dataset.customerId));
     });
     list.querySelector('#pos-customer-page-create')?.addEventListener('click', () => this.setCustomerManual(rawQuery));
+  },
+
+  openNewCustomerModal() {
+    const searchInput = document.getElementById('pos-customer-page-search') || document.getElementById('pos-customer-search');
+    const raw = String(searchInput?.value || '').trim();
+    const digits = raw.replace(/\D/g, '');
+    const prefill = {};
+    if (raw) {
+      if (/^[\d\s+().-]{8,}$/.test(raw) && digits.length >= 8) prefill.phone = digits;
+      else prefill.name = raw;
+    }
+
+    App.customerModal(null, {
+      prefill,
+      afterSave: (customer) => {
+        if (customer?.id) {
+          this.selectCustomer(customer.id);
+        } else {
+          this.renderCustomerSearchPage('');
+        }
+      }
+    });
   },
 
   addToCart(productId) {

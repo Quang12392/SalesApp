@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '343';
+const KHS_APP_VERSION = '344';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -1962,8 +1962,9 @@ const App = {
     return `<svg viewBox="0 0 80 80" width="60" height="60"><circle cx="40" cy="40" r="40" fill="#C8E6C9"/><circle cx="40" cy="30" r="13" fill="#1B5E20"/><path d="M18 68c0-12.15 9.85-22 22-22s22 9.85 22 22" fill="#1B5E20"/></svg>`;
   },
 
-  customerModal(id) {
+  customerModal(id, options = {}) {
     const cu = id ? this.customers.find(x => x.id === id) : null;
+    const prefill = !cu ? (options.prefill || {}) : {};
     document.getElementById('modal-title').textContent = cu ? 'Sửa khách hàng' : 'Thêm khách hàng mới';
     const gender = cu?.gender || '';
     const avatarUrl = cu?.avatar || '';
@@ -1978,10 +1979,10 @@ const App = {
             <div style="font-size:0.7rem;color:#9CA3AF;margin-top:4px">Click để đổi ảnh</div>
           </div>
           <div style="flex:1">
-            <div class="form-group"><label>Tên khách hàng</label><input class="form-control" id="cf-name" value="${cu?.name||''}" required placeholder="Nhập tên khách hàng"></div>
+            <div class="form-group"><label>Tên khách hàng</label><input class="form-control" id="cf-name" value="${cu?.name || prefill.name || ''}" required placeholder="Nhập tên khách hàng"></div>
             <div class="form-row">
-              <div class="form-group"><label>Số điện thoại</label><input class="form-control" id="cf-phone" value="${cu?.phone||''}" placeholder="VD: 0912345678"></div>
-              <div class="form-group"><label>Mã KH</label><input class="form-control" id="cf-id" value="${cu?.id||''}" ${cu?'readonly style="opacity:0.6"':''} placeholder="Tự động"></div>
+              <div class="form-group"><label>Số điện thoại</label><input class="form-control" id="cf-phone" value="${cu?.phone || prefill.phone || ''}" placeholder="VD: 0912345678"></div>
+              <div class="form-group"><label>Mã KH</label><input class="form-control" id="cf-id" value="${cu?.id || prefill.id || ''}" ${cu?'readonly style="opacity:0.6"':''} placeholder="Tự động"></div>
             </div>
           </div>
         </div>
@@ -1995,7 +1996,7 @@ const App = {
           </div>
           <div class="form-group"><label>Facebook</label><input class="form-control" id="cf-facebook" value="${cu?.facebook||''}" placeholder="Link hoặc tên FB"></div>
         </div>
-        <div class="form-group"><label>Địa chỉ</label><textarea class="form-control" id="cf-addr" rows="2" placeholder="Nhập địa chỉ" style="resize:vertical">${cu?.address||''}</textarea></div>
+        <div class="form-group"><label>Địa chỉ</label><textarea class="form-control" id="cf-addr" rows="2" placeholder="Nhập địa chỉ" style="resize:vertical">${cu?.address || prefill.address || ''}</textarea></div>
         <div class="form-group"><label>Ghi chú</label><textarea class="form-control" id="cf-note" rows="2" placeholder="Ghi chú về khách hàng..." style="resize:vertical">${cu?.note||''}</textarea></div>
         <input type="hidden" id="cf-avatar-data" value="${avatarUrl}">
       </form>
@@ -2038,8 +2039,10 @@ const App = {
         avatar: document.getElementById('cf-avatar-data').value
       };
       const url = localStorage.getItem('khs_api_url');
+      let savedCustomer = cu || null;
       if (cu) {
         Object.assign(cu, d);
+        savedCustomer = cu;
         this.toast('success', 'Đã cập nhật khách hàng!');
         if (url) {
           try {
@@ -2050,7 +2053,8 @@ const App = {
         }
       } else {
         const newId = document.getElementById('cf-id').value.trim() || 'KH' + String(this.customers.length + 800).padStart(6, '0');
-        this.customers.push({ id: newId, ...d, totalOrders: 0, totalSpent: 0, lastOrder: '' });
+        savedCustomer = { id: newId, ...d, totalOrders: 0, totalSpent: 0, lastOrder: '' };
+        this.customers.push(savedCustomer);
         this.toast('success', 'Đã thêm khách hàng!');
         if (url) {
           try {
@@ -2061,7 +2065,11 @@ const App = {
         }
       }
       this.closeModal();
-      this.renderCustomers(document.getElementById('page-container'));
+      if (typeof options.afterSave === 'function') {
+        options.afterSave(savedCustomer, { isEdit: !!cu });
+      } else {
+        this.renderCustomers(document.getElementById('page-container'));
+      }
     });
   },
 
