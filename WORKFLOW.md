@@ -73,3 +73,12 @@ Pricing behavior in `apps-script/Code.gs`:
 - `SPLIT_TIKTOK`: use the TikTok seller SKU price from `Quy Ước` when available, otherwise the actual TikTok item price, then divide by `SL gốc`.
 
 When adding new pack SKUs, prefer `SPLIT_TIKTOK` instead of hard-coding special cases in code. If this pricing logic changes in `apps-script/Code.gs`, copy the updated file into Apps Script and deploy it manually before testing sync from the app.
+
+## POS TikTok duplicate SKU rows
+
+TikTok can send different seller SKUs that map to the same SalesApp SKU, often with different prices. Keep these two identifiers separate:
+
+- `lineId`: frontend-only cart row identifier. Use it for POS row actions such as edit price, edit quantity, and delete row.
+- `sku`: SalesApp inventory SKU. Keep this as the mapped app SKU so all rows deduct from the same stock.
+
+Do not use `sku` or product `id` as the unique cart-row key when a TikTok cart/order can contain the same app SKU more than once. This prevents editing or deleting the wrong row while preserving shared stock deduction.

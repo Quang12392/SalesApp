@@ -15,6 +15,25 @@ const POS = {
   selectedCustomer: null,
   posTimer: null,
   viewMode: localStorage.getItem('pos_view_mode') || 'grid',
+  _lineSeq: 0,
+
+  makeLineId(prefix = 'line') {
+    this._lineSeq = (this._lineSeq || 0) + 1;
+    return `${prefix}-${Date.now().toString(36)}-${this._lineSeq.toString(36)}`;
+  },
+
+  ensureCartLineIds() {
+    const seen = new Set();
+    this.cart.forEach(item => {
+      if (!item.lineId || seen.has(item.lineId)) item.lineId = this.makeLineId('line');
+      seen.add(item.lineId);
+    });
+  },
+
+  findCartLine(lineId) {
+    this.ensureCartLineIds();
+    return this.cart.find(c => c.lineId === lineId || c.id === lineId);
+  },
 
   init() {
     document.getElementById('btn-open-pos').addEventListener('click', () => this.open());
@@ -217,7 +236,7 @@ const POS = {
     // Pre-fill cart
     this.cart = (o.items || []).map(item => {
       const p = App.products.find(x => x.sku === item.sku) || App.products.find(x => x.name === item.name);
-      return { id: p ? p.id : item.sku, sku: item.sku, name: p ? p.name : item.name, price: item.price, qty: item.qty, unit: p ? (p.unit || '') : '', maxStock: p ? p.stock : 0 };
+      return { lineId: this.makeLineId('tk'), id: p ? p.id : item.sku, sku: item.sku, name: p ? p.name : item.name, price: item.price, qty: item.qty, unit: p ? (p.unit || '') : '', maxStock: p ? p.stock : 0 };
     });
 
     // Pre-fill customer
@@ -376,6 +395,7 @@ const POS = {
   },
 
   renderProducts(query) {
+    this.ensureCartLineIds();
     const q = (query || '').toLowerCase();
     const list = App.products.filter(p => !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
     const c = document.getElementById('pos-product-list');
@@ -386,15 +406,17 @@ const POS = {
     c.innerHTML = list.map(p => {
       const stockClass = p.stock <= 0 ? 'out' : p.stock <= 3 ? 'low' : '';
       const outClass = p.stock <= 0 ? 'out-of-stock' : '';
-      const cartItem = this.cart.find(ci => ci.id === p.id);
+      const cartItems = this.cart.filter(ci => ci.id === p.id);
+      const cartItem = cartItems[0];
+      const cartQty = cartItems.reduce((s, ci) => s + (ci.qty || 0), 0);
       const inCart = !!cartItem;
       const inCartClass = inCart ? 'in-cart' : '';
       // If product is in cart, show qty controls instead of simple click
       const qtyControls = inCart 
         ? `<div class="pos-p-qty-inline" onclick="event.stopPropagation()">
-             <button onclick="POS.updateQty('${p.id}',-1)">−</button>
-             <span>${cartItem.qty}</span>
-             <button onclick="POS.updateQty('${p.id}',1)">+</button>
+             <button onclick="POS.updateQty('${cartItem.lineId}',-1)">−</button>
+             <span>${cartQty}</span>
+             <button onclick="POS.updateQty('${cartItem.lineId}',1)">+</button>
            </div>`
         : '';
       return `<div class="pos-p-card ${outClass} ${inCartClass}" data-sku="${p.sku}" onclick="POS.addToCart('${p.id}')">
@@ -560,7 +582,7 @@ const POS = {
         App.toast('info', p.name + ' vuot ton kho (con ' + p.stock + '). Hay luu tam don!');
       }
     } else {
-      this.cart.push({ id: p.id, sku: p.sku, name: p.name, price: p.sellPrice, qty: 1, unit: p.unit, maxStock: p.stock });
+      this.cart.push({ lineId: this.makeLineId('line'), id: p.id, sku: p.sku, name: p.name, price: p.sellPrice, qty: 1, unit: p.unit, maxStock: p.stock });
       if (p.stock <= 0) {
         App.toast('info', p.name + ' dang het hang. Hay luu tam don!');
       }
@@ -644,13 +666,13 @@ const POS = {
     }
   },
 
-  updateQty(productId, delta) {
-    const item = this.cart.find(c => c.id === productId);
+  updateQty(lineId, delta) {
+    const item = this.findCartLine(lineId);
     if (!item) return;
-    const p = App.products.find(x => x.id === productId);
+    const p = App.products.find(x => x.id === item.id || x.sku === item.sku || x.sku === item.id || x.id === item.sku || x.name === item.name);
     const newQty = item.qty + delta;
     if (newQty <= 0) {
-      this.cart = this.cart.filter(c => c.id !== productId);
+      this.cart = this.cart.filter(c => c.lineId !== item.lineId);
     } else {
       item.qty = newQty;
       if (p && newQty > p.stock) {
@@ -664,8 +686,10 @@ const POS = {
     if (!this.cart.length && this._isMobile?.()) this.switchMobileView('browse');
   },
 
-  removeFromCart(productId) {
-    this.cart = this.cart.filter(c => c.id !== productId);
+  removeFromCart(lineId) {
+    const item = this.findCartLine(lineId);
+    if (!item) return;
+    this.cart = this.cart.filter(c => c.lineId !== item.lineId);
     this.renderCart();
     this.updateTotals();
     // Mobile: go back to browse if cart empty
@@ -674,6 +698,7 @@ const POS = {
 
   renderCart() {
     const c = document.getElementById('pos-cart-items');
+    this.ensureCartLineIds();
     if (!this.cart.length) {
       c.innerHTML = `<div class="pos-cart-empty">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
@@ -690,12 +715,13 @@ const POS = {
       : '';
     
     c.innerHTML = addMoreBtn + this.cart.map(item => {
+      const lineId = item.lineId;
       const product = App.products.find(p => p.id === item.id || p.sku === item.sku || p.sku === item.id || p.id === item.sku || p.name === item.name);
       const stock = product ? product.stock : 999;
       const overStock = item.qty > stock;
       return `
       <div class="pos-cart-swipe">
-        <button class="pos-cart-delete-action" onclick="POS.removeFromCart('${item.id}')" title="Xóa sản phẩm" aria-label="Xóa sản phẩm">
+        <button class="pos-cart-delete-action" onclick="POS.removeFromCart('${lineId}')" title="Xóa sản phẩm" aria-label="Xóa sản phẩm">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6l-1 14H6L5 6"/>
@@ -705,18 +731,18 @@ const POS = {
           </svg>
         </button>
         <div class="pos-cart-item">
-          <img class="pos-cart-thumb" id="cartimg-${item.id}" src="" alt="">
+          <img class="pos-cart-thumb" id="cartimg-${lineId}" src="" alt="">
           <div class="pos-cart-info">
             <div class="pos-cart-item-name">${item.name}</div>
             <div class="pos-cart-item-price">
-              <span class="pos-price-edit" onclick="POS.editPrice('${item.id}')" title="Click để sửa giá">${fmtd(item.price)}</span>
+              <span class="pos-price-edit" data-line-id="${lineId}" onclick="POS.editPrice('${lineId}')" title="Click để sửa giá">${fmtd(item.price)}</span>
               <span> × ${item.qty}</span>
             </div>
           </div>
           <div class="pos-cart-qty">
-            <button onclick="POS.updateQty('${item.id}',-1)" class="${item.qty <= 1 ? 'remove' : ''}">−</button>
-            <span class="pos-qty-edit ${overStock ? 'overstock' : ''}" onclick="POS.editQty('${item.id}')" title="Click để nhập số lượng">${item.qty}</span>
-            <button onclick="POS.updateQty('${item.id}',1)">+</button>
+            <button onclick="POS.updateQty('${lineId}',-1)" class="${item.qty <= 1 ? 'remove' : ''}">−</button>
+            <span class="pos-qty-edit ${overStock ? 'overstock' : ''}" data-line-id="${lineId}" onclick="POS.editQty('${lineId}')" title="Click để nhập số lượng">${item.qty}</span>
+            <button onclick="POS.updateQty('${lineId}',1)">+</button>
           </div>
           <div class="pos-cart-item-total">${fmtd(item.price * item.qty)}</div>
         </div>
@@ -815,18 +841,19 @@ const POS = {
 
   async loadCartImages() {
     const defaultImg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="6" fill="#f0f4ff"/><path d="M16 32l6-8 4 5 6-7 6 10H10z" fill="#c5d5f7"/><circle cx="18" cy="18" r="3" fill="#a0b8e8"/></svg>');
+    this.ensureCartLineIds();
     for (const item of this.cart) {
-      const img = document.getElementById('cartimg-' + item.id);
+      const img = document.getElementById('cartimg-' + item.lineId);
       if (!img) continue;
       const saved = await App.getProductImage(item.id);
       img.src = saved || defaultImg;
     }
   },
 
-  editPrice(productId) {
-    const item = this.cart.find(c => c.id === productId);
+  editPrice(lineId) {
+    const item = this.findCartLine(lineId);
     if (!item) return;
-    const el = document.querySelector(`.pos-price-edit[onclick*="${productId}"]`);
+    const el = document.querySelector(`.pos-price-edit[data-line-id="${item.lineId}"]`);
     if (!el) return;
     const input = document.createElement('input');
     input.type = 'text';
@@ -853,10 +880,10 @@ const POS = {
     input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
   },
 
-  editQty(productId) {
-    const item = this.cart.find(c => c.id === productId);
+  editQty(lineId) {
+    const item = this.findCartLine(lineId);
     if (!item) return;
-    const el = document.querySelector(`.pos-qty-edit[onclick*="${productId}"]`);
+    const el = document.querySelector(`.pos-qty-edit[data-line-id="${item.lineId}"]`);
     if (!el) return;
     const input = document.createElement('input');
     input.type = 'number';
@@ -913,6 +940,7 @@ const POS = {
     const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     const custName = this.selectedCustomer?.name || 'Khách lẻ';
+    this.ensureCartLineIds();
 
     const temp = document.createElement('div');
     temp.style.cssText = 'position:fixed;left:-9999px;top:0;background:#ffffff;padding:24px 28px 28px 28px;width:420px;font-family:\"Be Vietnam Pro\",Inter,sans-serif;color:#000;';
@@ -948,7 +976,7 @@ const POS = {
         <tbody>
           ${this.cart.map((it, i) => `<tr style="border-bottom:1px solid #eee">
             <td style="padding:5px 4px">${i + 1}</td>
-            <td style="padding:5px 4px"><img class="inv-prod-img" id="invimg-${it.id}" src="" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:4px">${it.name}</td>
+            <td style="padding:5px 4px"><img class="inv-prod-img" id="invimg-${it.lineId}" src="" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:4px">${it.name}</td>
             <td style="padding:5px 4px;text-align:right">${it.qty}</td>
             <td style="padding:5px 4px;text-align:right">${fmtd(it.price)}</td>
             <td style="padding:5px 4px;text-align:right;font-weight:600">${fmtd(it.qty * it.price)}</td>
@@ -984,8 +1012,9 @@ const POS = {
 
     // Load product images into invoice before capture
     const defaultImg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="6" fill="#f0f4ff"/><path d="M16 32l6-8 4 5 6-7 6 10H10z" fill="#c5d5f7"/><circle cx="18" cy="18" r="3" fill="#a0b8e8"/></svg>');
+    this.ensureCartLineIds();
     for (const it of this.cart) {
-      const img = document.getElementById('invimg-' + it.id);
+      const img = document.getElementById('invimg-' + it.lineId);
       if (!img) continue;
       const saved = await App.getProductImage(it.id);
       img.src = saved || defaultImg;
@@ -1276,6 +1305,7 @@ const POS = {
 
   saveDraft() {
     if (!this.cart.length) return;
+    this.ensureCartLineIds();
     const drafts = JSON.parse(localStorage.getItem('khs_drafts') || '[]');
     const draft = {
       id: this.currentDraftId || Date.now(),
@@ -1309,7 +1339,8 @@ const POS = {
     if (idx === -1) return;
     const draft = drafts[idx];
     // Load cart
-    this.cart = draft.cart;
+    this.cart = draft.cart || [];
+    this.ensureCartLineIds();
     this.selectedCustomer = draft.customer;
     this.currentDraftId = draft.id; // Track which draft is loaded
     if (draft.customer) {
