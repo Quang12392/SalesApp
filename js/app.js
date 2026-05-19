@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '338';
+const KHS_APP_VERSION = '339';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -2432,14 +2432,13 @@ const App = {
   reportFinance(el, orders, view) {
     const rev=orders.reduce((s,o)=>s+(o.finalTotal||0),0);
     const cost=orders.reduce((s,o)=>{let c=0;if(o.items)o.items.forEach(it=>{if(it.costPrice>0){c+=it.costPrice;}else{const p=this.products.find(p=>p.sku===it.sku)||this.products.find(p=>p.name===it.name);c+=(p?.costPrice||0)*(it.qty||1);}});return s+c;},0);
-    const disc=orders.reduce((s,o)=>s+(o.discount||0),0);
     const profit=rev-cost;
-    const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card red"><div class="rpt-card-label">Giá vốn</div><div class="rpt-card-value">${fmtd(cost)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận</div><div class="rpt-card-value">${fmtd(profit)}</div></div><div class="rpt-card orange"><div class="rpt-card-label">Chiết khấu</div><div class="rpt-card-value">${fmtd(disc)}</div></div></div>`;
+    const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu thuần</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card red"><div class="rpt-card-label">Giá vốn</div><div class="rpt-card-value">${fmtd(cost)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận</div><div class="rpt-card-value">${fmtd(profit)}</div></div></div>`;
     if(view==='chart'){
       el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Cơ cấu doanh thu</h3></div><div class="card-body"><div class="chart-area" style="height:280px"><canvas id="rc6"></canvas></div></div></div>`;
       this.rptPieChart('rc6',['Giá vốn','Lợi nhuận'],[cost,profit],['#EF4444','#4CAF50']);
     } else {
-      el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Tổng hợp</h3></div><div class="card-body"><div class="fin-summary"><div class="fin-row"><span>Tổng doanh thu</span><span style="color:#05e2e0;font-weight:600">${fmtd(rev)}</span></div><div class="fin-row"><span>Giá vốn hàng bán</span><span style="color:#EF4444;font-weight:600">${fmtd(cost)}</span></div><div class="fin-row"><span>Chiết khấu</span><span>${fmtd(disc)}</span></div><div class="fin-row fin-total"><span>Lợi nhuận gộp</span><span style="color:#2E7D32">${fmtd(profit)}</span></div><div class="fin-row"><span>Biên lợi nhuận</span><span style="font-weight:600">${rev?Math.round(profit/rev*100):0}%</span></div></div></div></div>`;
+      el.innerHTML=`<h2 class="report-title">Báo cáo tài chính</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Tổng hợp</h3></div><div class="card-body"><div class="fin-summary"><div class="fin-row"><span>Doanh thu thuần</span><span style="color:#05e2e0;font-weight:600">${fmtd(rev)}</span></div><div class="fin-row"><span>Giá vốn hàng bán</span><span style="color:#EF4444;font-weight:600">${fmtd(cost)}</span></div><div class="fin-row fin-total"><span>Lợi nhuận gộp</span><span style="color:#2E7D32">${fmtd(profit)}</span></div><div class="fin-row"><span>Biên lợi nhuận</span><span style="font-weight:600">${rev?Math.round(profit/rev*100):0}%</span></div></div></div></div>`;
     }
   },
   // ═════════ INVENTORY ═════════
