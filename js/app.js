@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '341';
+const KHS_APP_VERSION = '342';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -1108,7 +1108,7 @@ const App = {
     });
   },
 
-  productModal(id) {
+  productModal(id, options = {}) {
     const p = id ? this.products.find(x => x.id === id) : null;
     const cats = [...new Set(this.products.map(x => x.category))].sort();
     const skuBatchCount = p ? (this.batches||[]).filter(b => b.sku === p.sku).length : 0;
@@ -1391,7 +1391,11 @@ const App = {
         await this.saveProductImage(productId, imgPreview.src);
       }
       this.closeModal();
-      this.renderProducts(document.getElementById('page-container'));
+      if (typeof options.afterSave === 'function') {
+        options.afterSave(this.products.find(x => x.id === productId), { productId, isEdit: !!p });
+      } else {
+        this.renderProducts(document.getElementById('page-container'));
+      }
     });
   },
 

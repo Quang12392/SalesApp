@@ -51,6 +51,7 @@ const POS = {
       }
     });
     document.getElementById('pos-product-search').addEventListener('input', e => this.renderProducts(e.target.value));
+    document.getElementById('pos-add-product-btn')?.addEventListener('click', () => this.openNewProductModal());
     document.getElementById('pos-discount').addEventListener('input', (e) => {
       const raw = e.target.value.replace(/\D/g, '');
       e.target.value = raw ? parseInt(raw).toLocaleString('vi-VN') : '';
@@ -186,13 +187,6 @@ const POS = {
         searchBar.insertAdjacentElement('beforebegin', custSection);
         custSection.style.display = '';
       }
-      // Move drafts bar into customer section → side-by-side layout
-      if (custSection) {
-        const draftsBar = document.getElementById('pos-drafts-bar');
-        const draftsPanel = document.getElementById('pos-drafts-panel');
-        if (draftsBar && draftsBar.parentElement !== custSection) custSection.appendChild(draftsBar);
-        if (draftsPanel && draftsPanel.parentElement !== custSection) custSection.appendChild(draftsPanel);
-      }
     }
 
     document.querySelectorAll('.pos-payment-option').forEach((o, i) => {
@@ -204,6 +198,7 @@ const POS = {
     this.renderCart();
     this.updateTotals();
     this.updateDraftsBar();
+    if (this._isMobile?.() && this._mobileView === 'browse') this.hideDraftsBar();
     document.getElementById('pos-drafts-panel').style.display = 'none';
     // Clock
     clearInterval(this.posTimer);
@@ -480,6 +475,19 @@ const POS = {
     setTimeout(reset, 80);
   },
 
+  openNewProductModal() {
+    App.productModal(null, {
+      afterSave: (product) => {
+        this.clearProductSearch({ focus: true, render: true });
+        if (product?.sku) {
+          setTimeout(() => {
+            [...document.querySelectorAll('.pos-p-card')].find(el => el.dataset.sku === product.sku)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 120);
+        }
+      }
+    });
+  },
+
   escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   },
@@ -612,6 +620,7 @@ const POS = {
       }
       const custInCart = cartPanel.querySelector('.pos-customer-section');
       if (custInCart) custInCart.style.display = '';
+      this.updateDraftsBar();
       this.placeDraftsBarForMobile('cart');
 
       // Hide product list, show full cart
@@ -628,12 +637,7 @@ const POS = {
       cartPanel.classList.remove('mobile-cart-view');
       // Always collapse cart (show only total bar at bottom)
       cartPanel.classList.add('collapsed');
-      // Refresh drafts bar
-      this.updateDraftsBar();
-      this.placeDraftsBarForMobile('browse');
-      // Close drafts panel
-      const draftsPanel = document.getElementById('pos-drafts-panel');
-      if (draftsPanel) draftsPanel.style.display = 'none';
+      this.hideDraftsBar();
       
       this._mobileView = 'browse';
       // Start every add-more pass with a blank search box.
@@ -664,6 +668,13 @@ const POS = {
     if (draftsBar.nextElementSibling !== draftsPanel) {
       draftsBar.insertAdjacentElement('afterend', draftsPanel);
     }
+  },
+
+  hideDraftsBar() {
+    const draftsBar = document.getElementById('pos-drafts-bar');
+    const draftsPanel = document.getElementById('pos-drafts-panel');
+    if (draftsBar) draftsBar.style.display = 'none';
+    if (draftsPanel) draftsPanel.style.display = 'none';
   },
 
   updateQty(lineId, delta) {

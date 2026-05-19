@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/index.css?v=341">
+  <link rel="stylesheet" href="css/index.css?v=342">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
@@ -302,6 +302,9 @@
         <div class="pos-search-bar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="pos-product-search" placeholder="Tìm sản phẩm theo tên hoặc mã SKU..." autofocus>
+          <button type="button" class="pos-add-product-btn" id="pos-add-product-btn" title="Thêm sản phẩm mới" aria-label="Thêm sản phẩm mới">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
           <div class="pos-view-toggle" id="pos-view-toggle">
             <button class="pos-view-btn active" data-view="grid" title="Lưới">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -463,8 +466,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/app.js?v=341"></script>
-  <script src="js/pos.js?v=341"></script>
+  <script src="js/app.js?v=342"></script>
+  <script src="js/pos.js?v=342"></script>
 
   <script>
   // ── IndexedDB Cache Layer ──
