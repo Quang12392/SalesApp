@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '339';
+const KHS_APP_VERSION = '340';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -2380,7 +2380,9 @@ const App = {
 
 
   reportSales(el, orders, view) {
-    const rev=orders.reduce((s,o)=>s+(o.finalTotal||0),0), disc=orders.reduce((s,o)=>s+(o.discount||0),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
+    const rev=orders.reduce((s,o)=>s+(o.finalTotal||0),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
+    const cost=orders.reduce((s,o)=>{let c=0;if(o.items)o.items.forEach(it=>{if(it.costPrice>0){c+=it.costPrice;}else{const p=this.products.find(p=>p.sku===it.sku)||this.products.find(p=>p.name===it.name);c+=(p?.costPrice||0)*(it.qty||1);}});return s+c;},0);
+    const profit=rev-cost;
     const periodLabels = {today:'hôm nay',yesterday:'hôm qua',thisWeek:'tuần này',lastWeek:'tuần trước',thisMonth:'tháng này',lastMonth:'tháng trước',thisYear:'năm nay',custom:'tùy chỉnh'};
     const periodLabel = periodLabels[this.reportPeriod] || 'ngày';
     const dm={}; orders.forEach(o=>{const k=o.createdAt?.substring(0,10)||'';if(!dm[k])dm[k]={r:0,c:0};dm[k].r+=(o.finalTotal||0);dm[k].c++;});
@@ -2395,7 +2397,7 @@ const App = {
     // Employee breakdown
     const em={}; orders.forEach(o=>{const k=o.createdBy||'Không rõ';if(!em[k])em[k]={r:0,c:0};em[k].r+=(o.finalTotal||0);em[k].c++;});
     const empSorted=Object.entries(em).sort((a,b)=>b[1].r-a[1].r);
-    const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card skyblue"><div class="rpt-card-label">Số đơn</div><div class="rpt-card-value">${cnt}</div></div><div class="rpt-card purple"><div class="rpt-card-label">TB / đơn</div><div class="rpt-card-value">${fmtd(avg)}</div></div><div class="rpt-card orange"><div class="rpt-card-label">Giảm giá</div><div class="rpt-card-value">${fmtd(disc)}</div></div></div>`;
+    const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu thuần</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card skyblue"><div class="rpt-card-label">Số đơn</div><div class="rpt-card-value">${cnt}</div></div><div class="rpt-card purple"><div class="rpt-card-label">TB / đơn</div><div class="rpt-card-value">${fmtd(avg)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận gộp</div><div class="rpt-card-value">${fmtd(profit)}</div></div></div>`;
     if(view==='chart'){
       el.innerHTML=`<h2 class="report-title">Báo cáo bán hàng</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Phân bổ thanh toán</h3></div><div class="card-body"><div class="chart-area" style="height:280px"><canvas id="rc5"></canvas></div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu theo nhân viên</h3></div><div class="card-body"><div class="chart-area" style="height:320px"><canvas id="rc-emp"></canvas></div></div></div><div class="card" style="margin-top:16px"><div class="card-header"><h3>Doanh thu ${periodLabel}</h3></div><div class="card-body"><div class="chart-area" style="height:320px"><canvas id="rc1"></canvas></div></div></div>`;
       this.rptPieChart('rc5',['Tiền mặt','Chuyển khoản','Ship COD','Ship Thường','Thuế Sàn'],[cS,bS,codS,shipS,taxSS],['#2E7D32','#ff5cc0','#F59E0B','#8B5CF6','#D32F2F']);
