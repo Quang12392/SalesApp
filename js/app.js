@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '347';
+const KHS_APP_VERSION = '348';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -1473,8 +1473,8 @@ const App = {
     }, 0);
   },
 
-  getOrderGrossProfit(order) {
-    return this.isRevenueOrder(order) ? this.getOrderSalesTotal(order) - this.getOrderCostTotal(order) : 0;
+  getOrderNetProfit(order) {
+    return this.isRevenueOrder(order) ? this.toMoneyNumber(order.finalTotal) - this.getOrderCostTotal(order) : 0;
   },
 
   renderOrders(c) {
@@ -1611,7 +1611,7 @@ const App = {
     if (cardList) {
       cardList.innerHTML = list.length ? list.map(o => {
         const items = o.items || [];
-        const pf = this.getOrderGrossProfit(o);
+        const pf = this.getOrderNetProfit(o);
         const fi = items[0];
         const mc = items.length - 1;
         const st = o.status==='completed'?'Hoàn thành':o.status==='Chờ đối chiếu'?'Chờ đối chiếu':o.status==='pending'?'Chờ xử lý':'Đã hủy';
@@ -1642,7 +1642,7 @@ const App = {
     if (!tbody) return;
     tbody.innerHTML = list.length ? list.map(o => {
       const items = o.items || [];
-      const profit = this.getOrderGrossProfit(o);
+      const profit = this.getOrderNetProfit(o);
       const itemsSummary = items.map(i=>`${i.name||'?'} x${i.qty||0}`).join(', ') || 'Không có SP';
       return `<tr class="order-card" data-oid="${o.id}">
       <td class="oc-id"><span class="product-sku">${o.id||''}</span></td>
@@ -2410,22 +2410,22 @@ const App = {
 
 
   reportSales(el, orders, view) {
-    const rev=orders.reduce((s,o)=>s+this.getOrderSalesTotal(o),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
+    const rev=orders.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
     const cost=orders.reduce((s,o)=>s+this.getOrderCostTotal(o),0);
     const profit=rev-cost;
     const periodLabels = {today:'hôm nay',yesterday:'hôm qua',thisWeek:'tuần này',lastWeek:'tuần trước',thisMonth:'tháng này',lastMonth:'tháng trước',thisYear:'năm nay',custom:'tùy chỉnh'};
     const periodLabel = periodLabels[this.reportPeriod] || 'ngày';
-    const dm={}; orders.forEach(o=>{const k=o.createdAt?.substring(0,10)||'';if(!dm[k])dm[k]={r:0,c:0};dm[k].r+=this.getOrderSalesTotal(o);dm[k].c++;});
+    const dm={}; orders.forEach(o=>{const k=o.createdAt?.substring(0,10)||'';if(!dm[k])dm[k]={r:0,c:0};dm[k].r+=this.toMoneyNumber(o.finalTotal);dm[k].c++;});
     const dr=Object.entries(dm).sort((a,b)=>a[0].localeCompare(b[0]));
     // Payment breakdown
     const cT=orders.filter(o=>o.payment==='Tiền mặt'), bT=orders.filter(o=>o.payment==='Chuyển khoản');
     const codT=orders.filter(o=>o.payment==='Ship COD'), shipT=orders.filter(o=>o.payment==='Ship Thường');
     const taxST=orders.filter(o=>o.payment==='Thuế Sàn');
-    const cS=cT.reduce((s,o)=>s+this.getOrderSalesTotal(o),0), bS=bT.reduce((s,o)=>s+this.getOrderSalesTotal(o),0);
-    const codS=codT.reduce((s,o)=>s+this.getOrderSalesTotal(o),0), shipS=shipT.reduce((s,o)=>s+this.getOrderSalesTotal(o),0);
-    const taxSS=taxST.reduce((s,o)=>s+this.getOrderSalesTotal(o),0);
+    const cS=cT.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0), bS=bT.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0);
+    const codS=codT.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0), shipS=shipT.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0);
+    const taxSS=taxST.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0);
     // Employee breakdown
-    const em={}; orders.forEach(o=>{const k=o.createdBy||'Không rõ';if(!em[k])em[k]={r:0,c:0};em[k].r+=this.getOrderSalesTotal(o);em[k].c++;});
+    const em={}; orders.forEach(o=>{const k=o.createdBy||'Không rõ';if(!em[k])em[k]={r:0,c:0};em[k].r+=this.toMoneyNumber(o.finalTotal);em[k].c++;});
     const empSorted=Object.entries(em).sort((a,b)=>b[1].r-a[1].r);
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu thuần</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card skyblue"><div class="rpt-card-label">Số đơn</div><div class="rpt-card-value">${cnt}</div></div><div class="rpt-card purple"><div class="rpt-card-label">TB / đơn</div><div class="rpt-card-value">${fmtd(avg)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận gộp</div><div class="rpt-card-value">${fmtd(profit)}</div></div></div>`;
     if(view==='chart'){
@@ -2462,7 +2462,7 @@ const App = {
 
 
   reportFinance(el, orders, view) {
-    const rev=orders.reduce((s,o)=>s+this.getOrderSalesTotal(o),0);
+    const rev=orders.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0);
     const cost=orders.reduce((s,o)=>s+this.getOrderCostTotal(o),0);
     const profit=rev-cost;
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu thuần</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card red"><div class="rpt-card-label">Giá vốn</div><div class="rpt-card-value">${fmtd(cost)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận</div><div class="rpt-card-value">${fmtd(profit)}</div></div></div>`;
