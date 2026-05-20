@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '346';
+const KHS_APP_VERSION = '347';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -1449,6 +1449,34 @@ const App = {
     return !!order && !this.isCancelledOrder(order);
   },
 
+  toMoneyNumber(value) {
+    if (typeof value === 'number') return value || 0;
+    const cleaned = String(value || '').replace(/[^\d-]/g, '');
+    return cleaned ? parseInt(cleaned, 10) || 0 : 0;
+  },
+
+  getOrderSalesTotal(order) {
+    if (!order) return 0;
+    const itemTotal = (order.items || []).reduce((sum, item) => {
+      return sum + this.toMoneyNumber(item.price) * (this.toMoneyNumber(item.qty) || 0);
+    }, 0);
+    return this.toMoneyNumber(order.total) || itemTotal || this.toMoneyNumber(order.finalTotal);
+  },
+
+  getOrderCostTotal(order) {
+    if (!order || !order.items) return 0;
+    return order.items.reduce((sum, item) => {
+      const storedCost = this.toMoneyNumber(item.costPrice);
+      if (storedCost > 0) return sum + storedCost;
+      const product = this.products.find(p => p.sku === item.sku) || this.products.find(p => p.name === item.name);
+      return sum + (product?.costPrice || 0) * (this.toMoneyNumber(item.qty) || 0);
+    }, 0);
+  },
+
+  getOrderGrossProfit(order) {
+    return this.isRevenueOrder(order) ? this.getOrderSalesTotal(order) - this.getOrderCostTotal(order) : 0;
+  },
+
   renderOrders(c) {
     // Only build full layout once
     if (!c.querySelector('#o-search')) {
@@ -1583,12 +1611,7 @@ const App = {
     if (cardList) {
       cardList.innerHTML = list.length ? list.map(o => {
         const items = o.items || [];
-        const ct = items.reduce((s,i) => {
-          if (i.costPrice > 0) return s + i.costPrice;
-          const p = this.products.find(p => p.sku === i.sku) || this.products.find(p => p.name === i.name);
-          return s + (p?.costPrice||0) * i.qty;
-        }, 0);
-        const pf = this.isRevenueOrder(o) ? (o.finalTotal||0) - ct : 0;
+        const pf = this.getOrderGrossProfit(o);
         const fi = items[0];
         const mc = items.length - 1;
         const st = o.status==='completed'?'Hoàn thành':o.status==='Chờ đối chiếu'?'Chờ đối chiếu':o.status==='pending'?'Chờ xử lý':'Đã hủy';
@@ -1619,12 +1642,7 @@ const App = {
     if (!tbody) return;
     tbody.innerHTML = list.length ? list.map(o => {
       const items = o.items || [];
-      const costTotal = items.reduce((s,i) => {
-        if (i.costPrice > 0) return s + i.costPrice;
-        const prod = this.products.find(p => p.sku === i.sku) || this.products.find(p => p.name === i.name);
-        return s + (prod?.costPrice||0) * i.qty;
-      }, 0);
-      const profit = this.isRevenueOrder(o) ? (o.finalTotal||0) - costTotal : 0;
+      const profit = this.getOrderGrossProfit(o);
       const itemsSummary = items.map(i=>`${i.name||'?'} x${i.qty||0}`).join(', ') || 'Không có SP';
       return `<tr class="order-card" data-oid="${o.id}">
       <td class="oc-id"><span class="product-sku">${o.id||''}</span></td>
@@ -1644,7 +1662,7 @@ const App = {
     // Update summary in sticky header
     const totalRevenue = list
       .filter(o => this.isRevenueOrder(o))
-      .reduce((s, o) => s + (o.finalTotal || 0), 0);
+      .reduce((s, o) => s + this.getOrderSalesTotal(o), 0);
     const summaryEl = document.getElementById('o-summary');
     if (summaryEl) {
       summaryEl.innerHTML = `
@@ -2392,22 +2410,22 @@ const App = {
 
 
   reportSales(el, orders, view) {
-    const rev=orders.reduce((s,o)=>s+(o.finalTotal||0),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
-    const cost=orders.reduce((s,o)=>{let c=0;if(o.items)o.items.forEach(it=>{if(it.costPrice>0){c+=it.costPrice;}else{const p=this.products.find(p=>p.sku===it.sku)||this.products.find(p=>p.name===it.name);c+=(p?.costPrice||0)*(it.qty||1);}});return s+c;},0);
+    const rev=orders.reduce((s,o)=>s+this.getOrderSalesTotal(o),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
+    const cost=orders.reduce((s,o)=>s+this.getOrderCostTotal(o),0);
     const profit=rev-cost;
     const periodLabels = {today:'hôm nay',yesterday:'hôm qua',thisWeek:'tuần này',lastWeek:'tuần trước',thisMonth:'tháng này',lastMonth:'tháng trước',thisYear:'năm nay',custom:'tùy chỉnh'};
     const periodLabel = periodLabels[this.reportPeriod] || 'ngày';
-    const dm={}; orders.forEach(o=>{const k=o.createdAt?.substring(0,10)||'';if(!dm[k])dm[k]={r:0,c:0};dm[k].r+=(o.finalTotal||0);dm[k].c++;});
+    const dm={}; orders.forEach(o=>{const k=o.createdAt?.substring(0,10)||'';if(!dm[k])dm[k]={r:0,c:0};dm[k].r+=this.getOrderSalesTotal(o);dm[k].c++;});
     const dr=Object.entries(dm).sort((a,b)=>a[0].localeCompare(b[0]));
     // Payment breakdown
     const cT=orders.filter(o=>o.payment==='Tiền mặt'), bT=orders.filter(o=>o.payment==='Chuyển khoản');
     const codT=orders.filter(o=>o.payment==='Ship COD'), shipT=orders.filter(o=>o.payment==='Ship Thường');
     const taxST=orders.filter(o=>o.payment==='Thuế Sàn');
-    const cS=cT.reduce((s,o)=>s+(o.finalTotal||0),0), bS=bT.reduce((s,o)=>s+(o.finalTotal||0),0);
-    const codS=codT.reduce((s,o)=>s+(o.finalTotal||0),0), shipS=shipT.reduce((s,o)=>s+(o.finalTotal||0),0);
-    const taxSS=taxST.reduce((s,o)=>s+(o.finalTotal||0),0);
+    const cS=cT.reduce((s,o)=>s+this.getOrderSalesTotal(o),0), bS=bT.reduce((s,o)=>s+this.getOrderSalesTotal(o),0);
+    const codS=codT.reduce((s,o)=>s+this.getOrderSalesTotal(o),0), shipS=shipT.reduce((s,o)=>s+this.getOrderSalesTotal(o),0);
+    const taxSS=taxST.reduce((s,o)=>s+this.getOrderSalesTotal(o),0);
     // Employee breakdown
-    const em={}; orders.forEach(o=>{const k=o.createdBy||'Không rõ';if(!em[k])em[k]={r:0,c:0};em[k].r+=(o.finalTotal||0);em[k].c++;});
+    const em={}; orders.forEach(o=>{const k=o.createdBy||'Không rõ';if(!em[k])em[k]={r:0,c:0};em[k].r+=this.getOrderSalesTotal(o);em[k].c++;});
     const empSorted=Object.entries(em).sort((a,b)=>b[1].r-a[1].r);
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu thuần</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card skyblue"><div class="rpt-card-label">Số đơn</div><div class="rpt-card-value">${cnt}</div></div><div class="rpt-card purple"><div class="rpt-card-label">TB / đơn</div><div class="rpt-card-value">${fmtd(avg)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận gộp</div><div class="rpt-card-value">${fmtd(profit)}</div></div></div>`;
     if(view==='chart'){
@@ -2444,8 +2462,8 @@ const App = {
 
 
   reportFinance(el, orders, view) {
-    const rev=orders.reduce((s,o)=>s+(o.finalTotal||0),0);
-    const cost=orders.reduce((s,o)=>{let c=0;if(o.items)o.items.forEach(it=>{if(it.costPrice>0){c+=it.costPrice;}else{const p=this.products.find(p=>p.sku===it.sku)||this.products.find(p=>p.name===it.name);c+=(p?.costPrice||0)*(it.qty||1);}});return s+c;},0);
+    const rev=orders.reduce((s,o)=>s+this.getOrderSalesTotal(o),0);
+    const cost=orders.reduce((s,o)=>s+this.getOrderCostTotal(o),0);
     const profit=rev-cost;
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu thuần</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card red"><div class="rpt-card-label">Giá vốn</div><div class="rpt-card-value">${fmtd(cost)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận</div><div class="rpt-card-value">${fmtd(profit)}</div></div></div>`;
     if(view==='chart'){
