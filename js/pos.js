@@ -199,7 +199,7 @@ const POS = {
     this.renderCart();
     this.updateTotals();
     this.updateDraftsBar();
-    if (this._isMobile?.() && this._mobileView === 'browse') this.hideDraftsBar();
+    if (this._isMobile?.() && this._mobileView === 'browse') this.placeDraftsBarForMobile('browse');
     document.getElementById('pos-drafts-panel').style.display = 'none';
     // Clock
     clearInterval(this.posTimer);
@@ -676,8 +676,10 @@ const POS = {
     const draftsPanel = document.getElementById('pos-drafts-panel');
     if (!draftsBar || !draftsPanel) return;
 
-    if (this._isMobile?.() && view === 'cart') {
-      const custSection = document.querySelector('.pos-cart-panel .pos-customer-section');
+    if (this._isMobile?.() && (view === 'cart' || view === 'browse')) {
+      const custSection = view === 'cart'
+        ? document.querySelector('.pos-cart-panel .pos-customer-section')
+        : document.querySelector('.pos-products .pos-customer-section');
       if (custSection && draftsBar.parentElement !== custSection) {
         custSection.appendChild(draftsBar);
       }
