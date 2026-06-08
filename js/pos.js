@@ -306,17 +306,41 @@ const POS = {
   async _doConfirmTikTok() {
     const orderId = this._tiktokOrderId;
     const url = localStorage.getItem('khs_api_url');
+    const subtotal = this.cart.reduce((s, i) => s + i.price * i.qty, 0);
+    const discountInput = document.getElementById('pos-discount');
+    const discount = parseInt((discountInput?.value || '').replace(/\D/g, '')) || 0;
+    const finalTotal = Math.max(0, subtotal - discount);
+    const items = this.cart.map(i => ({
+      sku: i.sku || i.id || '',
+      name: i.name || '',
+      qty: i.qty,
+      price: i.price
+    }));
+    const payload = {
+      action: 'confirmTikTokOrder',
+      orderId,
+      items,
+      total: subtotal,
+      discount,
+      finalTotal
+    };
     if (!url) { App.toast('error', '❌ Chưa cấu hình API URL!'); return; }
 
     const btn = document.getElementById('btn-checkout');
     if (btn) { btn.disabled = true; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Đang xác nhận...`; }
 
     try {
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'confirmTikTokOrder', orderId }) });
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (data.success) {
         const o = App.orders.find(x => x.id === orderId);
-        if (o) o.status = 'completed';
+        if (o) {
+          o.status = 'completed';
+          o.items = items.map(i => ({ ...i }));
+          o.total = subtotal;
+          o.discount = discount;
+          o.finalTotal = finalTotal;
+        }
         this._tiktokOrderId = null;
         this.cart = [];
         this.close(true);
