@@ -1260,6 +1260,42 @@ ul, ol { list-style: none; }
   font-size: 0.85rem; font-weight: 600; background: transparent;
 }
 .pos-discount-input-wrap span { font-size: 0.75rem; color: var(--text-muted); }
+.pos-tax-revenue-wrap {
+  display: none;
+  margin: 6px 0 8px;
+  padding: 9px 10px;
+  border: 1px solid #FCA5A5;
+  border-radius: var(--radius-md);
+  background: #FFF1F2;
+}
+.pos-tax-revenue-wrap.active { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pos-tax-revenue-wrap label {
+  color: #B91C1C;
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pos-tax-revenue-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 126px;
+  padding: 4px 8px;
+  border: 1px solid #FCA5A5;
+  border-radius: 6px;
+  background: white;
+}
+.pos-tax-revenue-input-wrap input {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  outline: none;
+  text-align: right;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: transparent;
+}
+.pos-tax-revenue-input-wrap span { color: #B91C1C; font-size: 0.78rem; font-weight: 700; }
 .pos-payment-methods {
   display: flex; gap: 6px; margin: 10px 0;
 }
@@ -1290,6 +1326,11 @@ ul, ol { list-style: none; }
   flex: 1; justify-content: center; font-size: 0.85rem;
 }
 .pos-tax-san-option.active { border-color: #D32F2F; background: #FFEBEE; color: #D32F2F; font-weight: 600; }
+.pos-tax-required-modal {
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+.pos-tax-required-modal strong { color: #B91C1C; }
 .pos-qr-upload-section { margin-bottom:8px; }
 .pos-qr-upload-box {
   width:100%; height:80px; border:2px dashed var(--border); border-radius:var(--radius-md);

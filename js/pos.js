@@ -57,6 +57,11 @@ const POS = {
       e.target.value = raw ? parseInt(raw).toLocaleString('vi-VN') : '';
       this.updateTotals();
     });
+    document.getElementById('pos-tax-revenue')?.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/\D/g, '');
+      e.target.value = raw ? parseInt(raw).toLocaleString('vi-VN') : '';
+    });
+    document.getElementById('pos-tax-check')?.addEventListener('change', () => this.updateTaxRevenueField({ clear: true }));
     document.getElementById('btn-checkout').addEventListener('click', () => this.checkout());
     document.getElementById('btn-save-draft').addEventListener('click', () => this.saveDraft());
     document.getElementById('btn-capture-cart').addEventListener('click', () => this.captureCart());
@@ -170,6 +175,7 @@ const POS = {
     document.getElementById('pos-selected-customer').style.display = 'none';
     document.getElementById('pos-discount').value = '';
     document.getElementById('pos-note').value = '';
+    document.getElementById('pos-tax-revenue').value = '';
     // Reset customer-selected class
     document.querySelector('.pos-customer-section')?.classList.remove('customer-selected');
     // Mobile: always start in browse view
@@ -196,6 +202,7 @@ const POS = {
       o.querySelector('input').checked = i === 0;
     });
     document.getElementById('pos-tax-check').checked = false;
+    this.updateTaxRevenueField({ clear: true });
     this.renderProducts('');
     this.renderCart();
     this.updateTotals();
@@ -213,6 +220,37 @@ const POS = {
     setTimeout(() => document.getElementById('pos-product-search').focus(), 200);
 
     this.applyViewMode();
+  },
+
+  updateTaxRevenueField({ clear = false } = {}) {
+    const check = document.getElementById('pos-tax-check');
+    const wrap = document.getElementById('pos-tax-revenue-wrap');
+    const input = document.getElementById('pos-tax-revenue');
+    if (!check || !wrap) return;
+    const active = !!check.checked;
+    wrap.classList.toggle('active', active);
+    if ((!active || clear) && input) input.value = '';
+  },
+
+  getTaxRevenueValue() {
+    const input = document.getElementById('pos-tax-revenue');
+    return parseInt(String(input?.value || '').replace(/\D/g, ''), 10) || 0;
+  },
+
+  showTaxRevenueRequiredModal() {
+    document.getElementById('modal-title').textContent = 'Thiếu doanh thu tính thuế';
+    document.getElementById('modal-body').innerHTML = `
+      <div class="pos-tax-required-modal">
+        <p>Bạn đã chọn <strong>Thuế</strong>, vui lòng nhập <strong>Doanh thu tính thuế</strong> trước khi thanh toán.</p>
+        <p>Số này chỉ dùng để ghi sang sheet Thuế, không đổi tổng tiền đơn, lợi nhuận hay tồn kho.</p>
+      </div>
+    `;
+    document.getElementById('modal-footer').innerHTML = `<button class="btn btn-primary" id="m-tax-revenue-focus">Nhập doanh thu tính thuế</button>`;
+    App.openModal();
+    document.getElementById('m-tax-revenue-focus')?.addEventListener('click', () => {
+      App.closeModal();
+      setTimeout(() => document.getElementById('pos-tax-revenue')?.focus(), 60);
+    });
   },
 
   _resetCheckoutBtn() {
@@ -1302,6 +1340,11 @@ const POS = {
     const payment = document.querySelector('input[name="pos-payment"]:checked').value;
     const note = document.getElementById('pos-note').value;
     const tax = document.getElementById('pos-tax-check').checked;
+    const taxRevenue = tax ? this.getTaxRevenueValue() : 0;
+    if (tax && taxRevenue <= 0) {
+      this.showTaxRevenueRequiredModal();
+      return;
+    }
     const now = new Date();
     const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -1351,6 +1394,7 @@ const POS = {
         payment,
         note,
         tax,
+        taxRevenue,
         createdBy: App.user.displayName
       };
       fetch(apiUrl, {
@@ -1361,6 +1405,8 @@ const POS = {
         if (res.success) {
           App.toast('success', 'Đã đồng bộ lên Google Sheets: ' + res.orderId);
           setTimeout(() => App.autoSync(), 3000);
+        } else {
+          App.toast('error', 'Lỗi đồng bộ: ' + (res.error || 'Không rõ nguyên nhân'));
         }
       }).catch(() => {
         // Mất mạng → lưu vào queue chờ sync
