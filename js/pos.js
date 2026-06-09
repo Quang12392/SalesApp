@@ -91,6 +91,7 @@ const POS = {
     });
     document.getElementById('pos-customer-page-search')?.addEventListener('input', e => this.renderCustomerSearchPage(e.target.value));
     document.getElementById('pos-add-customer-btn')?.addEventListener('click', () => this.openNewCustomerModal());
+    document.getElementById('pos-add-customer-inline-btn')?.addEventListener('click', () => this.openNewCustomerModal());
     document.getElementById('pos-overlay').addEventListener('click', e => {
       if (!e.target.closest('.pos-customer-section')) document.getElementById('pos-customer-dropdown').style.display = 'none';
     });
@@ -604,7 +605,11 @@ const POS = {
   },
 
   openNewCustomerModal() {
-    const searchInput = document.getElementById('pos-customer-page-search') || document.getElementById('pos-customer-search');
+    const page = document.getElementById('pos-customer-search-page');
+    const pageInput = document.getElementById('pos-customer-page-search');
+    const inlineInput = document.getElementById('pos-customer-search');
+    const isPageOpen = page && getComputedStyle(page).display !== 'none';
+    const searchInput = isPageOpen ? pageInput : inlineInput;
     const raw = String(searchInput?.value || '').trim();
     const digits = raw.replace(/\D/g, '');
     const prefill = {};

@@ -969,8 +969,16 @@ ul, ol { list-style: none; }
   border-radius: var(--radius-md); background: var(--bg-body);
 }
 .pos-customer-search-wrap input {
-  flex: 1; border: none; outline: none; font-size: 1rem;
+  flex: 1; min-width: 0; border: none; outline: none; font-size: 1rem;
   background: transparent;
+}
+.pos-customer-search-wrap .pos-add-customer-btn {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  font-size: 20px;
+  margin-left: auto;
 }
 .pos-customer-list {
   position: absolute; left: 12px; right: 12px; top: 52px;
