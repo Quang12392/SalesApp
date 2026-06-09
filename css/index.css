@@ -944,6 +944,22 @@ ul, ol { list-style: none; }
 }
 
 /* Compact view — smaller cards */
+@media (min-width: 769px) {
+  .pos-product-list.view-grid .pos-p-card.in-cart {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .pos-product-list.view-grid .pos-p-card.in-cart .pos-p-info {
+    flex: 1 1 calc(100% - 54px);
+  }
+  .pos-product-list.view-grid .pos-p-card.in-cart .pos-p-qty-inline {
+    width: calc(100% - 54px);
+    margin-left: 54px;
+    margin-top: 2px;
+    justify-content: flex-end;
+  }
+}
+
 .view-compact { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:6px; }
 .view-compact .pos-p-card { padding:6px; gap:6px; flex-direction:column; align-items:stretch; text-align:center; }
 .view-compact .pos-p-img { width:36px; height:36px; margin:0 auto; }
