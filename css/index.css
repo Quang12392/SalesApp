@@ -883,8 +883,17 @@ ul, ol { list-style: none; }
 .pos-add-product-btn:active,
 .pos-add-customer-btn:active { filter: brightness(0.92); transform: scale(0.98); }
 
+.pos-search-bar .pos-add-product-btn {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  font-size: 22px;
+  margin-left: auto;
+}
+
 /* View toggle buttons */
-.pos-view-toggle { display:flex; gap:2px; margin-left:8px; flex-shrink:0; }
+.pos-view-toggle { display:flex; gap:2px; margin-left:6px; flex-shrink:0; }
 .pos-view-btn { background:none; border:1.5px solid var(--border); border-radius:6px; padding:5px 7px; cursor:pointer; color:var(--text-muted); transition:0.15s; display:flex; align-items:center; }
 .pos-view-btn:hover { border-color:var(--primary-light); color:var(--primary); }
 .pos-view-btn.active { background:var(--primary); border-color:var(--primary); color:white; }
