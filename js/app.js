@@ -12,13 +12,23 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '353';
+const KHS_APP_VERSION = '354';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
 function fmtd(n) { return fmt(n) + 'đ'; }
 function unfmt(s) { return parseInt(String(s).replace(/\./g,''))||0; }
 function fmtInput(el) { const v=unfmt(el.value); el.value=v?fmt(v):''; }
+function dateInputLocal(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+function parseDateInputParts(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? { y: m[1], m: m[2], d: m[3] } : null;
+}
 function fmtShort(n) {
   if (n >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + ' tr';
   if (n >= 1000) return Math.round(n/1000) + 'K';
@@ -1166,7 +1176,7 @@ const App = {
           <label style="font-weight:700;font-size:0.95rem;color:#1B5E20;display:flex;align-items:center;gap:6px;margin-bottom:12px"><input type="checkbox" id="pf-batch-toggle"> 📦 Nhập thêm lô mới</label>
           <div id="pf-batch-fields" style="display:none">
             <div class="form-row">
-              <div class="form-group"><label>Ngày nhập</label><input class="form-control" id="pf-batch-date" type="date" value="${new Date().toISOString().substring(0,10)}"></div>
+              <div class="form-group"><label>Ngày nhập</label><input class="form-control" id="pf-batch-date" type="date" value="${dateInputLocal()}"></div>
               <div class="form-group"><label>Ký hiệu lô</label><input class="form-control" id="pf-batch-suffix" placeholder="VD: NCC1, A01..."></div>
             </div>
             <div class="form-row">
@@ -1350,8 +1360,8 @@ const App = {
           const bDate = document.getElementById('pf-batch-date').value||'';
           const bSuffix = document.getElementById('pf-batch-suffix').value?.trim()||'';
           // Build custom batch ID: LOT-DDMMYYYY-suffix
-          const bd = new Date(bDate);
-          const bDateStr = String(bd.getDate()).padStart(2,'0') + String(bd.getMonth()+1).padStart(2,'0') + bd.getFullYear();
+          const bd = parseDateInputParts(bDate);
+          const bDateStr = bd ? (bd.d + bd.m + bd.y) : dateInputLocal().split('-').reverse().join('');
           const customBatchId = 'LOT-' + bDateStr + (bSuffix ? '-' + bSuffix : '');
           if (bQty > 0) {
             try {
