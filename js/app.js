@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '355';
+const KHS_APP_VERSION = '356';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -1266,7 +1266,7 @@ const App = {
         </div>
         <div class="be-actions">
           <button class="btn btn-secondary btn-sm" id="be-cancel">Hủy</button>
-          <button class="btn btn-primary btn-sm" id="be-save">💾 Lưu</button>
+          <button class="btn btn-primary btn-sm" id="be-save">💾 Lưu lô</button>
         </div>
       `;
       if (scrollContainer) scrollContainer.after(editDiv);
@@ -1279,15 +1279,32 @@ const App = {
         const newQty = parseInt(document.getElementById('be-qty').value);
         const url = localStorage.getItem('khs_api_url');
         if (!url) return;
-        document.getElementById('be-save').textContent = 'Đang lưu...';
-        document.getElementById('be-save').disabled = true;
+        const saveBtn = document.getElementById('be-save');
+        saveBtn.textContent = 'Đang lưu lô...';
+        saveBtn.disabled = true;
+        this.showSheetProgress('Đang lưu lô lên Google Sheet...');
         try {
           const res = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
             body: JSON.stringify({ action:'updateBatch', batchId: bid, costPrice: newCost, note: newNote, qtyRemaining: newQty })
           }).then(r=>r.json());
-          if (res.success) { this.toast('success','Đã sửa lô '+bid); await this.autoSync(); this.closeModal(); this.productModal(p.id); }
-          else this.toast('error', res.error);
-        } catch(e) { this.toast('error','Lỗi: '+e.message); }
+          if (res.success) {
+            await this.autoSync();
+            this.hideSheetProgress();
+            this.toast('success','Đã lưu lô '+bid);
+            this.closeModal();
+            this.productModal(p.id);
+          } else {
+            this.hideSheetProgress();
+            saveBtn.textContent = '💾 Lưu lô';
+            saveBtn.disabled = false;
+            this.toast('error', res.error);
+          }
+        } catch(e) {
+          this.hideSheetProgress();
+          saveBtn.textContent = '💾 Lưu lô';
+          saveBtn.disabled = false;
+          this.toast('error','Lỗi: '+e.message);
+        }
       });
     }));
     // Batch delete buttons (only for empty batches)
@@ -1308,11 +1325,13 @@ const App = {
 
     document.getElementById('modal-footer').innerHTML = `
       <button class="btn btn-secondary" id="m-cancel">Hủy</button>
-      <button class="btn btn-primary" id="m-save">${p ? 'Cập nhật' : 'Thêm mới'}</button>
+      <button class="btn btn-primary" id="m-save">${p ? 'Cập nhật sản phẩm' : 'Thêm mới'}</button>
     `;
     this.openModal();
     document.getElementById('m-cancel').addEventListener('click', () => this.closeModal());
     document.getElementById('m-save').addEventListener('click', async () => {
+      const saveBtn = document.getElementById('m-save');
+      const originalBtnText = saveBtn.textContent;
       const d = {
         sku: document.getElementById('pf-sku').value.trim(),
         name: document.getElementById('pf-name').value.trim(),
@@ -1323,88 +1342,96 @@ const App = {
         unit: document.getElementById('pf-unit').value.trim()||'hộp'
       };
       if (!d.sku || !d.name) { this.toast('error','Vui lòng nhập đầy đủ thông tin!'); return; }
-      let productId;
-      const url = localStorage.getItem('khs_api_url');
-      if (p) {
-        const oldSku = p.sku;
-        const oldId = p.id;
-        Object.assign(p, d);
-        p.id = d.sku; // ID luôn = SKU
-        productId = p.id;
-        // Migrate ảnh khi đổi SKU
-        if (oldId !== p.id) {
-          this.getProductImage(oldId).then(img => {
-            if (img) { this.saveProductImage(p.id, img); }
-          });
-        }
-        this.toast('success','Đã cập nhật!');
-        // Sync update to Google Sheets
-        const batchToggle = document.getElementById('pf-batch-toggle');
-        const hasBatch = batchToggle?.checked;
-        if (url) {
-          try {
-            const skuBatchCount = (this.batches||[]).filter(b => b.sku === d.sku).length;
-            const updateData = { action: 'updateProduct', oldSku: oldSku, newSku: d.sku, name: d.name, category: d.category, sellPrice: d.sellPrice, costPrice: d.costPrice, _hasBatch: skuBatchCount >= 2 };
-            // Gửi stock để backend tạo lô điều chỉnh nếu thay đổi
-            if (!hasBatch) updateData.stock = d.stock;
-            await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify(updateData)
-            });
-          } catch (e) { console.warn('Sync update failed:', e); }
-        }
-        // Nhập lô mới nếu checkbox được tick
-        if (hasBatch && url) {
-          const bQty = parseInt(document.getElementById('pf-batch-qty').value)||0;
-          const bCost = unfmt(document.getElementById('pf-batch-cost').value);
-          const bNote = document.getElementById('pf-batch-note').value||'';
-          const bDate = document.getElementById('pf-batch-date').value||'';
-          const bSuffix = document.getElementById('pf-batch-suffix').value?.trim()||'';
-          // Build custom batch ID: LOT-DDMMYYYY-suffix
-          const bd = parseDateInputParts(bDate);
-          const bDateStr = bd ? (bd.d + bd.m + bd.y) : dateInputLocal().split('-').reverse().join('');
-          const customBatchId = 'LOT-' + bDateStr + (bSuffix ? '-' + bSuffix : '');
-          if (bQty > 0) {
-            try {
-              const bRes = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
-                body: JSON.stringify({ action:'addBatch', sku: d.sku, name: d.name, qty: bQty, costPrice: bCost, sellPrice: d.sellPrice, importedBy: this.user?.displayName||'Admin', note: bNote, customBatchId, importDate: bDate })
-              }).then(r=>r.json());
-              if (bRes.success) this.toast('success','Đã nhập lô: '+bRes.batchId);
-              else this.toast('error','Lỗi nhập lô: '+bRes.error);
-            } catch(e) { console.warn('Batch import failed:', e); }
-          }
-          // Sync lại để lấy tồn kho đúng từ server
-          await this.autoSync();
-        }
-      } else {
-        // Kiểm tra trùng SKU trước khi thêm
+      if (!p) {
         const existingSku = this.products.find(pp => pp.sku === d.sku);
         if (existingSku) {
           this.toast('error', `Mã hàng "${d.sku}" đã tồn tại (${existingSku.name})! Vui lòng dùng mã khác.`);
           return;
         }
-        d.id = d.sku; // Dùng SKU làm ID — khớp với backend
-        productId = d.id;
-        this.products.push(d);
-        this.toast('success','Đã thêm sản phẩm!');
-        // Sync add to Google Sheets
-        if (url) {
-          try {
-            await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify({ action: 'addProduct', sku: d.sku, name: d.name, category: d.category, sellPrice: d.sellPrice, costPrice: d.costPrice, stock: d.stock })
+      }
+
+      let productId;
+      const url = localStorage.getItem('khs_api_url');
+      const oldProduct = p ? { ...p } : null;
+      saveBtn.disabled = true;
+      saveBtn.textContent = p ? 'Đang cập nhật...' : 'Đang thêm...';
+      if (url) this.showSheetProgress(p ? 'Đang cập nhật sản phẩm lên Google Sheet...' : 'Đang thêm sản phẩm lên Google Sheet...');
+
+      try {
+        if (p) {
+          const oldSku = p.sku;
+          const oldId = p.id;
+          Object.assign(p, d);
+          p.id = d.sku; // ID luôn = SKU
+          productId = p.id;
+
+          if (oldId !== p.id) {
+            this.getProductImage(oldId).then(img => {
+              if (img) { this.saveProductImage(p.id, img); }
             });
-          } catch (e) { console.warn('Sync add failed:', e); }
+          }
+
+          const batchToggle = document.getElementById('pf-batch-toggle');
+          const hasBatch = batchToggle?.checked;
+          if (url) {
+            const skuBatchCount = (this.batches||[]).filter(b => b.sku === d.sku).length;
+            const updateData = { action: 'updateProduct', oldSku: oldSku, newSku: d.sku, name: d.name, category: d.category, sellPrice: d.sellPrice, costPrice: d.costPrice, _hasBatch: skuBatchCount >= 2 };
+            if (!hasBatch) updateData.stock = d.stock;
+            const updateRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify(updateData)
+            }).then(r => r.json());
+            if (!updateRes.success) throw new Error(updateRes.error || 'Không cập nhật được sản phẩm');
+          }
+
+          if (hasBatch && url) {
+            const bQty = parseInt(document.getElementById('pf-batch-qty').value)||0;
+            const bCost = unfmt(document.getElementById('pf-batch-cost').value);
+            const bNote = document.getElementById('pf-batch-note').value||'';
+            const bDate = document.getElementById('pf-batch-date').value||'';
+            const bSuffix = document.getElementById('pf-batch-suffix').value?.trim()||'';
+            const bd = parseDateInputParts(bDate);
+            const bDateStr = bd ? (bd.d + bd.m + bd.y) : dateInputLocal().split('-').reverse().join('');
+            const customBatchId = 'LOT-' + bDateStr + (bSuffix ? '-' + bSuffix : '');
+            if (bQty > 0) {
+              const bRes = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
+                body: JSON.stringify({ action:'addBatch', sku: d.sku, name: d.name, qty: bQty, costPrice: bCost, sellPrice: d.sellPrice, importedBy: this.user?.displayName||'Admin', note: bNote, customBatchId, importDate: bDate })
+              }).then(r=>r.json());
+              if (!bRes.success) throw new Error(bRes.error || 'Không nhập được lô mới');
+              this.toast('success','Đã nhập lô: '+bRes.batchId);
+            }
+          }
+          if (url) await this.autoSync();
+        } else {
+          d.id = d.sku; // Dùng SKU làm ID — khớp với backend
+          productId = d.id;
+          this.products.push(d);
+          if (url) {
+            const addRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify({ action: 'addProduct', sku: d.sku, name: d.name, category: d.category, sellPrice: d.sellPrice, costPrice: d.costPrice, stock: d.stock })
+            }).then(r => r.json());
+            if (!addRes.success) throw new Error(addRes.error || 'Không thêm được sản phẩm');
+          }
         }
-      }
-      // Save image if selected
-      const imgPreview = document.getElementById('pf-img-preview');
-      if (imgPreview.src && imgPreview.style.display !== 'none' && imgPreview.src.startsWith('data:')) {
-        await this.saveProductImage(productId, imgPreview.src);
-      }
-      this.closeModal();
-      if (typeof options.afterSave === 'function') {
-        options.afterSave(this.products.find(x => x.id === productId), { productId, isEdit: !!p });
-      } else {
-        this.renderProducts(document.getElementById('page-container'));
+
+        const imgPreview = document.getElementById('pf-img-preview');
+        if (imgPreview.src && imgPreview.style.display !== 'none' && imgPreview.src.startsWith('data:')) {
+          await this.saveProductImage(productId, imgPreview.src);
+        }
+        this.hideSheetProgress();
+        this.toast('success', p ? 'Cập nhật sản phẩm thành công' : 'Đã thêm sản phẩm thành công');
+        this.closeModal();
+        if (typeof options.afterSave === 'function') {
+          options.afterSave(this.products.find(x => x.id === productId), { productId, isEdit: !!p });
+        } else {
+          this.renderProducts(document.getElementById('page-container'));
+        }
+      } catch (e) {
+        this.hideSheetProgress();
+        if (oldProduct && p) Object.assign(p, oldProduct);
+        if (!p && productId) this.products = this.products.filter(x => x.id !== productId);
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalBtnText;
+        this.toast('error','Lỗi cập nhật Sheet: '+e.message);
       }
     });
   },
@@ -3927,6 +3954,29 @@ const App = {
   // ═════════ MODAL & TOAST ═════════
   openModal() { document.getElementById('modal-overlay').style.display = 'flex'; document.body.style.overflow = 'hidden'; },
   closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
+  showSheetProgress(message) {
+    this.hideSheetProgress();
+    const overlay = document.createElement('div');
+    overlay.id = 'sheet-progress-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,0.38);backdrop-filter:blur(2px);';
+    overlay.innerHTML = `
+      <div style="width:min(360px,calc(100vw - 40px));background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(15,23,42,0.35);padding:24px 22px;text-align:center;border:1px solid #E5E7EB">
+        <div style="width:48px;height:48px;border-radius:50%;border:4px solid #D1FAE5;border-top-color:#1B5E20;margin:0 auto 14px;animation:sheetSpin 0.85s linear infinite"></div>
+        <div style="font-weight:800;color:#111827;font-size:1.05rem;margin-bottom:6px">${message || 'Đang cập nhật lên Google Sheet...'}</div>
+        <div style="font-size:0.86rem;color:#6B7280;line-height:1.4">Vui lòng chờ thao tác hoàn tất, không đóng hoặc chuyển màn hình.</div>
+      </div>
+    `;
+    if (!document.getElementById('sheet-progress-style')) {
+      const style = document.createElement('style');
+      style.id = 'sheet-progress-style';
+      style.textContent = '@keyframes sheetSpin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(style);
+    }
+    document.body.appendChild(overlay);
+  },
+  hideSheetProgress() {
+    document.getElementById('sheet-progress-overlay')?.remove();
+  },
   toast(type, msg) {
     const c = document.getElementById('toast-container');
     // Remove all existing toasts immediately
