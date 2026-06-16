@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '354';
+const KHS_APP_VERSION = '355';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -464,8 +464,8 @@ const App = {
     const todayOrders = completedOrders.filter(o => o.createdAt && o.createdAt.includes(todayStr));
     const monthOrders = completedOrders.filter(o => o.createdAt && o.createdAt.includes(monthStr));
 
-    const todayRev = todayOrders.reduce((s, o) => s + (o.finalTotal || 0), 0);
-    const monthRev = monthOrders.reduce((s, o) => s + (o.finalTotal || 0), 0);
+    const todayRev = todayOrders.reduce((s, o) => s + this.getOrderNetRevenue(o), 0);
+    const monthRev = monthOrders.reduce((s, o) => s + this.getOrderNetRevenue(o), 0);
 
     // Top 10 products from real order items
     const productQtyMap = {};
@@ -484,7 +484,7 @@ const App = {
     const customerSpendMap = {};
     monthOrders.forEach(o => {
       const key = o.customerName || 'Khách lẻ';
-      customerSpendMap[key] = (customerSpendMap[key] || 0) + (o.finalTotal || 0);
+      customerSpendMap[key] = (customerSpendMap[key] || 0) + this.getOrderNetRevenue(o);
     });
     const topCustomers = Object.entries(customerSpendMap)
       .map(([name, total]) => ({ name, totalSpent: total }))
@@ -500,7 +500,7 @@ const App = {
         const dayMatch = o.createdAt.match(/^(\d{2})\//);
         if (dayMatch) {
           const day = parseInt(dayMatch[1]);
-          if (day >= 1 && day <= daysInMonth) dailyRev[day - 1] += (o.finalTotal || 0);
+          if (day >= 1 && day <= daysInMonth) dailyRev[day - 1] += this.getOrderNetRevenue(o);
         }
       }
     });
@@ -641,7 +641,7 @@ const App = {
                   </div>
                   <div>
                     <div class="act-text">
-                      <a href="#">${o.createdBy}</a> vừa bán đơn hàng với giá trị <strong>${fmtd(o.finalTotal)}</strong>
+                      <a href="#">${o.createdBy}</a> vừa bán đơn hàng với giá trị <strong>${fmtd(this.getOrderNetRevenue(o))}</strong>
                     </div>
                     <div class="act-time">${o.createdAt}</div>
                   </div>
@@ -763,7 +763,7 @@ const App = {
       data = new Array(24).fill(0);
       periodOrders.forEach(o => {
         const hm = o.createdAt.match(/(\d{2}):(\d{2})$/);
-        if (hm) data[parseInt(hm[1])] += (o.finalTotal || 0);
+        if (hm) data[parseInt(hm[1])] += this.getOrderNetRevenue(o);
       });
       if (period === 'today') data = data.slice(0, now.getHours() + 1);
       labels = data.map((_, i) => String(i).padStart(2, '0') + 'h');
@@ -783,7 +783,7 @@ const App = {
           const d = parseDate(o.createdAt);
           if (!d) return;
           const idx = Math.floor((d - startDate) / 86400000);
-          if (idx >= 0 && idx < diffDays) data[idx] += (o.finalTotal || 0);
+          if (idx >= 0 && idx < diffDays) data[idx] += this.getOrderNetRevenue(o);
         });
       } else {
         // Monthly bars
@@ -802,12 +802,12 @@ const App = {
             const next = i < months.length - 1 ? months[i + 1] : new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1);
             return d >= m && d < next;
           });
-          if (idx >= 0) data[idx] += (o.finalTotal || 0);
+          if (idx >= 0) data[idx] += this.getOrderNetRevenue(o);
         });
       }
     }
 
-    const periodRev = periodOrders.reduce((s, o) => s + (o.finalTotal || 0), 0);
+    const periodRev = periodOrders.reduce((s, o) => s + this.getOrderNetRevenue(o), 0);
     document.getElementById('chart-rev-label').textContent = fmtd(periodRev);
 
     this._chartData = data;
@@ -1473,6 +1473,13 @@ const App = {
     return this.toMoneyNumber(order.total) || itemTotal || this.toMoneyNumber(order.finalTotal);
   },
 
+  getOrderItemGrossTotal(order) {
+    if (!order || !order.items) return 0;
+    return order.items.reduce((sum, item) => {
+      return sum + this.toMoneyNumber(item.price) * (this.toMoneyNumber(item.qty) || 0);
+    }, 0);
+  },
+
   getOrderCostTotal(order) {
     if (!order || !order.items) return 0;
     return order.items.reduce((sum, item) => {
@@ -1483,8 +1490,88 @@ const App = {
     }, 0);
   },
 
+  getReturnItemKey(item) {
+    const sku = String(item?.sku || '').trim();
+    const name = String(item?.name || '').trim();
+    const price = this.toMoneyNumber(item?.price);
+    return `${sku}|${name}|${price}`;
+  },
+
+  getOrderReturnRows(order) {
+    if (!order) return [];
+    return (this.returns || []).filter(r => String(r.orderId || '').trim() === String(order.id || '').trim());
+  },
+
+  getOrderReturnedQtyMap(order) {
+    const map = {};
+    this.getOrderReturnRows(order).forEach(r => (r.items || []).forEach(item => {
+      const key = this.getReturnItemKey(item);
+      map[key] = (map[key] || 0) + (this.toMoneyNumber(item.qty) || 0);
+    }));
+    return map;
+  },
+
+  getOrderReturnedGrossTotal(order) {
+    const lineMap = {};
+    (order?.items || []).forEach(item => {
+      const key = this.getReturnItemKey(item);
+      if (!lineMap[key]) lineMap[key] = item;
+    });
+    return this.getOrderReturnRows(order).reduce((sum, r) => {
+      return sum + (r.items || []).reduce((lineSum, item) => {
+        const line = lineMap[this.getReturnItemKey(item)] || item;
+        const price = this.toMoneyNumber(item.price) || this.toMoneyNumber(line.price);
+        return lineSum + price * (this.toMoneyNumber(item.qty) || 0);
+      }, 0);
+    }, 0);
+  },
+
+  getOrderReturnedCostTotal(order) {
+    if (!order || !order.items) return 0;
+    const lineCost = {};
+    order.items.forEach(item => {
+      const key = this.getReturnItemKey(item);
+      const qty = this.toMoneyNumber(item.qty) || 0;
+      const storedCost = this.toMoneyNumber(item.costPrice);
+      let unitCost = qty > 0 && storedCost > 0 ? storedCost / qty : 0;
+      if (!unitCost) {
+        const product = this.products.find(p => p.sku === item.sku) || this.products.find(p => p.name === item.name);
+        unitCost = product?.costPrice || 0;
+      }
+      lineCost[key] = unitCost;
+    });
+    return this.getOrderReturnRows(order).reduce((sum, r) => {
+      return sum + (r.items || []).reduce((lineSum, item) => {
+        const key = this.getReturnItemKey(item);
+        const unitCost = lineCost[key] || 0;
+        return lineSum + unitCost * (this.toMoneyNumber(item.qty) || 0);
+      }, 0);
+    }, 0);
+  },
+
+  getOrderReturnedRevenueTotal(order) {
+    if (!order) return 0;
+    const gross = this.getOrderItemGrossTotal(order) || this.getOrderSalesTotal(order);
+    const finalTotal = this.toMoneyNumber(order.finalTotal);
+    const returnedGross = this.getOrderReturnedGrossTotal(order);
+    if (gross <= 0 || returnedGross <= 0) return 0;
+    return Math.round(finalTotal * returnedGross / gross);
+  },
+
+  getOrderNetRevenue(order) {
+    return this.isRevenueOrder(order)
+      ? this.toMoneyNumber(order.finalTotal) - this.getOrderReturnedRevenueTotal(order)
+      : 0;
+  },
+
+  getOrderNetCostTotal(order) {
+    return this.isRevenueOrder(order)
+      ? this.getOrderCostTotal(order) - this.getOrderReturnedCostTotal(order)
+      : 0;
+  },
+
   getOrderNetProfit(order) {
-    return this.isRevenueOrder(order) ? this.toMoneyNumber(order.finalTotal) - this.getOrderCostTotal(order) : 0;
+    return this.isRevenueOrder(order) ? this.getOrderNetRevenue(order) - this.getOrderNetCostTotal(order) : 0;
   },
 
   renderOrders(c) {
@@ -1622,6 +1709,7 @@ const App = {
       cardList.innerHTML = list.length ? list.map(o => {
         const items = o.items || [];
         const pf = this.getOrderNetProfit(o);
+        const netRevenue = this.getOrderNetRevenue(o);
         const fi = items[0];
         const mc = items.length - 1;
         const st = o.status==='completed'?'Hoàn thành':o.status==='Chờ đối chiếu'?'Chờ đối chiếu':o.status==='pending'?'Chờ xử lý':'Đã hủy';
@@ -1629,7 +1717,7 @@ const App = {
         return `<div class="order-mobile-card ${isTK ? 'tk-pending' : ''}" data-oid="${o.id}">
           <div class="omc-row1">
             <span class="omc-customer">${o.customerName||'Khách lẻ'}</span>
-            <span class="omc-total">${fmtd(o.finalTotal)}</span>
+            <span class="omc-total">${fmtd(netRevenue)}</span>
           </div>
           <div class="omc-row2">
             <span class="omc-date">${o.createdAt||''} · ${o.id||''}</span>
@@ -1653,12 +1741,13 @@ const App = {
     tbody.innerHTML = list.length ? list.map(o => {
       const items = o.items || [];
       const profit = this.getOrderNetProfit(o);
+      const netRevenue = this.getOrderNetRevenue(o);
       const itemsSummary = items.map(i=>`${i.name||'?'} x${i.qty||0}`).join(', ') || 'Không có SP';
       return `<tr class="order-card" data-oid="${o.id}">
       <td class="oc-id"><span class="product-sku">${o.id||''}</span></td>
       <td class="oc-cust" style="font-weight:600">${o.customerName||'Khách lẻ'}</td>
       <td class="oc-items" style="max-width:200px;font-size:0.8rem">${itemsSummary}</td>
-      <td class="oc-total"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
+      <td class="oc-total"><span class="price-text">${fmtd(netRevenue)}</span></td>
       <td class="oc-profit" style="color:#1B5E20;font-weight:600">${fmtd(profit)}</td>
       <td class="oc-payment">${o.payment||''}</td>
       <td class="oc-status"><span class="order-status ${o.status}">${o.status==='completed'?'Hoàn thành':o.status==='Chờ đối chiếu'?'Chờ đối chiếu':o.status==='pending'?'Chờ xử lý':'Đã hủy'}</span></td>
@@ -1672,7 +1761,7 @@ const App = {
     // Update summary in sticky header
     const totalRevenue = list
       .filter(o => this.isRevenueOrder(o))
-      .reduce((s, o) => s + this.getOrderSalesTotal(o), 0);
+      .reduce((s, o) => s + this.getOrderNetRevenue(o), 0);
     const summaryEl = document.getElementById('o-summary');
     if (summaryEl) {
       summaryEl.innerHTML = `
@@ -1876,18 +1965,18 @@ const App = {
     this.orders.filter(o => o.status === 'completed').forEach(o => {
       const cid = o.customerId;
       if (cid) {
-        spendMap[cid] = (spendMap[cid] || 0) + (o.finalTotal || 0);
+        spendMap[cid] = (spendMap[cid] || 0) + this.getOrderNetRevenue(o);
         if (!lastOrderMap[cid] || o.createdAt > lastOrderMap[cid]) lastOrderMap[cid] = o.createdAt;
       }
     });
-    const totalSpent = list.reduce((s, cu) => s + (cu.totalSpent || spendMap[cu.id] || 0), 0);
+    const totalSpent = list.reduce((s, cu) => s + (spendMap[cu.id] || 0), 0);
     const sumEl = document.getElementById('c-summary');
     if (sumEl) sumEl.innerHTML = `<span>${list.length} khách hàng</span><span>Tổng bán: <span style="color:var(--primary);font-weight:700">${fmtd(totalSpent)}</span></span>`;
 
     const cardList = document.getElementById('c-card-list');
     if (cardList) {
       cardList.innerHTML = list.length ? list.map(cu => {
-        const spent = cu.totalSpent || spendMap[cu.id] || 0;
+        const spent = spendMap[cu.id] || 0;
         const lastOrd = cu.lastOrder || lastOrderMap[cu.id] || '';
         const initial = (cu.name||'?')[0].toUpperCase();
         const bg = cu.gender==='Nữ'?'#FCE7F3':cu.gender==='Nam'?'#C8E6C9':avatarColor(cu.name);
@@ -1914,7 +2003,7 @@ const App = {
     const tbody = document.getElementById('c-tbody');
     if (!tbody) return;
     tbody.innerHTML = list.map(cu => {
-      const spent = cu.totalSpent || spendMap[cu.id] || 0;
+      const spent = spendMap[cu.id] || 0;
       const lastOrd = cu.lastOrder || lastOrderMap[cu.id] || '';
       return `<tr>
       <td><span class="product-sku">${cu.id}</span></td>
@@ -1951,12 +2040,13 @@ const App = {
     const cu = this.customers.find(x => x.id === custId);
     if (!cu) return;
     const orders = this.orders.filter(o => o.customerId === custId);
+    const totalSpent = orders.reduce((s, o) => s + this.getOrderNetRevenue(o), 0);
     document.getElementById('modal-title').textContent = `Lịch sử mua hàng - ${cu.name}`;
     document.getElementById('modal-body').innerHTML = `
       <div class="cust-history">
         <div class="ch-stats">
           <div class="ch-stat"><span class="ch-stat-label">Tổng đơn</span><strong>${cu.totalOrders || orders.length}</strong></div>
-          <div class="ch-stat"><span class="ch-stat-label">Tổng chi tiêu</span><strong class="price-text">${fmtd(cu.totalSpent)}</strong></div>
+          <div class="ch-stat"><span class="ch-stat-label">Tổng chi tiêu</span><strong class="price-text">${fmtd(totalSpent)}</strong></div>
           <div class="ch-stat"><span class="ch-stat-label">Giao dịch cuối</span><strong>${cu.lastOrder || '-'}</strong></div>
         </div>
         ${orders.length ? `<table class="data-table" style="margin-top:16px;table-layout:fixed;width:100%">
@@ -1965,7 +2055,7 @@ const App = {
             ${orders.map(o => `<tr class="ch-order-row" data-oid="${o.id}" style="cursor:pointer">
               <td style="font-size:0.7rem;word-break:break-all"><span class="product-sku">${o.id}</span><br><span style="color:#9CA3AF;font-size:0.65rem">${o.createdAt||''}</span></td>
               <td style="font-size:0.75rem;word-break:break-word">${(o.items||[]).map(i => i.name + ' x' + i.qty).join(', ')}</td>
-              <td style="text-align:right"><span class="price-text">${fmtd(o.finalTotal)}</span></td>
+              <td style="text-align:right"><span class="price-text">${fmtd(this.getOrderNetRevenue(o))}</span></td>
               <td><span class="order-status ${o.status}">${o.status === 'completed' ? 'OK' : '...'}</span></td>
             </tr>`).join('')}
           </tbody>
@@ -2420,22 +2510,22 @@ const App = {
 
 
   reportSales(el, orders, view) {
-    const rev=orders.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
-    const cost=orders.reduce((s,o)=>s+this.getOrderCostTotal(o),0);
+    const rev=orders.reduce((s,o)=>s+this.getOrderNetRevenue(o),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
+    const cost=orders.reduce((s,o)=>s+this.getOrderNetCostTotal(o),0);
     const profit=rev-cost;
     const periodLabels = {today:'hôm nay',yesterday:'hôm qua',thisWeek:'tuần này',lastWeek:'tuần trước',thisMonth:'tháng này',lastMonth:'tháng trước',thisYear:'năm nay',custom:'tùy chỉnh'};
     const periodLabel = periodLabels[this.reportPeriod] || 'ngày';
-    const dm={}; orders.forEach(o=>{const k=o.createdAt?.substring(0,10)||'';if(!dm[k])dm[k]={r:0,c:0};dm[k].r+=this.toMoneyNumber(o.finalTotal);dm[k].c++;});
+    const dm={}; orders.forEach(o=>{const k=o.createdAt?.substring(0,10)||'';if(!dm[k])dm[k]={r:0,c:0};dm[k].r+=this.getOrderNetRevenue(o);dm[k].c++;});
     const dr=Object.entries(dm).sort((a,b)=>a[0].localeCompare(b[0]));
     // Payment breakdown
     const cT=orders.filter(o=>o.payment==='Tiền mặt'), bT=orders.filter(o=>o.payment==='Chuyển khoản');
     const codT=orders.filter(o=>o.payment==='Ship COD'), shipT=orders.filter(o=>o.payment==='Ship Thường');
     const taxST=orders.filter(o=>o.payment==='Thuế Sàn');
-    const cS=cT.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0), bS=bT.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0);
-    const codS=codT.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0), shipS=shipT.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0);
-    const taxSS=taxST.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0);
+    const cS=cT.reduce((s,o)=>s+this.getOrderNetRevenue(o),0), bS=bT.reduce((s,o)=>s+this.getOrderNetRevenue(o),0);
+    const codS=codT.reduce((s,o)=>s+this.getOrderNetRevenue(o),0), shipS=shipT.reduce((s,o)=>s+this.getOrderNetRevenue(o),0);
+    const taxSS=taxST.reduce((s,o)=>s+this.getOrderNetRevenue(o),0);
     // Employee breakdown
-    const em={}; orders.forEach(o=>{const k=o.createdBy||'Không rõ';if(!em[k])em[k]={r:0,c:0};em[k].r+=this.toMoneyNumber(o.finalTotal);em[k].c++;});
+    const em={}; orders.forEach(o=>{const k=o.createdBy||'Không rõ';if(!em[k])em[k]={r:0,c:0};em[k].r+=this.getOrderNetRevenue(o);em[k].c++;});
     const empSorted=Object.entries(em).sort((a,b)=>b[1].r-a[1].r);
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu thuần</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card skyblue"><div class="rpt-card-label">Số đơn</div><div class="rpt-card-value">${cnt}</div></div><div class="rpt-card purple"><div class="rpt-card-label">TB / đơn</div><div class="rpt-card-value">${fmtd(avg)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận gộp</div><div class="rpt-card-value">${fmtd(profit)}</div></div></div>`;
     if(view==='chart'){
@@ -2459,9 +2549,9 @@ const App = {
   },
 
   reportCustomers(el, orders, view) {
-    const cm={}; orders.forEach(o=>{const k=o.customerName||'Khách lẻ';if(!cm[k])cm[k]={s:0,c:0};cm[k].s+=(o.finalTotal||0);cm[k].c++;});
+    const cm={}; orders.forEach(o=>{const k=o.customerName||'Khách lẻ';if(!cm[k])cm[k]={s:0,c:0};cm[k].s+=this.getOrderNetRevenue(o);cm[k].c++;});
     const sorted=Object.entries(cm).sort((a,b)=>b[1].s-a[1].s), ms=sorted[0]?.[1].s||1;
-    const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Tổng khách</div><div class="rpt-card-value">${sorted.length}</div></div><div class="rpt-card green"><div class="rpt-card-label">Tổng doanh thu</div><div class="rpt-card-value">${fmtd(orders.reduce((s,o)=>s+(o.finalTotal||0),0))}</div></div></div>`;
+    const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Tổng khách</div><div class="rpt-card-value">${sorted.length}</div></div><div class="rpt-card green"><div class="rpt-card-label">Tổng doanh thu</div><div class="rpt-card-value">${fmtd(orders.reduce((s,o)=>s+this.getOrderNetRevenue(o),0))}</div></div></div>`;
     if(view==='chart'){
       el.innerHTML=`<h2 class="report-title">Báo cáo khách hàng</h2>${cards}<div class="card" style="margin-top:16px"><div class="card-header"><h3>Top khách hàng chi tiêu</h3></div><div class="card-body"><div class="chart-area" style="height:360px"><canvas id="rc4"></canvas></div></div></div>`;
       this.rptBarChart('rc4',sorted.slice(0,10).map(([n])=>n.length>10?n.substring(0,10)+'…':n),sorted.slice(0,10).map(([,d])=>d.s),'#8B5CF6',sorted.slice(0,10).map(([,d])=>d.c+' đơn hàng'));
@@ -2472,8 +2562,8 @@ const App = {
 
 
   reportFinance(el, orders, view) {
-    const rev=orders.reduce((s,o)=>s+this.toMoneyNumber(o.finalTotal),0);
-    const cost=orders.reduce((s,o)=>s+this.getOrderCostTotal(o),0);
+    const rev=orders.reduce((s,o)=>s+this.getOrderNetRevenue(o),0);
+    const cost=orders.reduce((s,o)=>s+this.getOrderNetCostTotal(o),0);
     const profit=rev-cost;
     const cards=`<div class="report-summary-cards"><div class="rpt-card blue"><div class="rpt-card-label">Doanh thu thuần</div><div class="rpt-card-value">${fmtd(rev)}</div></div><div class="rpt-card red"><div class="rpt-card-label">Giá vốn</div><div class="rpt-card-value">${fmtd(cost)}</div></div><div class="rpt-card green"><div class="rpt-card-label">Lợi nhuận</div><div class="rpt-card-value">${fmtd(profit)}</div></div></div>`;
     if(view==='chart'){
@@ -2781,6 +2871,7 @@ const App = {
   returnPerPage: 7,
   returnSearch: '',
   returnSelectedOrder: null,
+  returnSubmitting: false,
 
   // ═══ NOTIFICATION SYSTEM ═══
   initNotifications() {
@@ -2900,6 +2991,7 @@ const App = {
     this.returnSearch = '';
     this.returnPage = 1;
     this.returnSelectedOrder = null;
+    this.returnSubmitting = false;
     document.getElementById('return-overlay').style.display = 'flex';
     document.getElementById('return-search').value = '';
     this.returnStep1();
@@ -2991,13 +3083,9 @@ const App = {
       <div class="info-item" style="margin-top:4px"><span class="info-label">👤 ${order.customerName||'Khách lẻ'}</span></div>
     `;
 
-    // Calculate already-returned qty per item
-    const prevReturns = this.returns.filter(r => r.orderId === order.id);
-    const returnedQty = {};
-    prevReturns.forEach(r => (r.items||[]).forEach(ri => {
-      const key = ri.sku || ri.name;
-      returnedQty[key] = (returnedQty[key]||0) + ri.qty;
-    }));
+    // Calculate already-returned qty per item. Key includes price so same SKU
+    // sold on separate TikTok lines is not mixed up.
+    const returnedQty = this.getOrderReturnedQtyMap(order);
 
     // Left panel - items with editable price
     const items = order.items || [];
@@ -3011,7 +3099,7 @@ const App = {
           <th style="padding:8px 4px;text-align:right;width:80px">Thành tiền</th>
         </tr></thead>
         <tbody>${items.map((it, i) => {
-          const key = it.sku || it.name;
+          const key = this.getReturnItemKey(it);
           const alreadyReturned = returnedQty[key] || 0;
           const remaining = Math.max(0, it.qty - alreadyReturned);
           const disabled = remaining <= 0;
@@ -3083,7 +3171,8 @@ const App = {
       const qi = document.querySelector(`.return-qty-input[data-idx="${i}"]`);
       const pi = document.querySelector(`.return-price-input[data-idx="${i}"]`);
       const ti = document.querySelector(`.return-item-total[data-idx="${i}"]`);
-      const qty = Math.min(parseInt(qi?.value)||0, items[i].qty);
+      const maxQty = parseInt(qi?.getAttribute('max')) || items[i].qty || 0;
+      const qty = Math.min(parseInt(qi?.value)||0, maxQty);
       const price = parseInt((pi?.value||'0').replace(/\D/g,'')) || 0;
       const total = cb.checked ? qty * price : 0;
       if(ti) ti.textContent = total ? fmtd(total) : '0';
@@ -3116,6 +3205,7 @@ const App = {
   },
 
   async processReturn() {
+    if(this.returnSubmitting) return;
     const order = this.returnSelectedOrder;
     if(!order) return;
     if(!this.isReturnableOrder(order)) {
@@ -3126,13 +3216,18 @@ const App = {
     }
     const items = order.items || [];
     const returnItems = [];
+    const returnedQty = this.getOrderReturnedQtyMap(order);
 
     document.querySelectorAll('.return-item-check').forEach(cb => {
       const i = parseInt(cb.dataset.idx);
       const qi = document.querySelector(`.return-qty-input[data-idx="${i}"]`);
       if(cb.checked && qi) {
-        const qty = Math.min(parseInt(qi.value)||0, items[i].qty);
-        if(qty > 0) returnItems.push({ name: items[i].name, sku: items[i].sku, qty, price: items[i].price });
+        const line = items[i];
+        const key = this.getReturnItemKey(line);
+        const remaining = Math.max(0, (this.toMoneyNumber(line.qty) || 0) - (returnedQty[key] || 0));
+        const qty = Math.min(parseInt(qi.value)||0, remaining);
+        const price = this.toMoneyNumber(line.price);
+        if(qty > 0) returnItems.push({ name: line.name, sku: line.sku, qty, price });
       }
     });
 
@@ -3172,10 +3267,18 @@ const App = {
       createdAt: now.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})
     };
 
-    this.returns.unshift(returnRecord);
-    this.toast('success', `Đã tạo phiếu trả hàng ${returnId} - Hoàn ${fmtd(returnTotal)}`);
+    const confirmBtn = document.getElementById('return-confirm');
+    const oldConfirmText = confirmBtn?.textContent || '';
+    this.returnSubmitting = true;
+    if(confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Đang xử lý...';
+    }
 
-    // Sync to Google Sheets
+    let returnSynced = false;
+    let returnError = '';
+
+    // Sync to Google Sheets first. Only update local state after backend accepts it.
     const apiUrl = localStorage.getItem('khs_api_url');
     if(apiUrl) {
       try {
@@ -3195,16 +3298,31 @@ const App = {
           })
         }).then(r => r.json());
         if(res.success) {
-          this.toast('success', 'Đã đồng bộ trả hàng lên Google Sheets');
+          returnSynced = true;
           setTimeout(() => this.autoSync(), 3000);
         } else {
-          this.toast('warning', 'Lỗi đồng bộ: ' + (res.error||''));
+          returnError = res.error || 'Google Sheets từ chối phiếu trả hàng';
         }
       } catch(e) {
-        this.toast('warning', 'Mất kết nối! Phiếu trả đã lưu local.');
+        returnError = e.message || 'Mất kết nối Google Sheets';
       }
+    } else {
+      returnSynced = true;
     }
 
+    if(!returnSynced) {
+      this.returnSubmitting = false;
+      if(confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = oldConfirmText;
+      }
+      this.toast('error', 'Không tạo được phiếu trả hàng: ' + returnError);
+      return;
+    }
+
+    this.returns.unshift(returnRecord);
+    this.returnSubmitting = false;
+    this.toast('success', `Đã tạo phiếu trả hàng ${returnId} - Hoàn ${fmtd(returnTotal)}`);
     this.closeReturn();
     if(this.page === 'orders') this.renderOrders(document.getElementById('page-container'));
   },
