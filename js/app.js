@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '357';
+const KHS_APP_VERSION = '358';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -224,6 +224,8 @@ const App = {
     document.getElementById('header-avatar').textContent = dn[0];
     document.getElementById('dropdown-name').textContent = dn;
     document.getElementById('dropdown-role').textContent = this.user.role || 'Nhân viên';
+    const versionEl = document.getElementById('dropdown-app-version');
+    if (versionEl) versionEl.textContent = `Ver ${KHS_APP_VERSION}`;
 
     // Load avatar
     this.loadUserAvatar();

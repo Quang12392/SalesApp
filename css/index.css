@@ -312,6 +312,14 @@ ul, ol { list-style: none; }
   transition: var(--transition);
 }
 .dropdown-item:hover { background: var(--bg-hover); color: var(--danger); }
+.dropdown-app-version {
+  padding: 8px 16px 12px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-align: right;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    NAV BAR (KiotViet style tabs)
