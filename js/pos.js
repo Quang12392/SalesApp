@@ -16,6 +16,7 @@ const POS = {
   posTimer: null,
   viewMode: localStorage.getItem('pos_view_mode') || 'grid',
   _lineSeq: 0,
+  _checkoutInProgress: false,
 
   makeLineId(prefix = 'line') {
     this._lineSeq = (this._lineSeq || 0) + 1;
@@ -259,6 +260,13 @@ const POS = {
     btn.style.background = '';
     btn.disabled = false;
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> THANH TOÁN`;
+  },
+
+  _setCheckoutBusy(label = 'ĐANG LƯU...') {
+    const btn = document.getElementById('btn-checkout');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${label}`;
   },
 
   openWithTikTokOrder(orderId) {
@@ -1305,10 +1313,15 @@ const POS = {
 
 
 
-  checkout() {
+  async checkout() {
     if (!this.cart.length) return;
 
     if (this._tiktokOrderId) { this._doConfirmTikTok(); return; }
+
+    if (this._checkoutInProgress) {
+      App.toast('info', 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
+      return;
+    }
 
     // Check if offline — auto save as draft
     if (!navigator.onLine) {
@@ -1348,9 +1361,11 @@ const POS = {
     const now = new Date();
     const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const clientRequestId = this.makeLineId('order');
 
     const order = {
       id: 'DH' + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + String(App.orders.length + 1).padStart(3, '0'),
+      clientRequestId,
       customerId: this.selectedCustomer?.id || '',
       customerName: this.selectedCustomer?.name || 'Khách lẻ',
       items: this.cart.map(i => ({ name: i.name, sku: i.sku, qty: i.qty, price: i.price })),
@@ -1363,61 +1378,87 @@ const POS = {
     // DON'T subtract local stock — let Google Sheets be the source of truth
     // Stock will be refreshed via autoSync after checkout
 
-    // Update customer spending
-    if (this.selectedCustomer?.id) {
-      const cust = App.customers.find(c => c.id === this.selectedCustomer.id);
-      if (cust) { cust.totalSpent += finalTotal; cust.lastOrder = dateStr; }
-    }
-
-    App.orders.unshift(order);
-    App.toast('success', 'Đã tạo đơn hàng ' + order.id + ' - ' + fmtd(finalTotal));
-
-    // If this was loaded from a draft, delete the draft now
-    if (this.currentDraftId) {
-      this.deleteDraft(this.currentDraftId);
-      this.currentDraftId = null;
-    }
-
-    // Sync to Google Sheets if API is configured
     const apiUrl = localStorage.getItem('khs_api_url');
-    if (apiUrl) {
-      const orderPayload = {
-        action: 'createOrder',
-        customerId: order.customerId,
-        customerName: order.customerName,
-        customerPhone: this.selectedCustomer?.phone || '',
-        customerAddress: this.selectedCustomer?.address || '',
-        items: order.items,
-        total: subtotal,
-        discount,
-        finalTotal,
-        payment,
-        note,
-        tax,
-        taxRevenue,
-        createdBy: App.user.displayName
-      };
-      fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(orderPayload)
-      }).then(r => r.json()).then(res => {
-        if (res.success) {
-          App.toast('success', 'Đã đồng bộ lên Google Sheets: ' + res.orderId);
-          setTimeout(() => App.autoSync(), 3000);
-        } else {
-          App.toast('error', 'Lỗi đồng bộ: ' + (res.error || 'Không rõ nguyên nhân'));
-        }
-      }).catch(() => {
-        // Mất mạng → lưu vào queue chờ sync
-        this.addToSyncQueue(orderPayload);
-        App.toast('warning', '📡 Mất kết nối! Đơn đã lưu chờ đồng bộ khi có mạng.');
-      });
-    }
+    const orderPayload = {
+      action: 'createOrder',
+      clientRequestId,
+      localOrderId: order.id,
+      customerId: order.customerId,
+      customerName: order.customerName,
+      customerPhone: this.selectedCustomer?.phone || '',
+      customerAddress: this.selectedCustomer?.address || '',
+      items: order.items,
+      total: subtotal,
+      discount,
+      finalTotal,
+      payment,
+      note,
+      tax,
+      taxRevenue,
+      createdBy: App.user.displayName
+    };
 
-    this.cart = []; // Clear cart BEFORE close so popup won't trigger
-    this.close(true);
-    this.showInvoice(order);
+    const finishCheckout = (syncedOrderId, options = {}) => {
+      if (syncedOrderId) order.id = syncedOrderId;
+
+      // Update customer spending only after the order is accepted.
+      if (this.selectedCustomer?.id) {
+        const cust = App.customers.find(c => c.id === this.selectedCustomer.id);
+        if (cust) { cust.totalSpent += finalTotal; cust.lastOrder = dateStr; }
+      }
+
+      App.orders.unshift(order);
+
+      // If this was loaded from a draft, delete the draft now.
+      if (this.currentDraftId) {
+        this.deleteDraft(this.currentDraftId);
+        this.currentDraftId = null;
+      }
+
+      if (options.toast !== false) {
+        App.toast(options.toastType || 'success', options.message || ('Đã tạo đơn hàng ' + order.id + ' - ' + fmtd(finalTotal)));
+      }
+
+      this.cart = []; // Clear cart BEFORE close so popup won't trigger
+      this.close(true);
+      this.showInvoice(order);
+    };
+
+    this._checkoutInProgress = true;
+    this._setCheckoutBusy('ĐANG LƯU...');
+
+    try {
+      if (apiUrl) {
+        App.toast('info', 'Đang cập nhật đơn hàng lên Sheet...');
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(orderPayload)
+        });
+        const res = await response.json();
+
+        if (!res.success) {
+          App.toast('error', 'Lỗi tạo đơn: ' + (res.error || 'Không rõ nguyên nhân'));
+          return;
+        }
+
+        finishCheckout(res.orderId || order.id, {
+          message: (res.duplicate ? 'Đơn đã được ghi trước đó: ' : 'Đã tạo đơn hàng ') + (res.orderId || order.id) + ' - ' + fmtd(finalTotal)
+        });
+        setTimeout(() => App.autoSync(), 3000);
+      } else {
+        finishCheckout(order.id);
+      }
+    } catch (err) {
+      this.addToSyncQueue(orderPayload);
+      finishCheckout(order.id, {
+        toastType: 'warning',
+        message: 'Mất kết nối! Đơn đã lưu chờ đồng bộ khi có mạng.'
+      });
+    } finally {
+      this._checkoutInProgress = false;
+      this._resetCheckoutBtn();
+    }
   },
 
   saveDraft() {
