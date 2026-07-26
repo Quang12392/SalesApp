@@ -1429,7 +1429,7 @@ const POS = {
 
     try {
       if (apiUrl) {
-        App.toast('info', 'Đang cập nhật đơn hàng lên Sheet...');
+        App.showSheetProgress('Đang đẩy dữ liệu đơn hàng lên Google Sheet...');
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
@@ -1438,18 +1438,27 @@ const POS = {
         const res = await response.json();
 
         if (!res.success) {
+          App.hideSheetProgress();
           App.toast('error', 'Lỗi tạo đơn: ' + (res.error || 'Không rõ nguyên nhân'));
           return;
         }
 
-        finishCheckout(res.orderId || order.id, {
-          message: (res.duplicate ? 'Đơn đã được ghi trước đó: ' : 'Đã tạo đơn hàng ') + (res.orderId || order.id) + ' - ' + fmtd(finalTotal)
+        const acceptedOrderId = res.orderId || order.id;
+        finishCheckout(acceptedOrderId, {
+          toast: false
         });
+        App.showSheetSuccess(
+          res.duplicate ? 'Đơn đã có trên Sheet' : 'Đã đẩy dữ liệu lên Sheet',
+          res.duplicate
+            ? `Đơn hàng ${acceptedOrderId} đã được ghi nhận từ trước.`
+            : `Đơn hàng ${acceptedOrderId} đã được ghi nhận thành công.`
+        );
         setTimeout(() => App.autoSync(), 3000);
       } else {
         finishCheckout(order.id);
       }
     } catch (err) {
+      App.hideSheetProgress();
       this.addToSyncQueue(orderPayload);
       finishCheckout(order.id, {
         toastType: 'warning',

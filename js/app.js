@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '360';
+const KHS_APP_VERSION = '361';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -3960,6 +3960,9 @@ const App = {
     this.hideSheetProgress();
     const overlay = document.createElement('div');
     overlay.id = 'sheet-progress-overlay';
+    overlay.setAttribute('role', 'alertdialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-busy', 'true');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,0.38);backdrop-filter:blur(2px);';
     overlay.innerHTML = `
       <div style="width:min(360px,calc(100vw - 40px));background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(15,23,42,0.35);padding:24px 22px;text-align:center;border:1px solid #E5E7EB">
@@ -3971,9 +3974,34 @@ const App = {
     if (!document.getElementById('sheet-progress-style')) {
       const style = document.createElement('style');
       style.id = 'sheet-progress-style';
-      style.textContent = '@keyframes sheetSpin{to{transform:rotate(360deg)}}';
+      style.textContent = '@keyframes sheetSpin{to{transform:rotate(360deg)}}@keyframes sheetResultPop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}';
       document.head.appendChild(style);
     }
+    document.body.appendChild(overlay);
+  },
+  showSheetSuccess(title, message) {
+    this.hideSheetProgress();
+    const overlay = document.createElement('div');
+    overlay.id = 'sheet-progress-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,0.38);backdrop-filter:blur(2px);';
+    overlay.innerHTML = `
+      <div style="width:min(360px,calc(100vw - 40px));background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(15,23,42,0.35);padding:24px 22px;text-align:center;border:1px solid #D1FAE5;animation:sheetResultPop .2s ease-out">
+        <div style="width:52px;height:52px;border-radius:50%;background:#DCFCE7;color:#15803D;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.75rem;font-weight:900">✓</div>
+        <div style="font-weight:800;color:#111827;font-size:1.05rem;margin-bottom:7px">${title || 'Đã cập nhật Google Sheet'}</div>
+        <div style="font-size:0.88rem;color:#4B5563;line-height:1.45">${message || 'Dữ liệu đã được ghi nhận thành công.'}</div>
+      </div>
+    `;
+    if (!document.getElementById('sheet-progress-style')) {
+      const style = document.createElement('style');
+      style.id = 'sheet-progress-style';
+      style.textContent = '@keyframes sheetSpin{to{transform:rotate(360deg)}}@keyframes sheetResultPop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}';
+      document.head.appendChild(style);
+    }
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) this.hideSheetProgress();
+    });
     document.body.appendChild(overlay);
   },
   hideSheetProgress() {
