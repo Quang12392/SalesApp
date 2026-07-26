@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '358';
+const KHS_APP_VERSION = '359';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -1162,9 +1162,9 @@ const App = {
               const db = b.updatedAt || b.importDate || '';
               return da > db ? -1 : da < db ? 1 : 0;
             });
-          const batchRows = skuBatches.map(b => `<tr style="${b.qtyRemaining<=0?'opacity:0.5':''}">
+          const batchRows = skuBatches.map(b => `<tr class="${b.qtyRemaining<=0?'batch-row-out':''}">
             <td style="font-size:0.7rem;word-break:break-all;line-height:1.2;overflow:visible;font-weight:600">${b.id}</td>
-            <td style="text-align:center;font-size:0.8rem;overflow:visible;font-weight:700">${b.qtyRemaining}</td>
+            <td class="batch-qty-cell">${b.qtyRemaining}</td>
             <td style="text-align:right;font-size:0.8rem;white-space:nowrap;overflow:visible;font-weight:700">${fmtd(b.costPrice)}</td>
             <td style="font-size:0.7rem;color:#6B7280;overflow:visible;display:flex;align-items:center;justify-content:space-between;gap:2px;font-weight:600">
               <span>${(b.importDate||'').substring(0,10)}${b.updatedAt ? '<br><span style="color:#1B5E20;font-weight:700">⇢ '+(b.updatedAt||'').substring(0,10)+'</span>' : ''}</span>

@@ -747,12 +747,22 @@ ul, ol { list-style: none; }
 /* Batch table */
 .batch-table { font-size: 0.72rem; table-layout: fixed; }
 .batch-table td, .batch-table th { padding: 5px 3px; }
-.batch-table th:nth-child(1) { width: 34%; }
-.batch-table th:nth-child(2) { width: 8%; text-align: center; }
+.batch-table th:nth-child(1) { width: 32%; }
+.batch-table th:nth-child(2) { width: 10%; text-align: center; }
 .batch-table th:nth-child(3) { width: 24%; text-align: right; }
 .batch-table th:nth-child(4) { width: 34%; }
 .bt-id { font-size: 0.58rem; word-break: break-all; line-height: 1.2; }
 .bt-sl { text-align: center; font-size: 0.72rem; }
+.batch-qty-cell {
+  color: #111827;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+  word-break: normal;
+}
+.batch-row-out { opacity: 0.5; }
+.batch-row-out .batch-qty-cell { color: #6B7280; }
 .bt-price { text-align: right; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bt-date { font-size: 0.6rem; color: #6B7280; display: flex; align-items: center; justify-content: space-between; gap: 2px; overflow: visible !important; }
 .bt-acts { display: flex; flex-direction: column; gap: 1px; align-items: center; flex-shrink: 0; }
