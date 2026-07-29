@@ -404,13 +404,17 @@ const POS = {
         App.updateOrderTable();
         setTimeout(() => App.autoSync(), 2000);
       } else {
-        App.hideSheetProgress();
-        App.toast('error', '❌ ' + (data.error || 'Lỗi xác nhận'));
+        App.showSheetError(
+          'Không thể cập nhật đơn TikTok',
+          data.error || `Google Sheet không chấp nhận đơn hàng ${orderId}.`
+        );
         if (btn) { btn.disabled = false; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> XÁC NHẬN ĐƠN`; }
       }
     } catch (err) {
-      App.hideSheetProgress();
-      App.toast('error', '❌ Lỗi kết nối: ' + err.message);
+      App.showSheetError(
+        'Không thể kết nối Google Sheet',
+        'Đơn chưa được xác nhận. ' + (err.message || 'Vui lòng kiểm tra kết nối mạng rồi thử lại.')
+      );
       if (btn) { btn.disabled = false; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> XÁC NHẬN ĐƠN`; }
     } finally {
       this._checkoutInProgress = false;

@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '362';
+const KHS_APP_VERSION = '363';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -3999,6 +3999,30 @@ const App = {
       style.textContent = '@keyframes sheetSpin{to{transform:rotate(360deg)}}@keyframes sheetResultPop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}';
       document.head.appendChild(style);
     }
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) this.hideSheetProgress();
+    });
+    document.body.appendChild(overlay);
+  },
+  showSheetError(title, message) {
+    this.hideSheetProgress();
+    const overlay = document.createElement('div');
+    overlay.id = 'sheet-progress-overlay';
+    overlay.setAttribute('role', 'alertdialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,0.38);backdrop-filter:blur(2px);';
+    overlay.innerHTML = `
+      <div style="position:relative;width:min(360px,calc(100vw - 40px));background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(15,23,42,0.35);padding:24px 22px;text-align:center;border:1px solid #FECACA;animation:sheetResultPop .2s ease-out">
+        <button type="button" data-sheet-error-close aria-label="Đóng" title="Đóng" style="position:absolute;top:10px;right:10px;width:32px;height:32px;border:0;border-radius:8px;background:#FEE2E2;color:#DC2626;font-size:1.35rem;line-height:1;cursor:pointer">×</button>
+        <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;color:#DC2626;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.55rem;font-weight:900">!</div>
+        <div data-sheet-error-title style="font-weight:800;color:#991B1B;font-size:1.05rem;margin-bottom:7px"></div>
+        <div data-sheet-error-message style="font-size:0.88rem;color:#4B5563;line-height:1.45;overflow-wrap:anywhere"></div>
+        <div style="font-size:0.78rem;color:#9CA3AF;margin-top:14px">Chạm vùng mờ hoặc dấu × để đóng.</div>
+      </div>
+    `;
+    overlay.querySelector('[data-sheet-error-title]').textContent = title || 'Không thể cập nhật Google Sheet';
+    overlay.querySelector('[data-sheet-error-message]').textContent = message || 'Đã xảy ra lỗi trong khi cập nhật dữ liệu.';
+    overlay.querySelector('[data-sheet-error-close]').addEventListener('click', () => this.hideSheetProgress());
     overlay.addEventListener('click', (event) => {
       if (event.target === overlay) this.hideSheetProgress();
     });
