@@ -372,9 +372,15 @@ const POS = {
       finalTotal
     };
     if (!url) { App.toast('error', '❌ Chưa cấu hình API URL!'); return; }
+    if (this._checkoutInProgress) {
+      App.toast('info', 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
+      return;
+    }
 
     const btn = document.getElementById('btn-checkout');
     if (btn) { btn.disabled = true; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Đang xác nhận...`; }
+    this._checkoutInProgress = true;
+    App.showSheetProgress('Đang xác nhận đơn TikTok và cập nhật Google Sheet...');
 
     try {
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
@@ -391,16 +397,23 @@ const POS = {
         this._tiktokOrderId = null;
         this.cart = [];
         this.close(true);
-        App.toast('success', '✅ ' + (data.message || 'Đã xác nhận đơn ' + orderId));
+        App.showSheetSuccess(
+          'Đã cập nhật đơn TikTok lên Sheet',
+          data.message || `Đơn hàng ${orderId} đã được xác nhận và trừ tồn kho thành công.`
+        );
         App.updateOrderTable();
         setTimeout(() => App.autoSync(), 2000);
       } else {
+        App.hideSheetProgress();
         App.toast('error', '❌ ' + (data.error || 'Lỗi xác nhận'));
         if (btn) { btn.disabled = false; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> XÁC NHẬN ĐƠN`; }
       }
     } catch (err) {
+      App.hideSheetProgress();
       App.toast('error', '❌ Lỗi kết nối: ' + err.message);
       if (btn) { btn.disabled = false; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> XÁC NHẬN ĐƠN`; }
+    } finally {
+      this._checkoutInProgress = false;
     }
   },
 
