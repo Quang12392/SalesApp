@@ -371,7 +371,13 @@ const POS = {
       discount,
       finalTotal
     };
-    if (!url) { App.toast('error', '❌ Chưa cấu hình API URL!'); return; }
+    if (!url) {
+      App.showSheetError(
+        'Chưa cấu hình Google Sheet',
+        'Không thể xác nhận đơn TikTok vì app chưa có API URL.'
+      );
+      return;
+    }
     if (this._checkoutInProgress) {
       App.toast('info', 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
       return;
@@ -383,6 +389,7 @@ const POS = {
     App.showSheetProgress('Đang xác nhận đơn TikTok và cập nhật Google Sheet...');
 
     try {
+      await App.waitForSheetPopupPaint();
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (data.success) {
@@ -1333,7 +1340,7 @@ const POS = {
   async checkout() {
     if (!this.cart.length) return;
 
-    if (this._tiktokOrderId) { this._doConfirmTikTok(); return; }
+    if (this._tiktokOrderId) { await this._doConfirmTikTok(); return; }
 
     if (this._checkoutInProgress) {
       App.toast('info', 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
@@ -1447,6 +1454,7 @@ const POS = {
     try {
       if (apiUrl) {
         App.showSheetProgress('Đang đẩy dữ liệu đơn hàng lên Google Sheet...');
+        await App.waitForSheetPopupPaint();
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
@@ -1455,8 +1463,10 @@ const POS = {
         const res = await response.json();
 
         if (!res.success) {
-          App.hideSheetProgress();
-          App.toast('error', 'Lỗi tạo đơn: ' + (res.error || 'Không rõ nguyên nhân'));
+          App.showSheetError(
+            'Không thể tạo đơn trên Google Sheet',
+            res.error || 'Google Sheet không chấp nhận dữ liệu đơn hàng.'
+          );
           return;
         }
 
@@ -1472,15 +1482,20 @@ const POS = {
         );
         setTimeout(() => App.autoSync(), 3000);
       } else {
-        finishCheckout(order.id);
+        App.showSheetError(
+          'Chưa cấu hình Google Sheet',
+          'Không thể thanh toán vì app chưa có API URL. Đơn hàng chưa được tạo.'
+        );
       }
     } catch (err) {
-      App.hideSheetProgress();
       this.addToSyncQueue(orderPayload);
       finishCheckout(order.id, {
-        toastType: 'warning',
-        message: 'Mất kết nối! Đơn đã lưu chờ đồng bộ khi có mạng.'
+        toast: false
       });
+      App.showSheetError(
+        'Chưa thể cập nhật Google Sheet',
+        `Đơn hàng ${order.id} đã được lưu chờ đồng bộ vì mất kết nối hoặc request bị gián đoạn. Vui lòng kiểm tra lại trên Sheet trước khi thanh toán lại.`
+      );
     } finally {
       this._checkoutInProgress = false;
       this._resetCheckoutBtn();
