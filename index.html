@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/index.css?v=364">
+  <link rel="stylesheet" href="css/index.css?v=365">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
@@ -474,12 +474,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/app.js?v=364"></script>
-  <script src="js/pos.js?v=364"></script>
+  <script src="js/app.js?v=365"></script>
+  <script src="js/pos.js?v=365"></script>
 
   <script>
   // ── IndexedDB Cache Layer ──
-  const KHS_DB = {
+  window.KHS_DB = {
     _db: null,
     async open() {
       if (this._db) return this._db;
@@ -510,37 +510,8 @@
     }
   };
 
-  // Auto-cache data after sync
-  const origSync = App.syncFromSheet?.bind(App);
-  if (origSync) {
-    const _origSync = App.syncFromSheet;
-    App.syncFromSheet = async function() {
-      await _origSync.call(this);
-      // Cache to IndexedDB after successful sync
-      try {
-        await KHS_DB.save('products', this.products);
-        await KHS_DB.save('customers', this.customers);
-        await KHS_DB.save('orders', this.orders);
-        await KHS_DB.save('lastSync', new Date().toISOString());
-        console.log('IndexedDB: Data cached offline');
-      } catch(err) { console.log('IndexedDB save error:', err); }
-    };
-  }
-
-  // Load from IndexedDB on startup (fallback when offline)
-  (async function() {
-    try {
-      const cached = await KHS_DB.load('products');
-      if (cached && cached.length && App.products.length <= 25) {
-        // Only use cache if we didn't get fresh data from API
-        const lastSync = await KHS_DB.load('lastSync');
-        if (lastSync) console.log('IndexedDB: Using cached data from', lastSync);
-      }
-    } catch(err) { /* IndexedDB not available */ }
-  })();
-
   // ── Force Cache Purge on Version Change ──
-  const APP_VERSION = window.KHS_APP_VERSION || '364';
+  const APP_VERSION = window.KHS_APP_VERSION || '365';
   const storedVersion = localStorage.getItem('khs_app_version');
   let skipSwRegisterThisLoad = false;
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -621,9 +592,17 @@
     }
   }
   updateNetStatus();
+  let lastForegroundSync = Date.now();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+    if (Date.now() - lastForegroundSync < 15 * 60 * 1000) return;
+    lastForegroundSync = Date.now();
+    App.autoSync({ reason: 'foreground' });
+  });
   window.addEventListener('online', () => {
     updateNetStatus();
-    App.toast('success', 'Da ket noi mang! Ban co the dong bo du lieu.');
+    App.toast('success', 'Đã kết nối mạng! Đang cập nhật dữ liệu mới.');
+    setTimeout(() => App.autoSync({ reason: 'online', forceOrders: true }), 800);
   });
   window.addEventListener('offline', () => {
     updateNetStatus();

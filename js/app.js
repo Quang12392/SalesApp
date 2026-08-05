@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '364';
+const KHS_APP_VERSION = '365';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -60,11 +60,20 @@ const App = {
   _notifPanelOpen: false,
   pSearch: '', pFilter: 'all', cSearch: '',
 
-  init() {
+  async init() {
     this.checkAuth();
     this.bind();
     this.initReturn();
+    await this.loadCachedSnapshot();
     this.handleRoute();
+    if (this.lastSyncAt) {
+      const cachedSplash = document.getElementById('loading-splash');
+      if (cachedSplash) {
+        cachedSplash.style.opacity = '0';
+        cachedSplash.style.transition = '0.2s';
+        setTimeout(() => cachedSplash.remove(), 220);
+      }
+    }
     window.addEventListener('hashchange', () => this.handleRoute());
     window.addEventListener('resize', () => {
       if (this.page === 'dashboard') this.drawChart();
@@ -103,45 +112,186 @@ const App = {
         localStorage.setItem('khs_last_version', KHS_APP_VERSION);
       });
     }
-    // Auto-sync from Google Sheets if API is configured
-    this.autoSync();
-    // Init notification system
-    this.initNotifications();
+    // Auto-sync from Google Sheets if API is configured. Cached data is
+    // already visible, so a slow network never turns the app into empty data.
+    this.autoSync({ reason: 'startup' });
+    // Notifications are secondary. Start them after the main sync has had a
+    // chance to use the limited Apps Script concurrency.
+    setTimeout(() => this.initNotifications(), 5000);
   },
 
-  async autoSync() {
+  async fetchApiJson(url, options = {}) {
+    const retries = options.retries ?? 2;
+    const timeoutMs = options.timeoutMs ?? 45000;
+    let lastError;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+      try {
+        const response = await fetch(url, controller ? { signal: controller.signal } : undefined);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        if (!payload || payload.success === false) throw new Error(payload?.error || 'API trả về dữ liệu không hợp lệ');
+        return payload;
+      } catch (error) {
+        lastError = error;
+        if (attempt < retries) await new Promise(resolve => setTimeout(resolve, 600 * Math.pow(2, attempt)));
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    }
+    throw lastError || new Error('Không thể kết nối API');
+  },
+
+  async runLimited(tasks, limit = 2) {
+    const results = new Array(tasks.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < tasks.length) {
+        const index = next++;
+        try { results[index] = { ok: true, value: await tasks[index]() }; }
+        catch (error) { results[index] = { ok: false, error }; }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+    return results;
+  },
+
+  async loadCachedSnapshot() {
+    if (!window.KHS_DB) return;
+    try {
+      const keys = ['products','customers','orders','returns','users','roles','batches','orderCoverage','lastSync'];
+      const values = await Promise.all(keys.map(key => window.KHS_DB.load(key)));
+      const cached = Object.fromEntries(keys.map((key, index) => [key, values[index]]));
+      ['products','customers','orders','returns','users','roles','batches'].forEach(key => {
+        if (Array.isArray(cached[key])) this[key] = cached[key];
+      });
+      this.orderCoverage = Array.isArray(cached.orderCoverage) ? cached.orderCoverage : [];
+      this.lastSyncAt = cached.lastSync || '';
+      if (this.lastSyncAt) console.log('IndexedDB: Using cached data from', this.lastSyncAt);
+    } catch (error) {
+      console.warn('IndexedDB cache load failed:', error);
+    }
+  },
+
+  async saveCacheValue(key, value) {
+    if (!window.KHS_DB) return;
+    try { await window.KHS_DB.save(key, value); }
+    catch (error) { console.warn(`IndexedDB save ${key} failed:`, error); }
+  },
+
+  parseOrderDate(value) {
+    const match = String(value || '').match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    return match ? new Date(+match[3], +match[2] - 1, +match[1], +(match[4] || 0), +(match[5] || 0)) : null;
+  },
+
+  mergeOrders(incoming) {
+    const byId = new Map((this.orders || []).map(order => [String(order.id), order]));
+    (incoming || []).forEach(order => byId.set(String(order.id), order));
+    this.orders = Array.from(byId.values()).sort((a, b) => {
+      const ad = this.parseOrderDate(a.createdAt)?.getTime() || 0;
+      const bd = this.parseOrderDate(b.createdAt)?.getTime() || 0;
+      return bd - ad;
+    });
+  },
+
+  orderRangeKey(startDate, endDate, all = false) {
+    if (all) return 'all';
+    return `${this._formatDateInput(startDate)}_${this._formatDateInput(endDate)}`;
+  },
+
+  hasFreshOrderCoverage(startDate, endDate, maxAgeMs = 5 * 60 * 1000, all = false) {
+    const wantedStart = all ? 0 : new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
+    const wantedEnd = all ? Number.MAX_SAFE_INTEGER : new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59).getTime();
+    return (this.orderCoverage || []).some(item => {
+      const fresh = Date.now() - new Date(item.syncedAt || 0).getTime() <= maxAgeMs;
+      if (!fresh) return false;
+      if (item.all) return true;
+      if (all) return false;
+      return new Date(`${item.from}T00:00:00`).getTime() <= wantedStart
+        && new Date(`${item.to}T23:59:59`).getTime() >= wantedEnd;
+    });
+  },
+
+  async recordOrderCoverage(startDate, endDate, all = false) {
+    const entry = all
+      ? { all: true, syncedAt: new Date().toISOString() }
+      : { from: this._formatDateInput(startDate), to: this._formatDateInput(endDate), syncedAt: new Date().toISOString() };
+    const key = all ? 'all' : `${entry.from}_${entry.to}`;
+    const kept = (this.orderCoverage || []).filter(item => (item.all ? 'all' : `${item.from}_${item.to}`) !== key);
+    this.orderCoverage = [entry, ...kept].slice(0, 40);
+    await this.saveCacheValue('orderCoverage', this.orderCoverage);
+  },
+
+  async ensureOrdersForRange(startDate, endDate, options = {}) {
+    const all = !!options.all;
+    const force = !!options.force;
+    if (!force && this.hasFreshOrderCoverage(startDate, endDate, options.maxAgeMs, all)) return { cached: true };
+    const key = this.orderRangeKey(startDate, endDate, all);
+    this._orderRangeRequests = this._orderRangeRequests || {};
+    if (this._orderRangeRequests[key]) return this._orderRangeRequests[key];
+    const promise = (async () => {
+      const apiUrl = localStorage.getItem('khs_api_url');
+      if (!apiUrl) throw new Error('Chưa cấu hình API');
+      const params = new URLSearchParams({ action: 'getOrders' });
+      if (!all) {
+        params.set('from', this._formatDateInput(startDate));
+        params.set('to', this._formatDateInput(endDate));
+      }
+      const response = await this.fetchApiJson(`${apiUrl}?${params.toString()}`, { retries: 2, timeoutMs: 60000 });
+      this.mergeOrders(Array.isArray(response.data) ? response.data : []);
+      await this.saveCacheValue('orders', this.orders);
+      // Older Apps Script deployments ignore from/to and return the complete
+      // history without meta. Mark that response as full coverage so devices
+      // waiting to update the backend do not download it again for every filter.
+      const legacyFullResponse = !response.meta;
+      await this.recordOrderCoverage(startDate, endDate, all || legacyFullResponse);
+      return { cached: false, count: Array.isArray(response.data) ? response.data.length : 0 };
+    })();
+    this._orderRangeRequests[key] = promise;
+    try { return await promise; }
+    finally { delete this._orderRangeRequests[key]; }
+  },
+
+  async autoSync(options = {}) {
     const splash = document.getElementById('loading-splash');
     const hideSplash = () => {
       if (splash && splash.parentNode) { splash.style.opacity='0'; splash.style.transition='0.3s'; setTimeout(()=>{ if(splash.parentNode) splash.remove(); },300); }
     };
-    // Safety: hide splash after 10s no matter what
-    const safety = setTimeout(hideSplash, 10000);
+    // Cached data is already available. Do not keep the screen blocked while
+    // Google Apps Script is slow.
+    const safety = setTimeout(hideSplash, 5000);
     try {
       let url = localStorage.getItem('khs_api_url');
       if (!url) {
         url = await this.getConfigValue('api_url');
         if (url) localStorage.setItem('khs_api_url', url);
       }
-      if (!url) { hideSplash(); clearTimeout(safety); return; }
-      const [pRes, cRes, oRes, rRes, uRes, roRes, bRes, cfgRes] = await Promise.all([
-        fetch(url + '?action=getProducts').then(r => r.json()).catch(() => ({ success: false })),
-        fetch(url + '?action=getCustomers').then(r => r.json()).catch(() => ({ success: false })),
-        fetch(url + '?action=getOrders').then(r => r.json()).catch(() => ({ success: false })),
-        fetch(url + '?action=getReturns').then(r => r.json()).catch(() => ({ success: false })),
-        fetch(url + '?action=getUsers').then(r => r.json()).catch(() => ({ success: false })),
-        fetch(url + '?action=getRoles').then(r => r.json()).catch(() => ({ success: false })),
-        fetch(url + '?action=getBatches').then(r => r.json()).catch(() => ({ success: false })),
-        fetch(url + '?action=getConfig').then(r => r.json()).catch(() => ({ success: false }))
-      ]);
-      if (pRes.success && pRes.data?.length) this.products = pRes.data;
-      if (cRes.success && cRes.data?.length) this.customers = cRes.data;
-      if (oRes.success && oRes.data?.length) this.orders = oRes.data;
-      if (rRes.success && rRes.data?.length) this.returns = rRes.data;
-      if (uRes.success && uRes.data) this.users = uRes.data;
-      if (roRes.success && roRes.data) this.roles = roRes.data;
-      if (bRes.success && bRes.data) this.batches = bRes.data;
+      if (!url) { hideSplash(); clearTimeout(safety); return { success: false, errors: ['Chưa cấu hình API'] }; }
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const definitions = [
+        ['products', 'getProducts'], ['customers', 'getCustomers'], ['returns', 'getReturns'],
+        ['batches', 'getBatches'], ['users', 'getUsers'], ['roles', 'getRoles'], ['config', 'getConfig']
+      ];
+      const tasks = definitions.map(([, action]) => () => this.fetchApiJson(`${url}?action=${action}`, { retries: 2 }));
+      tasks.push(() => this.ensureOrdersForRange(monthStart, now, { force: !!options.forceOrders }));
+      const results = await this.runLimited(tasks, 2);
+      const errors = [];
+      definitions.forEach(([key], index) => {
+        const result = results[index];
+        if (!result?.ok) { errors.push(`${key}: ${result?.error?.message || 'lỗi tải'}`); return; }
+        const payload = result.value;
+        if (key !== 'config' && Array.isArray(payload.data)) {
+          this[key] = payload.data;
+          this.saveCacheValue(key, this[key]);
+        }
+      });
+      const orderResult = results[results.length - 1];
+      if (!orderResult?.ok) errors.push(`orders: ${orderResult?.error?.message || 'lỗi tải'}`);
+      const cfgRes = results[definitions.findIndex(([key]) => key === 'config')]?.value;
       // Sync store config → localStorage
-      if (cfgRes.success && cfgRes.data) {
+      if (cfgRes?.success && cfgRes.data) {
         const cfg = cfgRes.data;
         if (cfg.store_name) localStorage.setItem('khs_store_name', cfg.store_name);
         if (cfg.store_addr) localStorage.setItem('khs_store_addr', cfg.store_addr);
@@ -150,11 +300,20 @@ const App = {
         if (cfg.hasOwnProperty('qr_info')) localStorage.setItem('khs_qr_info', cfg.qr_info || '');
         // QR image: đồng bộ từ sheet "Ảnh SP" (ở syncImagesFromCloud phía dưới)
       }
+      this.lastSyncAt = new Date().toISOString();
+      await this.saveCacheValue('lastSync', this.lastSyncAt);
       this.handleRoute();
       // Sync ảnh từ cloud (background, không block UI)
       this.syncImagesFromCloud();
+      if (options.userInitiated) {
+        if (errors.length) this.toast('warning', `Đã cập nhật một phần. ${errors.join('; ')}`);
+        else this.toast('success', 'Đã cập nhật dữ liệu!');
+      }
+      return { success: errors.length === 0, errors };
     } catch (e) {
       console.warn('Auto-sync failed:', e);
+      if (options.userInitiated) this.toast('error', 'Không thể cập nhật dữ liệu: ' + e.message);
+      return { success: false, errors: [e.message] };
     } finally {
       clearTimeout(safety);
       hideSplash();
@@ -447,9 +606,8 @@ const App = {
       pc.addEventListener('touchend', async () => {
         if (ptr.classList.contains('active')) {
           ptr.classList.add('loading');
-          await this.autoSync();
+          await this.autoSync({ userInitiated: true, forceOrders: true });
           ptr.classList.remove('loading');
-          this.toast('success', 'Đã cập nhật dữ liệu!');
         }
         pulling = false; ptr.classList.remove('active');
       });
@@ -1632,6 +1790,7 @@ const App = {
             <span>0 đơn hàng</span>
             <span>Tổng tiền hàng: <strong>0đ</strong></span>
           </div>
+          <div id="o-sync-status" style="font-size:0.76rem;color:var(--text-secondary);padding:4px 2px 8px"></div>
           <div class="toolbar-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
@@ -1658,12 +1817,35 @@ const App = {
         if (this.oTime === 'custom' && (!this.oCustomFrom || !this.oCustomTo)) this._setOrderCustomDefaults();
         syncCustomRange();
         this.updateOrderTable();
+        this.loadOrdersForOrderFilter();
       });
-      document.getElementById('o-from').addEventListener('change', e => { this.oCustomFrom = e.target.value; this.updateOrderTable(); });
-      document.getElementById('o-to').addEventListener('change', e => { this.oCustomTo = e.target.value; this.updateOrderTable(); });
+      document.getElementById('o-from').addEventListener('change', e => { this.oCustomFrom = e.target.value; this.updateOrderTable(); this.loadOrdersForOrderFilter(); });
+      document.getElementById('o-to').addEventListener('change', e => { this.oCustomTo = e.target.value; this.updateOrderTable(); this.loadOrdersForOrderFilter(); });
       syncCustomRange();
     }
     this.updateOrderTable();
+    this.loadOrdersForOrderFilter();
+  },
+
+  async loadOrdersForOrderFilter() {
+    const status = document.getElementById('o-sync-status');
+    const range = this._getDateRange(this.oTime);
+    const all = this.oTime === 'all';
+    if (!all && !range) return;
+    const startDate = range?.start || new Date(0);
+    const endDate = range?.end || new Date();
+    if (this.hasFreshOrderCoverage(startDate, endDate, 5 * 60 * 1000, all)) {
+      if (status) { status.style.color = '#2E7D32'; status.textContent = 'Đang dùng dữ liệu đã đồng bộ trên thiết bị này.'; }
+      return;
+    }
+    if (status) { status.style.color = '#1565C0'; status.textContent = all ? 'Đang tải toàn bộ lịch sử đơn hàng…' : 'Đang tải đơn hàng cho thời gian đã chọn…'; }
+    try {
+      const result = await this.ensureOrdersForRange(startDate, endDate, { all });
+      if (this.page === 'orders') this.updateOrderTable();
+      if (status?.isConnected) { status.style.color = '#2E7D32'; status.textContent = `Đã tải ${result.count || 0} đơn và lưu trên thiết bị này.`; }
+    } catch (error) {
+      if (status?.isConnected) { status.style.color = '#D32F2F'; status.textContent = `Không cập nhật được; vẫn giữ dữ liệu cũ. ${error.message}`; }
+    }
   },
 
   _formatDateInput(d) {
@@ -2282,6 +2464,7 @@ const App = {
               <option value="thisMonth" ${this.reportPeriod==='thisMonth'?'selected':''}>Tháng này</option>
               <option value="lastMonth" ${this.reportPeriod==='lastMonth'?'selected':''}>Tháng trước</option>
               <option value="thisYear" ${this.reportPeriod==='thisYear'?'selected':''}>Năm nay</option>
+              <option value="lastYear" ${this.reportPeriod==='lastYear'?'selected':''}>Năm trước</option>
               <option value="custom" ${this.reportPeriod==='custom'?'selected':''}>Tùy chỉnh</option>
             </select>
             <div id="rpt-custom-dates" class="report-custom-range" style="display:${this.reportPeriod==='custom'?'flex':'none'}">
@@ -2289,6 +2472,7 @@ const App = {
               <span>→</span>
               <input type="date" id="rpt-to" value="${this.reportCustomTo}">
             </div>
+            <div id="rpt-sync-status" style="margin-top:8px;font-size:0.76rem;line-height:1.35;color:var(--text-secondary)"></div>
           </div>
         </div>
         <div class="report-main" id="report-content"></div>
@@ -2337,6 +2521,7 @@ const App = {
       case 'thisMonth': return [new Date(now.getFullYear(),now.getMonth(),1), now];
       case 'lastMonth': return [new Date(now.getFullYear(),now.getMonth()-1,1), new Date(now.getFullYear(),now.getMonth(),0,23,59,59)];
       case 'thisYear': return [new Date(now.getFullYear(),0,1), now];
+      case 'lastYear': return [new Date(now.getFullYear()-1,0,1), new Date(now.getFullYear()-1,11,31,23,59,59)];
       case 'custom': {
         let f = this.reportCustomFrom || document.getElementById('rpt-from')?.value;
         let t = this.reportCustomTo || document.getElementById('rpt-to')?.value;
@@ -2348,21 +2533,67 @@ const App = {
     }
   },
 
-  updateReport() {
-    const el = document.getElementById('report-content'); if (!el) return;
-    const [s,e] = this.getReportDateRange();
-    const pD = str => { if(!str) return null; const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? new Date(+m[3],+m[2]-1,+m[1]) : null; };
-    const orders = this.orders.filter(o => { if(o.status!=='completed') return false; const d=pD(o.createdAt); return d&&d>=s&&d<=e; });
-    const v = this.reportView;
+  setReportSyncStatus(message, tone = 'muted') {
+    const status = document.getElementById('rpt-sync-status');
+    if (!status) return;
+    const colors = { muted: 'var(--text-secondary)', loading: '#1565C0', success: '#2E7D32', error: '#D32F2F' };
+    status.style.color = colors[tone] || colors.muted;
+    status.textContent = message || '';
+  },
+
+  filterOrdersByDateRange(startDate, endDate) {
+    return this.orders.filter(order => {
+      if (order.status !== 'completed') return false;
+      const date = this.parseOrderDate(order.createdAt);
+      return date && date >= startDate && date <= endDate;
+    });
+  },
+
+  renderReportWithOrders(el, orders) {
+    const view = this.reportView;
     switch(this.reportType) {
-      case 'sales': this.reportSales(el,orders,v); break;
-      case 'products': this.reportProducts(el,orders,v); break;
-      case 'customers': this.reportCustomers(el,orders,v); break;
-      case 'finance': this.reportFinance(el,orders,v); break;
+      case 'sales': this.reportSales(el,orders,view); break;
+      case 'products': this.reportProducts(el,orders,view); break;
+      case 'customers': this.reportCustomers(el,orders,view); break;
+      case 'finance': this.reportFinance(el,orders,view); break;
       case 'inventory':
-        this.inventoryView = v === 'table' ? 'table' : 'chart';
+        this.inventoryView = view === 'table' ? 'table' : 'chart';
         this.renderInventory(el);
         break;
+    }
+  },
+
+  async updateReport() {
+    const el = document.getElementById('report-content'); if (!el) return;
+    if (this.reportType === 'inventory') {
+      this.renderReportWithOrders(el, []);
+      this.setReportSyncStatus('Dữ liệu kiểm kho được đồng bộ cùng danh sách sản phẩm.');
+      return;
+    }
+    const [startDate, endDate] = this.getReportDateRange();
+    // Render cached rows immediately on every device, then refresh only the
+    // selected period when its cache is missing or stale.
+    this.renderReportWithOrders(el, this.filterOrdersByDateRange(startDate, endDate));
+    const requestId = (this._reportRequestId || 0) + 1;
+    this._reportRequestId = requestId;
+    if (this.hasFreshOrderCoverage(startDate, endDate)) {
+      this.setReportSyncStatus(`Đã đồng bộ lúc ${new Date(this.lastSyncAt || Date.now()).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}.`, 'success');
+      return;
+    }
+    this.setReportSyncStatus('Đang tải dữ liệu cho khoảng thời gian đã chọn…', 'loading');
+    try {
+      const result = await this.ensureOrdersForRange(startDate, endDate);
+      if (requestId !== this._reportRequestId || !document.getElementById('report-content')) return;
+      this.lastSyncAt = new Date().toISOString();
+      await this.saveCacheValue('lastSync', this.lastSyncAt);
+      this.renderReportWithOrders(el, this.filterOrdersByDateRange(startDate, endDate));
+      this.setReportSyncStatus(result.cached ? 'Đang dùng dữ liệu đã lưu trên thiết bị.' : `Đã tải ${result.count || 0} đơn và lưu trên thiết bị này.`, 'success');
+    } catch (error) {
+      if (requestId !== this._reportRequestId) return;
+      const cachedCount = this.filterOrdersByDateRange(startDate, endDate).length;
+      this.setReportSyncStatus(cachedCount
+        ? `Không cập nhật được; đang dùng ${cachedCount} đơn đã lưu. ${error.message}`
+        : `Không tải được dữ liệu: ${error.message}`, 'error');
     }
   },
 
@@ -2542,7 +2773,7 @@ const App = {
     const rev=orders.reduce((s,o)=>s+this.getOrderNetRevenue(o),0), cnt=orders.length, avg=cnt?Math.round(rev/cnt):0;
     const cost=orders.reduce((s,o)=>s+this.getOrderNetCostTotal(o),0);
     const profit=rev-cost;
-    const periodLabels = {today:'hôm nay',yesterday:'hôm qua',thisWeek:'tuần này',lastWeek:'tuần trước',thisMonth:'tháng này',lastMonth:'tháng trước',thisYear:'năm nay',custom:'tùy chỉnh'};
+    const periodLabels = {today:'hôm nay',yesterday:'hôm qua',thisWeek:'tuần này',lastWeek:'tuần trước',thisMonth:'tháng này',lastMonth:'tháng trước',thisYear:'năm nay',lastYear:'năm trước',custom:'tùy chỉnh'};
     const periodLabel = periodLabels[this.reportPeriod] || 'ngày';
     const dm={}; orders.forEach(o=>{const k=o.createdAt?.substring(0,10)||'';if(!dm[k])dm[k]={r:0,c:0};dm[k].r+=this.getOrderNetRevenue(o);dm[k].c++;});
     const dr=Object.entries(dm).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -2931,9 +3162,12 @@ const App = {
         panel.style.display = 'none';
       }
     });
-    // Fetch now + poll every 30s
+    // Fetch now + poll gently. Multiple installed devices share the same Apps
+    // Script quota, so notifications must not compete with sales data.
     this.fetchNotifications();
-    setInterval(() => this.fetchNotifications(), 30000);
+    setInterval(() => {
+      if (document.visibilityState === 'visible') this.fetchNotifications();
+    }, 120000);
   },
 
   async fetchNotifications() {
@@ -3937,20 +4171,7 @@ const App = {
     const url = localStorage.getItem('khs_api_url');
     if (!url) { this.toast('warning', 'Chưa kết nối API! Vào Cài đặt để thiết lập.'); return; }
     this.toast('info', '🔄 Đang đồng bộ dữ liệu...');
-    try {
-      const [pRes, cRes, oRes] = await Promise.all([
-        fetch(url + '?action=getProducts').then(r => r.json()),
-        fetch(url + '?action=getCustomers').then(r => r.json()),
-        fetch(url + '?action=getOrders').then(r => r.json())
-      ]);
-      if (pRes.success && pRes.data?.length) this.products = pRes.data;
-      if (cRes.success && cRes.data?.length) this.customers = cRes.data;
-      if (oRes.success && oRes.data?.length) this.orders = oRes.data;
-      this.toast('success', `✅ Đồng bộ xong: ${this.products.length} SP, ${this.customers.length} KH, ${this.orders.length} đơn`);
-      this.handleRoute();
-    } catch (e) {
-      this.toast('error', 'Lỗi đồng bộ: ' + e.message);
-    }
+    await this.autoSync({ userInitiated: true, forceOrders: true });
   },
 
   // ═════════ MODAL & TOAST ═════════
