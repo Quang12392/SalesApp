@@ -17,6 +17,7 @@ const POS = {
   viewMode: localStorage.getItem('pos_view_mode') || 'grid',
   _lineSeq: 0,
   _checkoutInProgress: false,
+  _stockCheckInProgress: false,
 
   makeLineId(prefix = 'line') {
     this._lineSeq = (this._lineSeq || 0) + 1;
@@ -221,6 +222,7 @@ const POS = {
     setTimeout(() => document.getElementById('pos-product-search').focus(), 200);
 
     this.applyViewMode();
+    this.refreshStockForPos({ force: false });
   },
 
   updateTaxRevenueField({ clear = false } = {}) {
@@ -267,6 +269,57 @@ const POS = {
     if (!btn) return;
     btn.disabled = true;
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${label}`;
+  },
+
+  setStockSyncStatus(message, tone = '') {
+    const status = document.getElementById('pos-stock-sync');
+    if (!status) return;
+    status.className = `pos-stock-sync ${tone}`.trim();
+    status.textContent = message;
+  },
+
+  async refreshStockForPos({ force = false } = {}) {
+    const lastSync = App.productsLastSyncAt ? new Date(App.productsLastSyncAt).getTime() : 0;
+    const age = Date.now() - lastSync;
+    if (!navigator.onLine) {
+      this.setStockSyncStatus(lastSync ? `Kho cache ${new Date(lastSync).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}` : 'Kho chưa xác minh', 'warning');
+      return false;
+    }
+    if (!force && lastSync && age < 60 * 1000) {
+      this.setStockSyncStatus(`Kho cập nhật ${new Date(lastSync).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`, 'success');
+      return true;
+    }
+    this.setStockSyncStatus('Đang cập nhật kho…', 'loading');
+    try {
+      await App.refreshProductsOnly();
+      const search = document.getElementById('pos-product-search');
+      if (document.getElementById('pos-overlay')?.style.display !== 'none') this.renderProducts(search?.value || '');
+      const syncedAt = new Date(App.productsLastSyncAt || Date.now());
+      this.setStockSyncStatus(`Kho cập nhật ${syncedAt.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`, 'success');
+      return true;
+    } catch (error) {
+      this.setStockSyncStatus('Không cập nhật được kho', 'warning');
+      console.warn('Stock refresh failed:', error);
+      return false;
+    }
+  },
+
+  getCartStockErrors() {
+    const errors = [];
+    const qtyBySku = {};
+    const nameBySku = {};
+    this.cart.forEach(item => {
+      const sku = String(item.sku || item.id || '').trim();
+      qtyBySku[sku] = (qtyBySku[sku] || 0) + (Number(item.qty) || 0);
+      nameBySku[sku] = item.name || sku;
+    });
+    Object.entries(qtyBySku).forEach(([sku, qty]) => {
+      const product = App.products.find(p => p.sku === sku || p.id === sku || p.name === nameBySku[sku]);
+      const stock = Number(product?.stock) || 0;
+      if (stock <= 0) errors.push(`${nameBySku[sku]} (hết hàng)`);
+      else if (qty > stock) errors.push(`${nameBySku[sku]} (còn ${stock}, đặt ${qty})`);
+    });
+    return errors;
   },
 
   openWithTikTokOrder(orderId) {
@@ -378,12 +431,27 @@ const POS = {
       );
       return;
     }
-    if (this._checkoutInProgress) {
-      App.toast('info', 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
+    if (this._checkoutInProgress || this._stockCheckInProgress) {
+      App.toast('info', 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
       return;
     }
 
     const btn = document.getElementById('btn-checkout');
+    this._stockCheckInProgress = true;
+    if (btn) { btn.disabled = true; btn.textContent = 'ĐANG KIỂM TRA KHO...'; }
+    const stockVerified = await this.refreshStockForPos({ force: true });
+    this._stockCheckInProgress = false;
+    if (!stockVerified) {
+      if (btn) { btn.disabled = false; btn.textContent = 'XÁC NHẬN ĐƠN'; }
+      App.showSheetError('Chưa xác minh được tồn kho', 'Không thể đọc tồn kho mới nhất từ Google Sheet. Đơn TikTok chưa được xác nhận.');
+      return;
+    }
+    const stockErrors = this.getCartStockErrors();
+    if (stockErrors.length) {
+      if (btn) { btn.disabled = false; btn.textContent = 'XÁC NHẬN ĐƠN'; }
+      App.showSheetError('Không đủ tồn kho', stockErrors.join('; '));
+      return;
+    }
     if (btn) { btn.disabled = true; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Đang xác nhận...`; }
     this._checkoutInProgress = true;
     App.showSheetProgress('Đang xác nhận đơn TikTok và cập nhật Google Sheet...');
@@ -411,10 +479,12 @@ const POS = {
         App.updateOrderTable();
         setTimeout(() => App.autoSync(), 2000);
       } else {
+        const errorMessage = data.error || `Google Sheet không chấp nhận đơn hàng ${orderId}.`;
         App.showSheetError(
           'Không thể cập nhật đơn TikTok',
-          data.error || `Google Sheet không chấp nhận đơn hàng ${orderId}.`
+          errorMessage
         );
+        if (/tồn kho|hết hàng|không đủ/i.test(errorMessage)) this.refreshStockForPos({ force: true });
         if (btn) { btn.disabled = false; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> XÁC NHẬN ĐƠN`; }
       }
     } catch (err) {
@@ -1342,8 +1412,8 @@ const POS = {
 
     if (this._tiktokOrderId) { await this._doConfirmTikTok(); return; }
 
-    if (this._checkoutInProgress) {
-      App.toast('info', 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
+    if (this._checkoutInProgress || this._stockCheckInProgress) {
+      App.toast('info', 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
       return;
     }
 
@@ -1354,20 +1424,22 @@ const POS = {
       return;
     }
 
-    // Check stock availability
-    const outOfStock = [];
-    for (const item of this.cart) {
-      const p = App.products.find(x => x.id === item.id || x.sku === item.sku || x.sku === item.id || x.id === item.sku || x.name === item.name);
-      const stock = p ? p.stock : 0;
-      console.log('[Stock Check]', item.name, 'id:', item.id, 'sku:', item.sku, '→ found:', !!p, 'stock:', stock);
-      if (stock <= 0) {
-        outOfStock.push(item.name + ' (het hang)');
-      } else if (item.qty > stock) {
-        outOfStock.push(item.name + ' (con ' + stock + ', dat ' + item.qty + ')');
-      }
+    // Cache is display-only. Always refresh stock before checkout; the backend
+    // performs the final atomic validation under LockService.
+    this._stockCheckInProgress = true;
+    this._setCheckoutBusy('ĐANG KIỂM TRA KHO...');
+    const stockVerified = await this.refreshStockForPos({ force: true });
+    this._stockCheckInProgress = false;
+    if (!stockVerified) {
+      this._resetCheckoutBtn();
+      App.showSheetError('Chưa xác minh được tồn kho', 'Không thể đọc tồn kho mới nhất từ Google Sheet. Giỏ hàng vẫn được giữ nguyên, vui lòng thử thanh toán lại.');
+      return;
     }
+    this._resetCheckoutBtn();
+
+    const outOfStock = this.getCartStockErrors();
     if (outOfStock.length) {
-      App.toast('error', 'Khong du ton kho: ' + outOfStock.join(', '));
+      App.toast('error', 'Không đủ tồn kho: ' + outOfStock.join(', '));
       return;
     }
 
@@ -1463,10 +1535,12 @@ const POS = {
         const res = await response.json();
 
         if (!res.success) {
+          const errorMessage = res.error || 'Google Sheet không chấp nhận dữ liệu đơn hàng.';
           App.showSheetError(
             'Không thể tạo đơn trên Google Sheet',
-            res.error || 'Google Sheet không chấp nhận dữ liệu đơn hàng.'
+            errorMessage
           );
+          if (/tồn kho|hết hàng|không đủ/i.test(errorMessage)) this.refreshStockForPos({ force: true });
           return;
         }
 

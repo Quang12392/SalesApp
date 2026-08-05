@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '365';
+const KHS_APP_VERSION = '366';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -160,7 +160,7 @@ const App = {
   async loadCachedSnapshot() {
     if (!window.KHS_DB) return;
     try {
-      const keys = ['products','customers','orders','returns','users','roles','batches','orderCoverage','lastSync'];
+      const keys = ['products','customers','orders','returns','users','roles','batches','orderCoverage','lastSync','productsLastSync'];
       const values = await Promise.all(keys.map(key => window.KHS_DB.load(key)));
       const cached = Object.fromEntries(keys.map((key, index) => [key, values[index]]));
       ['products','customers','orders','returns','users','roles','batches'].forEach(key => {
@@ -168,6 +168,7 @@ const App = {
       });
       this.orderCoverage = Array.isArray(cached.orderCoverage) ? cached.orderCoverage : [];
       this.lastSyncAt = cached.lastSync || '';
+      this.productsLastSyncAt = cached.productsLastSync || '';
       if (this.lastSyncAt) console.log('IndexedDB: Using cached data from', this.lastSyncAt);
     } catch (error) {
       console.warn('IndexedDB cache load failed:', error);
@@ -178,6 +179,28 @@ const App = {
     if (!window.KHS_DB) return;
     try { await window.KHS_DB.save(key, value); }
     catch (error) { console.warn(`IndexedDB save ${key} failed:`, error); }
+  },
+
+  async refreshProductsOnly(options = {}) {
+    if (this._productRefreshPromise) return this._productRefreshPromise;
+    this._productRefreshPromise = (async () => {
+      const apiUrl = localStorage.getItem('khs_api_url');
+      if (!apiUrl) throw new Error('Chưa cấu hình API');
+      const response = await this.fetchApiJson(`${apiUrl}?action=getProducts`, {
+        retries: options.retries ?? 2,
+        timeoutMs: options.timeoutMs ?? 30000
+      });
+      if (!Array.isArray(response.data)) throw new Error('API tồn kho trả về dữ liệu không hợp lệ');
+      this.products = response.data;
+      this.productsLastSyncAt = new Date().toISOString();
+      await Promise.all([
+        this.saveCacheValue('products', this.products),
+        this.saveCacheValue('productsLastSync', this.productsLastSyncAt)
+      ]);
+      return this.products;
+    })();
+    try { return await this._productRefreshPromise; }
+    finally { this._productRefreshPromise = null; }
   },
 
   parseOrderDate(value) {
@@ -285,6 +308,10 @@ const App = {
         if (key !== 'config' && Array.isArray(payload.data)) {
           this[key] = payload.data;
           this.saveCacheValue(key, this[key]);
+          if (key === 'products') {
+            this.productsLastSyncAt = new Date().toISOString();
+            this.saveCacheValue('productsLastSync', this.productsLastSyncAt);
+          }
         }
       });
       const orderResult = results[results.length - 1];
