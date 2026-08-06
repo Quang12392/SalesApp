@@ -18,6 +18,8 @@ const POS = {
   _lineSeq: 0,
   _checkoutInProgress: false,
   _stockCheckInProgress: false,
+  _stockRefreshPromise: null,
+  _lastStockRefreshError: null,
 
   makeLineId(prefix = 'line') {
     this._lineSeq = (this._lineSeq || 0) + 1;
@@ -65,6 +67,7 @@ const POS = {
     });
     document.getElementById('pos-tax-check')?.addEventListener('change', () => this.updateTaxRevenueField({ clear: true }));
     document.getElementById('btn-checkout').addEventListener('click', () => this.checkout());
+    document.getElementById('pos-stock-refresh')?.addEventListener('click', () => this.manualRefreshStock());
     document.getElementById('btn-save-draft').addEventListener('click', () => this.saveDraft());
     document.getElementById('btn-capture-cart').addEventListener('click', () => this.captureCart());
     document.getElementById('pos-drafts-bar').addEventListener('click', (e) => {
@@ -263,8 +266,8 @@ const POS = {
     const btn = document.getElementById('btn-checkout');
     if (!btn) return;
     btn.style.background = '';
-    btn.disabled = false;
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> THANH TOÁN`;
+    this._updateCheckoutAvailability();
   },
 
   _setCheckoutBusy(label = 'ĐANG LƯU...') {
@@ -281,30 +284,95 @@ const POS = {
     status.textContent = message;
   },
 
+  _updateCheckoutAvailability() {
+    const btn = document.getElementById('btn-checkout');
+    if (!btn) return;
+    btn.disabled = !this.cart.length
+      || this._checkoutInProgress
+      || this._stockCheckInProgress
+      || !!this._stockRefreshPromise;
+  },
+
+  _setStockRefreshBusy(busy) {
+    const refreshBtn = document.getElementById('pos-stock-refresh');
+    if (refreshBtn) {
+      refreshBtn.disabled = busy;
+      refreshBtn.classList.toggle('loading', busy);
+      refreshBtn.setAttribute('aria-busy', String(busy));
+      refreshBtn.title = busy ? 'Đang cập nhật tồn kho' : 'Cập nhật tồn kho';
+    }
+    this._updateCheckoutAvailability();
+  },
+
   async refreshStockForPos({ force = false } = {}) {
-    const lastSync = App.productsLastSyncAt ? new Date(App.productsLastSyncAt).getTime() : 0;
-    const age = Date.now() - lastSync;
-    if (!navigator.onLine) {
-      this.setStockSyncStatus(lastSync ? `Kho cache ${new Date(lastSync).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}` : 'Kho chưa xác minh', 'warning');
-      return false;
-    }
-    if (!force && lastSync && age < 30 * 1000) {
-      this.setStockSyncStatus(`Kho cập nhật ${new Date(lastSync).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`, 'success');
-      return true;
-    }
-    this.setStockSyncStatus('Đang cập nhật kho…', 'loading');
+    if (this._stockRefreshPromise) return this._stockRefreshPromise;
+
+    const refreshPromise = (async () => {
+      const lastSync = App.productsLastSyncAt ? new Date(App.productsLastSyncAt).getTime() : 0;
+      const age = Date.now() - lastSync;
+      this._lastStockRefreshError = null;
+
+      if (!navigator.onLine) {
+        this.setStockSyncStatus(lastSync ? `Kho cache ${new Date(lastSync).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}` : 'Kho chưa xác minh', 'warning');
+        this._lastStockRefreshError = new Error('Thiết bị đang ngoại tuyến.');
+        return false;
+      }
+      if (!force && lastSync && age < 30 * 1000) {
+        this.setStockSyncStatus(`Kho cập nhật ${new Date(lastSync).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`, 'success');
+        return true;
+      }
+
+      this.setStockSyncStatus('Đang cập nhật kho…', 'loading');
+      try {
+        await App.refreshProductsOnly();
+        const search = document.getElementById('pos-product-search');
+        if (document.getElementById('pos-overlay')?.style.display !== 'none') this.renderProducts(search?.value || '');
+        const syncedAt = new Date(App.productsLastSyncAt || Date.now());
+        this.setStockSyncStatus(`Kho cập nhật ${syncedAt.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`, 'success');
+        return true;
+      } catch (error) {
+        this._lastStockRefreshError = error;
+        this.setStockSyncStatus('Không cập nhật được kho', 'warning');
+        console.warn('Stock refresh failed:', error);
+        return false;
+      }
+    })();
+
+    this._stockRefreshPromise = refreshPromise;
+    this._setStockRefreshBusy(true);
     try {
-      await App.refreshProductsOnly();
-      const search = document.getElementById('pos-product-search');
-      if (document.getElementById('pos-overlay')?.style.display !== 'none') this.renderProducts(search?.value || '');
-      const syncedAt = new Date(App.productsLastSyncAt || Date.now());
-      this.setStockSyncStatus(`Kho cập nhật ${syncedAt.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`, 'success');
-      return true;
-    } catch (error) {
-      this.setStockSyncStatus('Không cập nhật được kho', 'warning');
-      console.warn('Stock refresh failed:', error);
-      return false;
+      return await refreshPromise;
+    } finally {
+      if (this._stockRefreshPromise === refreshPromise) this._stockRefreshPromise = null;
+      this._setStockRefreshBusy(false);
     }
+  },
+
+  async manualRefreshStock() {
+    if (this._checkoutInProgress || this._stockCheckInProgress || this._stockRefreshPromise) {
+      App.toast('info', this._stockRefreshPromise
+        ? 'Kho đang được cập nhật, vui lòng chờ hoàn tất.'
+        : 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
+      return;
+    }
+
+    App.showSheetProgress(
+      'Đang cập nhật tồn kho...',
+      'Đang lấy dữ liệu sản phẩm mới nhất từ Google Sheet. Vui lòng chờ, không bấm thêm thao tác.'
+    );
+    await App.waitForSheetPopupPaint();
+
+    const refreshed = await this.refreshStockForPos({ force: true });
+    if (refreshed) {
+      App.hideSheetProgress();
+      App.toast('success', 'Đã cập nhật tồn kho mới nhất.');
+      return;
+    }
+
+    App.showSheetError(
+      'Không thể cập nhật tồn kho',
+      `Chưa lấy được tồn kho mới nhất từ Google Sheet. ${this._lastStockRefreshError?.message || 'Vui lòng kiểm tra mạng rồi bấm nút cập nhật lại.'}`
+    );
   },
 
   getCartStockErrors() {
@@ -531,8 +599,10 @@ const POS = {
       );
       return;
     }
-    if (this._checkoutInProgress || this._stockCheckInProgress) {
-      App.toast('info', 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
+    if (this._checkoutInProgress || this._stockCheckInProgress || this._stockRefreshPromise) {
+      App.toast('info', this._stockRefreshPromise
+        ? 'Kho đang được cập nhật, vui lòng chờ hoàn tất rồi xác nhận đơn.'
+        : 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
       return;
     }
 
@@ -1219,7 +1289,7 @@ const POS = {
     document.getElementById('pos-total-qty').textContent = totalQty;
     document.getElementById('pos-final-total').textContent = fmtd(finalTotal);
     const empty = this.cart.length === 0;
-    document.getElementById('btn-checkout').disabled = empty;
+    this._updateCheckoutAvailability();
     document.getElementById('btn-save-draft').disabled = empty;
     document.getElementById('btn-capture-cart').disabled = empty;
     // Mobile: show/hide bottom sheet
@@ -1507,8 +1577,10 @@ const POS = {
 
     if (this._tiktokOrderId) { await this._doConfirmTikTok(); return; }
 
-    if (this._checkoutInProgress || this._stockCheckInProgress) {
-      App.toast('info', 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
+    if (this._checkoutInProgress || this._stockCheckInProgress || this._stockRefreshPromise) {
+      App.toast('info', this._stockRefreshPromise
+        ? 'Kho đang được cập nhật, vui lòng chờ hoàn tất rồi thanh toán.'
+        : 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
       return;
     }
 

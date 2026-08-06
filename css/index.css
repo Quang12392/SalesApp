@@ -851,6 +851,27 @@ ul, ol { list-style: none; }
 .pos-stock-sync.loading { background: rgba(33,150,243,0.28); }
 .pos-stock-sync.success { background: rgba(76,175,80,0.3); }
 .pos-stock-sync.warning { background: rgba(245,158,11,0.32); }
+.pos-stock-refresh {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.32);
+  border-radius: 50%;
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+.pos-stock-refresh:hover:not(:disabled) { background: rgba(255,255,255,0.28); }
+.pos-stock-refresh:active:not(:disabled) { transform: scale(0.92); }
+.pos-stock-refresh:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pos-stock-refresh:disabled { cursor: wait; opacity: 0.72; }
+.pos-stock-refresh svg { width: 17px; height: 17px; }
+.pos-stock-refresh.loading svg { animation: posStockRefreshSpin 0.8s linear infinite; }
+@keyframes posStockRefreshSpin { to { transform: rotate(360deg); } }
 .pos-body {
   flex: 1; display: flex; overflow: hidden;
 }
