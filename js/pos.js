@@ -304,7 +304,7 @@ const POS = {
     this._updateCheckoutAvailability();
   },
 
-  async refreshStockForPos({ force = false } = {}) {
+  async refreshStockForPos({ force = false, retries = 2, timeoutMs = 30000 } = {}) {
     if (this._stockRefreshPromise) return this._stockRefreshPromise;
 
     const refreshPromise = (async () => {
@@ -324,14 +324,16 @@ const POS = {
 
       this.setStockSyncStatus('Đang cập nhật kho…', 'loading');
       try {
-        await App.refreshProductsOnly();
+        await App.refreshProductsOnly({ retries, timeoutMs });
         const search = document.getElementById('pos-product-search');
         if (document.getElementById('pos-overlay')?.style.display !== 'none') this.renderProducts(search?.value || '');
         const syncedAt = new Date(App.productsLastSyncAt || Date.now());
         this.setStockSyncStatus(`Kho cập nhật ${syncedAt.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`, 'success');
         return true;
       } catch (error) {
-        this._lastStockRefreshError = error;
+        this._lastStockRefreshError = error?.name === 'AbortError'
+          ? new Error('Google Sheet không phản hồi trong thời gian cho phép.')
+          : error;
         this.setStockSyncStatus('Không cập nhật được kho', 'warning');
         console.warn('Stock refresh failed:', error);
         return false;
@@ -362,7 +364,13 @@ const POS = {
     );
     await App.waitForSheetPopupPaint();
 
-    const refreshed = await this.refreshStockForPos({ force: true });
+    // Nút làm mới thủ công cần phản hồi dứt khoát: chỉ gọi một lần và dừng sau
+    // 20 giây. Nếu thất bại, người dùng có thể chủ động bấm thử lại.
+    const refreshed = await this.refreshStockForPos({
+      force: true,
+      retries: 0,
+      timeoutMs: 20000
+    });
     if (refreshed) {
       App.hideSheetProgress();
       App.toast('success', 'Đã cập nhật tồn kho mới nhất.');
