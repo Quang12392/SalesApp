@@ -380,6 +380,11 @@ const POS = {
     }
 
     this.setStockSyncStatus('Đang kiểm tra kho trong giỏ…', 'loading');
+    App.showSheetProgress(
+      'Đang kiểm tra tồn kho trong giỏ...',
+      'Đang đối chiếu số lượng thực tế trên Google Sheet. Vui lòng chờ, không bấm thêm thao tác.'
+    );
+    await App.waitForSheetPopupPaint();
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -1534,6 +1539,7 @@ const POS = {
     const tax = document.getElementById('pos-tax-check').checked;
     const taxRevenue = tax ? this.getTaxRevenueValue() : 0;
     if (tax && taxRevenue <= 0) {
+      App.hideSheetProgress();
       this.showTaxRevenueRequiredModal();
       return;
     }

@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '368';
+const KHS_APP_VERSION = '369';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -4360,10 +4360,19 @@ const App = {
   // ═════════ MODAL & TOAST ═════════
   openModal() { document.getElementById('modal-overlay').style.display = 'flex'; document.body.style.overflow = 'hidden'; },
   closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
-  showSheetProgress(message) {
+  showSheetProgress(message, detail) {
+    const existing = document.getElementById('sheet-progress-overlay');
+    if (existing?.dataset.sheetProgress === 'true') {
+      const messageEl = existing.querySelector('[data-sheet-progress-message]');
+      const detailEl = existing.querySelector('[data-sheet-progress-detail]');
+      if (messageEl) messageEl.textContent = message || 'Đang cập nhật lên Google Sheet...';
+      if (detailEl) detailEl.textContent = detail || 'Vui lòng chờ thao tác hoàn tất, không đóng hoặc chuyển màn hình.';
+      return;
+    }
     this.hideSheetProgress();
     const overlay = document.createElement('div');
     overlay.id = 'sheet-progress-overlay';
+    overlay.dataset.sheetProgress = 'true';
     overlay.setAttribute('role', 'alertdialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-busy', 'true');
@@ -4371,10 +4380,12 @@ const App = {
     overlay.innerHTML = `
       <div style="width:min(360px,calc(100vw - 40px));background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(15,23,42,0.35);padding:24px 22px;text-align:center;border:1px solid #E5E7EB">
         <div style="width:48px;height:48px;border-radius:50%;border:4px solid #D1FAE5;border-top-color:#1B5E20;margin:0 auto 14px;animation:sheetSpin 0.85s linear infinite"></div>
-        <div style="font-weight:800;color:#111827;font-size:1.05rem;margin-bottom:6px">${message || 'Đang cập nhật lên Google Sheet...'}</div>
-        <div style="font-size:0.86rem;color:#6B7280;line-height:1.4">Vui lòng chờ thao tác hoàn tất, không đóng hoặc chuyển màn hình.</div>
+        <div data-sheet-progress-message style="font-weight:800;color:#111827;font-size:1.05rem;margin-bottom:6px"></div>
+        <div data-sheet-progress-detail style="font-size:0.86rem;color:#6B7280;line-height:1.4"></div>
       </div>
     `;
+    overlay.querySelector('[data-sheet-progress-message]').textContent = message || 'Đang cập nhật lên Google Sheet...';
+    overlay.querySelector('[data-sheet-progress-detail]').textContent = detail || 'Vui lòng chờ thao tác hoàn tất, không đóng hoặc chuyển màn hình.';
     if (!document.getElementById('sheet-progress-style')) {
       const style = document.createElement('style');
       style.id = 'sheet-progress-style';
