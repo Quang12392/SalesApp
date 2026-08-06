@@ -11,7 +11,7 @@ const QR_CONFIG = {
 };
 
 // Hàng hóa và Bán hàng dùng chung một snapshot sản phẩm. Trong vòng 2 phút,
-// POS tái sử dụng snapshot đó; bước Thanh toán vẫn có ngưỡng kiểm tra riêng.
+// POS tái sử dụng snapshot đó; backend kiểm tra quyết định khi tạo đơn.
 const POS_STOCK_DISPLAY_MAX_AGE_MS = 2 * 60 * 1000;
 
 const POS = {
@@ -21,7 +21,6 @@ const POS = {
   viewMode: localStorage.getItem('pos_view_mode') || 'grid',
   _lineSeq: 0,
   _checkoutInProgress: false,
-  _stockCheckInProgress: false,
   _stockRefreshPromise: null,
   _lastStockRefreshError: null,
 
@@ -293,7 +292,6 @@ const POS = {
     if (!btn) return;
     btn.disabled = !this.cart.length
       || this._checkoutInProgress
-      || this._stockCheckInProgress
       || !!this._stockRefreshPromise;
   },
 
@@ -356,10 +354,10 @@ const POS = {
   },
 
   async manualRefreshStock() {
-    if (this._checkoutInProgress || this._stockCheckInProgress || this._stockRefreshPromise) {
+    if (this._checkoutInProgress || this._stockRefreshPromise) {
       App.toast('info', this._stockRefreshPromise
         ? 'Kho đang được cập nhật, vui lòng chờ hoàn tất.'
-        : 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
+        : 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
       return;
     }
 
@@ -388,34 +386,7 @@ const POS = {
     );
   },
 
-  getCartStockErrors() {
-    const errors = [];
-    const qtyBySku = {};
-    const nameBySku = {};
-    this.cart.forEach(item => {
-      const sku = String(item.sku || item.id || '').trim();
-      qtyBySku[sku] = (qtyBySku[sku] || 0) + (Number(item.qty) || 0);
-      nameBySku[sku] = item.name || sku;
-    });
-    Object.entries(qtyBySku).forEach(([sku, qty]) => {
-      const product = App.products.find(p => p.sku === sku || p.id === sku || p.name === nameBySku[sku]);
-      const stock = Number(product?.stock) || 0;
-      if (stock <= 0) errors.push(`${nameBySku[sku]} (hết hàng)`);
-      else if (qty > stock) errors.push(`${nameBySku[sku]} (còn ${stock}, đặt ${qty})`);
-    });
-    return errors;
-  },
-
-  getCartStockSignature() {
-    const qtyBySku = {};
-    this.cart.forEach(item => {
-      const sku = String(item.sku || item.id || '').trim();
-      if (sku) qtyBySku[sku] = (qtyBySku[sku] || 0) + (Number(item.qty) || 0);
-    });
-    return Object.keys(qtyBySku).sort().map(sku => `${sku}:${qtyBySku[sku]}`).join('|');
-  },
-
-  applyStockSnapshot(stocks, checkedAt = new Date().toISOString()) {
+  applyStockSnapshot(stocks) {
     if (!stocks || typeof stocks !== 'object') return;
     Object.entries(stocks).forEach(([sku, value]) => {
       const stock = Number(value) || 0;
@@ -425,81 +396,19 @@ const POS = {
         if (String(item.sku || item.id || '').trim() === String(sku).trim()) item.maxStock = stock;
       });
     });
-    this._cartStockCheck = {
-      signature: this.getCartStockSignature(),
-      checkedAt: new Date(checkedAt || Date.now()).getTime() || Date.now()
-    };
     App.saveCacheValue('products', App.products);
-    const time = new Date(this._cartStockCheck.checkedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    this.setStockSyncStatus(`Kho giỏ hàng xác nhận ${time}`, 'success');
+    const sharedSyncValue = App.productsLastSyncAt || App.datasetSyncTimes?.products;
+    const sharedSyncAt = sharedSyncValue ? new Date(sharedSyncValue) : null;
+    if (sharedSyncAt && !Number.isNaN(sharedSyncAt.getTime())) {
+      this.setStockSyncStatus(
+        `Kho cập nhật ${sharedSyncAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
+        'success'
+      );
+    } else {
+      this.setStockSyncStatus('Kho chưa xác minh', 'warning');
+    }
     if (document.getElementById('pos-overlay')?.style.display !== 'none') {
       this.renderProducts(document.getElementById('pos-product-search')?.value || '');
-    }
-  },
-
-  async verifyCartStockForCheckout() {
-    const maxAgeMs = 30 * 1000;
-    const signature = this.getCartStockSignature();
-    const fullSyncValue = App.productsLastSyncAt || App.datasetSyncTimes?.products;
-    const fullSyncAt = fullSyncValue ? new Date(fullSyncValue).getTime() : 0;
-    const fullStockIsFresh = !!fullSyncAt && Date.now() - fullSyncAt <= maxAgeMs;
-    const cartStockIsFresh = this._cartStockCheck?.signature === signature
-      && Date.now() - this._cartStockCheck.checkedAt <= maxAgeMs;
-
-    if (fullStockIsFresh || cartStockIsFresh) {
-      const errors = this.getCartStockErrors();
-      if (errors.length) {
-        App.showSheetError('Không đủ tồn kho', errors.join('; '));
-        return false;
-      }
-      return true;
-    }
-
-    const apiUrl = localStorage.getItem('khs_api_url');
-    if (!apiUrl) {
-      App.showSheetError('Chưa cấu hình Google Sheet', 'Không thể kiểm tra tồn kho vì app chưa có API URL.');
-      return false;
-    }
-
-    this.setStockSyncStatus('Đang kiểm tra kho trong giỏ…', 'loading');
-    App.showSheetProgress(
-      'Đang kiểm tra tồn kho trong giỏ...',
-      'Đang đối chiếu số lượng thực tế trên Google Sheet. Vui lòng chờ, không bấm thêm thao tác.'
-    );
-    await App.waitForSheetPopupPaint();
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          action: 'checkCartStock',
-          items: this.cart.map(item => ({ sku: item.sku || item.id || '', name: item.name || '', qty: item.qty }))
-        })
-      });
-      const result = await response.json();
-
-      // Tương thích trong thời gian người dùng chưa deploy Code.gs mới.
-      if (!result.success && /unknown action/i.test(result.error || '')) {
-        const refreshed = await this.refreshStockForPos({ force: true });
-        if (!refreshed) throw new Error('Không đọc được tồn kho mới nhất');
-        const legacyErrors = this.getCartStockErrors();
-        if (legacyErrors.length) {
-          App.showSheetError('Không đủ tồn kho', legacyErrors.join('; '));
-          return false;
-        }
-        return true;
-      }
-
-      this.applyStockSnapshot(result.stocks, result.checkedAt);
-      if (!result.success) {
-        App.showSheetError('Không đủ tồn kho', result.error || 'Google Sheet không chấp nhận số lượng trong giỏ.');
-        return false;
-      }
-      return true;
-    } catch (error) {
-      this.setStockSyncStatus('Không xác minh được kho', 'warning');
-      App.showSheetError('Chưa xác minh được tồn kho', 'Không thể kiểm tra tồn kho trong giỏ. Giỏ hàng vẫn được giữ nguyên. ' + (error.message || ''));
-      return false;
     }
   },
 
@@ -613,32 +522,27 @@ const POS = {
       );
       return;
     }
-    if (this._checkoutInProgress || this._stockCheckInProgress || this._stockRefreshPromise) {
+    if (this._checkoutInProgress || this._stockRefreshPromise) {
       App.toast('info', this._stockRefreshPromise
         ? 'Kho đang được cập nhật, vui lòng chờ hoàn tất rồi xác nhận đơn.'
-        : 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
+        : 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
       return;
     }
 
     const btn = document.getElementById('btn-checkout');
-    this._stockCheckInProgress = true;
-    if (btn) { btn.disabled = true; btn.textContent = 'ĐANG KIỂM TRA KHO...'; }
-    const stockVerified = await this.verifyCartStockForCheckout();
-    this._stockCheckInProgress = false;
-    if (!stockVerified) {
-      if (btn) { btn.disabled = false; btn.textContent = 'XÁC NHẬN ĐƠN'; }
-      return;
-    }
     if (btn) { btn.disabled = true; btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Đang xác nhận...`; }
     this._checkoutInProgress = true;
-    App.showSheetProgress('Đang xác nhận đơn TikTok và cập nhật Google Sheet...');
+    App.showSheetProgress(
+      'Đang kiểm tra kho và xác nhận đơn TikTok...',
+      'Google Sheet đang khóa tồn kho, kiểm tra số lượng và cập nhật đơn. Vui lòng chờ.'
+    );
 
     try {
       await App.waitForSheetPopupPaint();
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (data.success) {
-        if (data.stocks) this.applyStockSnapshot(data.stocks, data.checkedAt);
+        if (data.stocks) this.applyStockSnapshot(data.stocks);
         else setTimeout(() => this.refreshStockForPos({ force: true }), 500);
         const o = App.orders.find(x => x.id === orderId);
         if (o) {
@@ -658,7 +562,7 @@ const POS = {
         App.updateOrderTable();
       } else {
         const errorMessage = data.error || `Google Sheet không chấp nhận đơn hàng ${orderId}.`;
-        if (data.stocks) this.applyStockSnapshot(data.stocks, data.checkedAt);
+        if (data.stocks) this.applyStockSnapshot(data.stocks);
         else if (/tồn kho|hết hàng|không đủ/i.test(errorMessage)) this.refreshStockForPos({ force: true });
         App.showSheetError(
           'Không thể cập nhật đơn TikTok',
@@ -1591,10 +1495,10 @@ const POS = {
 
     if (this._tiktokOrderId) { await this._doConfirmTikTok(); return; }
 
-    if (this._checkoutInProgress || this._stockCheckInProgress || this._stockRefreshPromise) {
+    if (this._checkoutInProgress || this._stockRefreshPromise) {
       App.toast('info', this._stockRefreshPromise
         ? 'Kho đang được cập nhật, vui lòng chờ hoàn tất rồi thanh toán.'
-        : 'Đơn đang được kiểm tra hoặc cập nhật lên Sheet, vui lòng chờ.');
+        : 'Đơn đang được cập nhật lên Sheet, vui lòng chờ.');
       return;
     }
 
@@ -1604,18 +1508,6 @@ const POS = {
       App.toast('warning', 'Khong co mang! Don hang da duoc LUU TAM. Khi co mang, hay mo don tam va bam THANH TOAN de hoan tat.');
       return;
     }
-
-    // Nếu kho toàn cục đã cũ, chỉ kiểm tra các SKU trong giỏ. Backend vẫn thực
-    // hiện kiểm tra quyết định lần cuối bên trong LockService khi tạo đơn.
-    this._stockCheckInProgress = true;
-    this._setCheckoutBusy('ĐANG KIỂM TRA KHO...');
-    const stockVerified = await this.verifyCartStockForCheckout();
-    this._stockCheckInProgress = false;
-    if (!stockVerified) {
-      this._resetCheckoutBtn();
-      return;
-    }
-    this._resetCheckoutBtn();
 
     const subtotal = this.cart.reduce((s, i) => s + i.price * i.qty, 0);
     const discount = parseInt(document.getElementById('pos-discount').value.replace(/\D/g, '')) || 0;
@@ -1700,7 +1592,10 @@ const POS = {
 
     try {
       if (apiUrl) {
-        App.showSheetProgress('Đang đẩy dữ liệu đơn hàng lên Google Sheet...');
+        App.showSheetProgress(
+          'Đang kiểm tra kho và tạo đơn...',
+          'Google Sheet đang khóa tồn kho, kiểm tra số lượng và ghi đơn hàng. Vui lòng chờ.'
+        );
         await App.waitForSheetPopupPaint();
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -1711,7 +1606,7 @@ const POS = {
 
         if (!res.success) {
           const errorMessage = res.error || 'Google Sheet không chấp nhận dữ liệu đơn hàng.';
-          if (res.stocks) this.applyStockSnapshot(res.stocks, res.checkedAt);
+          if (res.stocks) this.applyStockSnapshot(res.stocks);
           else if (/tồn kho|hết hàng|không đủ/i.test(errorMessage)) this.refreshStockForPos({ force: true });
           App.showSheetError(
             'Không thể tạo đơn trên Google Sheet',
@@ -1721,7 +1616,7 @@ const POS = {
         }
 
         const acceptedOrderId = res.orderId || order.id;
-        if (res.stocks) this.applyStockSnapshot(res.stocks, res.checkedAt);
+        if (res.stocks) this.applyStockSnapshot(res.stocks);
         else setTimeout(() => this.refreshStockForPos({ force: true }), 500);
         finishCheckout(acceptedOrderId, {
           toast: false
