@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '369';
+const KHS_APP_VERSION = '370';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -217,6 +217,23 @@ const App = {
     })();
     try { return await this._productRefreshPromise; }
     finally { this._productRefreshPromise = null; }
+  },
+
+  async refreshInventoryOnly(options = {}) {
+    const results = await Promise.allSettled([
+      this.refreshProductsOnly({
+        retries: options.retries ?? 0,
+        timeoutMs: options.timeoutMs ?? 20000
+      }),
+      this.refreshArrayDataset('batches', 'getBatches', {
+        retries: options.retries ?? 0,
+        timeoutMs: options.timeoutMs ?? 20000
+      })
+    ]);
+    const errors = results
+      .filter(result => result.status === 'rejected')
+      .map(result => result.reason?.message || 'Không tải được dữ liệu kho');
+    return { success: errors.length === 0, errors };
   },
 
   async refreshArrayDataset(key, action, options = {}) {
@@ -1631,9 +1648,13 @@ const App = {
             body: JSON.stringify({ action:'updateBatch', batchId: bid, costPrice: newCost, note: newNote, qtyRemaining: newQty })
           }).then(r=>r.json());
           if (res.success) {
-            await this.autoSync();
+            this.showSheetProgress('Đã lưu lô, đang làm mới tồn kho...', 'Chỉ tải lại dữ liệu Sản phẩm và Lô hàng.');
+            const inventoryRefresh = await this.refreshInventoryOnly();
             this.hideSheetProgress();
-            this.toast('success','Đã lưu lô '+bid);
+            this.toast(
+              inventoryRefresh.success ? 'success' : 'warning',
+              inventoryRefresh.success ? 'Đã lưu lô '+bid : 'Đã lưu lô nhưng chưa tải lại đầy đủ dữ liệu kho.'
+            );
             this.closeModal();
             this.productModal(p.id);
           } else {
@@ -1657,13 +1678,26 @@ const App = {
       if (!confirm('Xóa lô ' + bid + ' (đã bán hết)?')) return;
       const url = localStorage.getItem('khs_api_url');
       if (!url) return;
+      this.showSheetProgress('Đang xóa lô trên Google Sheet...');
       try {
         const res = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
           body: JSON.stringify({ action:'deleteBatch', batchId: bid })
         }).then(r=>r.json());
-        if (res.success) { this.toast('success','Đã xóa lô '+bid); await this.autoSync(); this.closeModal(); this.productModal(p.id); }
-        else this.toast('error', res.error);
-      } catch(e) { this.toast('error','Lỗi: '+e.message); }
+        if (res.success) {
+          this.showSheetProgress('Đã xóa lô, đang làm mới tồn kho...', 'Chỉ tải lại dữ liệu Sản phẩm và Lô hàng.');
+          const inventoryRefresh = await this.refreshInventoryOnly();
+          this.hideSheetProgress();
+          this.toast(
+            inventoryRefresh.success ? 'success' : 'warning',
+            inventoryRefresh.success ? 'Đã xóa lô '+bid : 'Đã xóa lô nhưng chưa tải lại đầy đủ dữ liệu kho.'
+          );
+          this.closeModal();
+          this.productModal(p.id);
+        } else {
+          this.hideSheetProgress();
+          this.toast('error', res.error);
+        }
+      } catch(e) { this.hideSheetProgress(); this.toast('error','Lỗi: '+e.message); }
     }));
 
     document.getElementById('modal-footer').innerHTML = `
@@ -1694,6 +1728,7 @@ const App = {
       }
 
       let productId;
+      let inventoryRefreshFailed = false;
       const url = localStorage.getItem('khs_api_url');
       const oldProduct = p ? { ...p } : null;
       saveBtn.disabled = true;
@@ -1743,7 +1778,6 @@ const App = {
               this.toast('success','Đã nhập lô: '+bRes.batchId);
             }
           }
-          if (url) await this.autoSync();
         } else {
           d.id = d.sku; // Dùng SKU làm ID — khớp với backend
           productId = d.id;
@@ -1756,12 +1790,27 @@ const App = {
           }
         }
 
+        if (url) {
+          this.showSheetProgress(
+            p ? 'Đã lưu sản phẩm, đang làm mới tồn kho...' : 'Đã thêm sản phẩm, đang làm mới tồn kho...',
+            'Chỉ tải lại dữ liệu Sản phẩm và Lô hàng.'
+          );
+          const inventoryRefresh = await this.refreshInventoryOnly();
+          inventoryRefreshFailed = !inventoryRefresh.success;
+        }
+
         const imgPreview = document.getElementById('pf-img-preview');
         if (imgPreview.src && imgPreview.style.display !== 'none' && imgPreview.src.startsWith('data:')) {
+          this.showSheetProgress('Đang lưu ảnh sản phẩm...', 'Sản phẩm và tồn kho đã được cập nhật.');
           await this.saveProductImage(productId, imgPreview.src);
         }
         this.hideSheetProgress();
-        this.toast('success', p ? 'Cập nhật sản phẩm thành công' : 'Đã thêm sản phẩm thành công');
+        this.toast(
+          inventoryRefreshFailed ? 'warning' : 'success',
+          inventoryRefreshFailed
+            ? 'Đã lưu trên Sheet nhưng chưa tải lại đầy đủ dữ liệu kho.'
+            : (p ? 'Cập nhật sản phẩm thành công' : 'Đã thêm sản phẩm thành công')
+        );
         this.closeModal();
         if (typeof options.afterSave === 'function') {
           options.afterSave(this.products.find(x => x.id === productId), { productId, isEdit: !!p });
@@ -1802,16 +1851,34 @@ const App = {
   delProduct(id) {
     const p = this.products.find(x => x.id === id);
     if (!p) return;
-    this.confirmDelete('Xóa sản phẩm', p.name, () => {
-      this.products = this.products.filter(x => x.id !== id);
-      this.toast('success','Đã xóa!');
-      this.renderProducts(document.getElementById('page-container'));
-      // Sync delete to Google Sheets
+    this.confirmDelete('Xóa sản phẩm', p.name, async () => {
       const url = localStorage.getItem('khs_api_url');
-      if (url) {
-        fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      if (!url) {
+        this.products = this.products.filter(x => x.id !== id);
+        this.renderProducts(document.getElementById('page-container'));
+        this.toast('success','Đã xóa!');
+        return;
+      }
+
+      this.showSheetProgress('Đang xóa sản phẩm trên Google Sheet...');
+      try {
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({ action: 'deleteProduct', sku: p.sku })
-        }).catch(e => console.warn('Sync delete failed:', e));
+        }).then(response => response.json());
+        if (!res.success) throw new Error(res.error || 'Không xóa được sản phẩm');
+        this.products = this.products.filter(x => x.id !== id);
+
+        this.showSheetProgress('Đã xóa sản phẩm, đang làm mới tồn kho...', 'Chỉ tải lại dữ liệu Sản phẩm và Lô hàng.');
+        const inventoryRefresh = await this.refreshInventoryOnly();
+        this.hideSheetProgress();
+        this.renderProducts(document.getElementById('page-container'));
+        this.toast(
+          inventoryRefresh.success ? 'success' : 'warning',
+          inventoryRefresh.success ? 'Đã xóa sản phẩm!' : 'Đã xóa trên Sheet nhưng chưa tải lại đầy đủ dữ liệu kho.'
+        );
+      } catch (error) {
+        this.hideSheetProgress();
+        this.toast('error', 'Không thể xóa sản phẩm: ' + error.message);
       }
     });
   },
@@ -3221,7 +3288,11 @@ const App = {
       this.toast('info', 'Đang khởi tạo...');
       try {
         const res = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'initBatches' }) }).then(r=>r.json());
-        if (res.success) { this.toast('success', res.message); await this.autoSync(); this.renderInventory(c); }
+        if (res.success) {
+          const inventoryRefresh = await this.refreshInventoryOnly();
+          this.toast(inventoryRefresh.success ? 'success' : 'warning', inventoryRefresh.success ? res.message : `${res.message}. Chưa tải lại đầy đủ dữ liệu kho.`);
+          this.renderInventory(c);
+        }
         else this.toast('error', res.error);
       } catch(e) { this.toast('error', 'Lỗi: ' + e.message); }
     });
@@ -3298,9 +3369,9 @@ const App = {
           body: JSON.stringify({ action:'addBatch', sku, name: prod?.name||'', qty, costPrice: cost, importedBy: this.user?.displayName||'Admin', note })
         }).then(r=>r.json());
         if (res.success) {
-          this.toast('success', res.message);
           close();
-          await this.autoSync();
+          const inventoryRefresh = await this.refreshInventoryOnly();
+          this.toast(inventoryRefresh.success ? 'success' : 'warning', inventoryRefresh.success ? res.message : `${res.message}. Chưa tải lại đầy đủ dữ liệu kho.`);
           const target = this._lastInventoryContainer?.isConnected ? this._lastInventoryContainer : document.getElementById('page-container');
           this.renderInventory(target);
         } else { this.toast('error', res.error); saveBtn.textContent = '📦 Nhập kho'; saveBtn.disabled = false; }
