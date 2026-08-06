@@ -609,6 +609,13 @@ ul, ol { list-style: none; }
   font-size: 1.1rem;
 }
 .toolbar-search input::placeholder { color: var(--text-muted); }
+.data-sync-status {
+  min-height: 22px;
+  padding: 5px 2px 4px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: #2E7D32;
+}
 .filter-select {
   padding: 8px 32px 8px 12px; background: white;
   border: 1px solid var(--border); border-radius: var(--radius-md);

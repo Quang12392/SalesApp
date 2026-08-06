@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '371';
+const KHS_APP_VERSION = '372';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -189,6 +189,27 @@ const App = {
       ? (this.productsLastSyncAt || this.datasetSyncTimes?.products)
       : this.datasetSyncTimes?.[key];
     return !!syncedAt && Date.now() - new Date(syncedAt).getTime() <= maxAgeMs;
+  },
+
+  formatSyncStatus(syncedAt) {
+    const date = syncedAt ? new Date(syncedAt) : null;
+    if (!date || Number.isNaN(date.getTime())) return 'Chưa có dữ liệu đồng bộ.';
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const yy = String(date.getFullYear()).slice(-2);
+    return `Đã đồng bộ lúc ${hh}:${mm}, ${dd}${month}${yy}`;
+  },
+
+  setDatasetSyncStatus(elementId, datasetKey, syncedAt) {
+    const status = document.getElementById(elementId);
+    if (!status) return;
+    const value = syncedAt || (datasetKey === 'products'
+      ? (this.productsLastSyncAt || this.datasetSyncTimes?.products)
+      : this.datasetSyncTimes?.[datasetKey]);
+    status.style.color = value ? '#2E7D32' : 'var(--text-secondary)';
+    status.textContent = this.formatSyncStatus(value);
   },
 
   async markDatasetSynced(key, syncedAt = new Date().toISOString()) {
@@ -418,6 +439,18 @@ const App = {
       return new Date(`${item.from}T00:00:00`).getTime() <= wantedStart
         && new Date(`${item.to}T23:59:59`).getTime() >= wantedEnd;
     });
+  },
+
+  getOrderCoverageSyncAt(startDate, endDate, all = false) {
+    const wantedStart = all ? 0 : new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
+    const wantedEnd = all ? Number.MAX_SAFE_INTEGER : new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59).getTime();
+    const matches = (this.orderCoverage || []).filter(item => {
+      if (item.all) return true;
+      if (all) return false;
+      return new Date(`${item.from}T00:00:00`).getTime() <= wantedStart
+        && new Date(`${item.to}T23:59:59`).getTime() >= wantedEnd;
+    });
+    return matches.sort((a, b) => new Date(b.syncedAt || 0) - new Date(a.syncedAt || 0))[0]?.syncedAt || '';
   },
 
   async recordOrderCoverage(startDate, endDate, all = false) {
@@ -1282,6 +1315,7 @@ const App = {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="p-search" placeholder="Tìm sản phẩm, mã SKU..." value="${this.pSearch}">
           </div>
+          <div class="data-sync-status" id="p-sync-status"></div>
         </div>
         <div class="table-wrapper products-desktop-table">
           <table class="data-table">
@@ -1302,6 +1336,7 @@ const App = {
     }
 
     this.updateProductTable();
+    this.setDatasetSyncStatus('p-sync-status', 'products');
   },
 
   updateProductTable() {
@@ -2080,11 +2115,11 @@ const App = {
             <span>0 đơn hàng</span>
             <span>Tổng tiền hàng: <strong>0đ</strong></span>
           </div>
-          <div id="o-sync-status" style="font-size:0.76rem;color:var(--text-secondary);padding:4px 2px 8px"></div>
           <div class="toolbar-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="o-search" placeholder="Tìm mã đơn, khách hàng..." value="${this.oSearch}">
           </div>
+          <div class="data-sync-status" id="o-sync-status"></div>
         </div>
         <div class="orders-card-list" id="o-card-list"></div>
         <div class="table-wrapper orders-desktop-table">
@@ -2125,14 +2160,14 @@ const App = {
     const startDate = range?.start || new Date(0);
     const endDate = range?.end || new Date();
     if (this.hasFreshOrderCoverage(startDate, endDate, 5 * 60 * 1000, all)) {
-      if (status) { status.style.color = '#2E7D32'; status.textContent = 'Đang dùng dữ liệu đã đồng bộ trên thiết bị này.'; }
+      this.setDatasetSyncStatus('o-sync-status', '', this.getOrderCoverageSyncAt(startDate, endDate, all));
       return;
     }
     if (status) { status.style.color = '#1565C0'; status.textContent = all ? 'Đang tải toàn bộ lịch sử đơn hàng…' : 'Đang tải đơn hàng cho thời gian đã chọn…'; }
     try {
       const result = await this.ensureOrdersForRange(startDate, endDate, { all });
       if (this.page === 'orders') this.updateOrderTable();
-      if (status?.isConnected) { status.style.color = '#2E7D32'; status.textContent = `Đã tải ${result.count || 0} đơn và lưu trên thiết bị này.`; }
+      if (status?.isConnected) this.setDatasetSyncStatus('o-sync-status', '', this.getOrderCoverageSyncAt(startDate, endDate, all));
     } catch (error) {
       if (status?.isConnected) { status.style.color = '#D32F2F'; status.textContent = `Không cập nhật được; vẫn giữ dữ liệu cũ. ${error.message}`; }
     }
@@ -2438,6 +2473,7 @@ const App = {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="c-search" placeholder="Tìm khách hàng, SĐT..." value="${this.cSearch}">
           </div>
+          <div class="data-sync-status" id="c-sync-status"></div>
         </div>
         <div class="customer-card-list" id="c-card-list"></div>
         <div class="table-wrapper customer-table-desktop">
@@ -2455,6 +2491,7 @@ const App = {
       document.getElementById('btn-add-cust').addEventListener('click', () => this.customerModal());
     }
     this.updateCustomerTable();
+    this.setDatasetSyncStatus('c-sync-status', 'customers');
   },
 
   updateCustomerTable() {
@@ -2857,7 +2894,7 @@ const App = {
     const el = document.getElementById('report-content'); if (!el) return;
     if (this.reportType === 'inventory') {
       this.renderReportWithOrders(el, []);
-      this.setReportSyncStatus('Dữ liệu kiểm kho được đồng bộ cùng danh sách sản phẩm.');
+      this.setReportSyncStatus(this.formatSyncStatus(this.productsLastSyncAt || this.datasetSyncTimes?.products), 'success');
       return;
     }
     const [startDate, endDate] = this.getReportDateRange();
@@ -2867,7 +2904,7 @@ const App = {
     const requestId = (this._reportRequestId || 0) + 1;
     this._reportRequestId = requestId;
     if (this.hasFreshOrderCoverage(startDate, endDate)) {
-      this.setReportSyncStatus(`Đã đồng bộ lúc ${new Date(this.lastSyncAt || Date.now()).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}.`, 'success');
+      this.setReportSyncStatus(this.formatSyncStatus(this.getOrderCoverageSyncAt(startDate, endDate)), 'success');
       return;
     }
     this.setReportSyncStatus('Đang tải dữ liệu cho khoảng thời gian đã chọn…', 'loading');
@@ -2877,7 +2914,7 @@ const App = {
       this.lastSyncAt = new Date().toISOString();
       await this.saveCacheValue('lastSync', this.lastSyncAt);
       this.renderReportWithOrders(el, this.filterOrdersByDateRange(startDate, endDate));
-      this.setReportSyncStatus(result.cached ? 'Đang dùng dữ liệu đã lưu trên thiết bị.' : `Đã tải ${result.count || 0} đơn và lưu trên thiết bị này.`, 'success');
+      this.setReportSyncStatus(this.formatSyncStatus(this.getOrderCoverageSyncAt(startDate, endDate)), 'success');
     } catch (error) {
       if (requestId !== this._reportRequestId) return;
       const cachedCount = this.filterOrdersByDateRange(startDate, endDate).length;
