@@ -10,6 +10,10 @@ const QR_CONFIG = {
   template: 'compact2' // compact, compact2, qr_only
 };
 
+// Hàng hóa và Bán hàng dùng chung một snapshot sản phẩm. Trong vòng 2 phút,
+// POS tái sử dụng snapshot đó; bước Thanh toán vẫn có ngưỡng kiểm tra riêng.
+const POS_STOCK_DISPLAY_MAX_AGE_MS = 2 * 60 * 1000;
+
 const POS = {
   cart: [],
   selectedCustomer: null,
@@ -304,11 +308,12 @@ const POS = {
     this._updateCheckoutAvailability();
   },
 
-  async refreshStockForPos({ force = false, retries = 2, timeoutMs = 30000 } = {}) {
+  async refreshStockForPos({ force = false, retries = 0, timeoutMs = 20000 } = {}) {
     if (this._stockRefreshPromise) return this._stockRefreshPromise;
 
     const refreshPromise = (async () => {
-      const lastSync = App.productsLastSyncAt ? new Date(App.productsLastSyncAt).getTime() : 0;
+      const lastSyncValue = App.productsLastSyncAt || App.datasetSyncTimes?.products;
+      const lastSync = lastSyncValue ? new Date(lastSyncValue).getTime() : 0;
       const age = Date.now() - lastSync;
       this._lastStockRefreshError = null;
 
@@ -317,7 +322,7 @@ const POS = {
         this._lastStockRefreshError = new Error('Thiết bị đang ngoại tuyến.');
         return false;
       }
-      if (!force && lastSync && age < 30 * 1000) {
+      if (!force && lastSync && age < POS_STOCK_DISPLAY_MAX_AGE_MS) {
         this.setStockSyncStatus(`Kho cập nhật ${new Date(lastSync).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`, 'success');
         return true;
       }
@@ -435,7 +440,8 @@ const POS = {
   async verifyCartStockForCheckout() {
     const maxAgeMs = 30 * 1000;
     const signature = this.getCartStockSignature();
-    const fullSyncAt = App.productsLastSyncAt ? new Date(App.productsLastSyncAt).getTime() : 0;
+    const fullSyncValue = App.productsLastSyncAt || App.datasetSyncTimes?.products;
+    const fullSyncAt = fullSyncValue ? new Date(fullSyncValue).getTime() : 0;
     const fullStockIsFresh = !!fullSyncAt && Date.now() - fullSyncAt <= maxAgeMs;
     const cartStockIsFresh = this._cartStockCheck?.signature === signature
       && Date.now() - this._cartStockCheck.checkedAt <= maxAgeMs;
