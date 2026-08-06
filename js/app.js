@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '376';
+const KHS_APP_VERSION = '377';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -326,11 +326,16 @@ const App = {
     };
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const isInventoryPage = this.page === 'products' || this.page === 'inventory';
+    const inventorySyncOptions = isInventoryPage ? { retries: 0, timeoutMs: 30000 } : {};
 
     // Stock is shared by every workflow and can change on another device, so
     // every deliberate refresh includes products even when the current page is
     // not the product page.
-    addDatasetJob('products', 2 * 60 * 1000, async () => ({ key: 'products', count: (await this.refreshProductsOnly()).length }));
+    addDatasetJob('products', 2 * 60 * 1000, async () => ({
+      key: 'products',
+      count: (await this.refreshProductsOnly(inventorySyncOptions)).length
+    }));
     if (options.reason === 'startup') {
       addDatasetJob('config', 60 * 60 * 1000, () => this.refreshStoreConfigOnly());
     }
@@ -338,7 +343,7 @@ const App = {
     switch (this.page) {
       case 'products':
       case 'inventory':
-        addDatasetJob('batches', 5 * 60 * 1000, () => this.refreshArrayDataset('batches', 'getBatches'));
+        addDatasetJob('batches', 5 * 60 * 1000, () => this.refreshArrayDataset('batches', 'getBatches', inventorySyncOptions));
         break;
       case 'orders': {
         const range = this._getDateRange(this.oTime);
@@ -383,10 +388,26 @@ const App = {
     const results = await this.runLimited(entries.map(([, run]) => run), 2);
     const errors = [];
     const synced = [];
+    const datasetLabels = {
+      products: 'Sản phẩm',
+      batches: 'Lô hàng',
+      orders: 'Đơn hàng',
+      returns: 'Trả hàng',
+      customers: 'Khách hàng',
+      users: 'Người dùng',
+      roles: 'Phân quyền',
+      config: 'Cấu hình'
+    };
     results.forEach((result, index) => {
       const key = entries[index][0];
       if (result?.ok) synced.push(key);
-      else errors.push(`${key}: ${result?.error?.message || 'lỗi tải'}`);
+      else {
+        const timedOut = result?.error?.name === 'AbortError';
+        const message = timedOut && isInventoryPage && (key === 'products' || key === 'batches')
+          ? 'Google Sheet không phản hồi trong 30 giây'
+          : (result?.error?.message || 'lỗi tải');
+        errors.push(`${datasetLabels[key] || key}: ${message}`);
+      }
     });
 
     if (synced.length) {
@@ -400,7 +421,8 @@ const App = {
       return { success: true, synced: [], errors: [] };
     }
     if (options.userInitiated) {
-      if (errors.length) this.toast('warning', `Đã cập nhật một phần. ${errors.join('; ')}`);
+      if (errors.length && synced.length) this.toast('warning', `Đã cập nhật một phần. ${errors.join('; ')}`);
+      else if (errors.length) this.toast('error', `Không thể cập nhật. ${errors.join('; ')}`);
       else this.toast('success', 'Đã cập nhật dữ liệu màn hình hiện tại!');
     }
     if (splashSafety) clearTimeout(splashSafety);
