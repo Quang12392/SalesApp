@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/index.css?v=366">
+  <link rel="stylesheet" href="css/index.css?v=367">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
@@ -475,8 +475,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/app.js?v=366"></script>
-  <script src="js/pos.js?v=366"></script>
+  <script src="js/app.js?v=367"></script>
+  <script src="js/pos.js?v=367"></script>
 
   <script>
   // ── IndexedDB Cache Layer ──
@@ -512,7 +512,7 @@
   };
 
   // ── Force Cache Purge on Version Change ──
-  const APP_VERSION = window.KHS_APP_VERSION || '366';
+  const APP_VERSION = window.KHS_APP_VERSION || '367';
   const storedVersion = localStorage.getItem('khs_app_version');
   let skipSwRegisterThisLoad = false;
   if (storedVersion && storedVersion !== APP_VERSION) {
@@ -598,12 +598,12 @@
     if (document.visibilityState !== 'visible' || !navigator.onLine) return;
     if (Date.now() - lastForegroundSync < 15 * 60 * 1000) return;
     lastForegroundSync = Date.now();
-    App.autoSync({ reason: 'foreground' });
+    App.syncCurrentPage({ reason: 'foreground', force: false });
   });
   window.addEventListener('online', () => {
     updateNetStatus();
     App.toast('success', 'Đã kết nối mạng! Đang cập nhật dữ liệu mới.');
-    setTimeout(() => App.autoSync({ reason: 'online', forceOrders: true }), 800);
+    setTimeout(() => App.syncCurrentPage({ reason: 'online', force: true }), 800);
   });
   window.addEventListener('offline', () => {
     updateNetStatus();

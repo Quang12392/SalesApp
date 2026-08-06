@@ -223,6 +223,9 @@ const POS = {
 
     this.applyViewMode();
     this.refreshStockForPos({ force: false });
+    if (!App.isDatasetFresh('customers', 10 * 60 * 1000)) {
+      App.refreshArrayDataset('customers', 'getCustomers').catch(error => console.warn('Customer refresh failed:', error));
+    }
   },
 
   updateTaxRevenueField({ clear = false } = {}) {

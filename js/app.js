@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '366';
+const KHS_APP_VERSION = '367';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -65,7 +65,9 @@ const App = {
     this.bind();
     this.initReturn();
     await this.loadCachedSnapshot();
+    this._routeSyncEnabled = false;
     this.handleRoute();
+    this._routeSyncEnabled = true;
     if (this.lastSyncAt) {
       const cachedSplash = document.getElementById('loading-splash');
       if (cachedSplash) {
@@ -112,9 +114,9 @@ const App = {
         localStorage.setItem('khs_last_version', KHS_APP_VERSION);
       });
     }
-    // Auto-sync from Google Sheets if API is configured. Cached data is
-    // already visible, so a slow network never turns the app into empty data.
-    this.autoSync({ reason: 'startup' });
+    // Cached data is already visible. Startup only refreshes the datasets
+    // needed by the current page; other screens load their own data on demand.
+    this.syncCurrentPage({ reason: 'startup', force: false });
     // Notifications are secondary. Start them after the main sync has had a
     // chance to use the limited Apps Script concurrency.
     setTimeout(() => this.initNotifications(), 5000);
@@ -160,7 +162,7 @@ const App = {
   async loadCachedSnapshot() {
     if (!window.KHS_DB) return;
     try {
-      const keys = ['products','customers','orders','returns','users','roles','batches','orderCoverage','lastSync','productsLastSync'];
+      const keys = ['products','customers','orders','returns','users','roles','batches','orderCoverage','lastSync','productsLastSync','datasetSyncTimes'];
       const values = await Promise.all(keys.map(key => window.KHS_DB.load(key)));
       const cached = Object.fromEntries(keys.map((key, index) => [key, values[index]]));
       ['products','customers','orders','returns','users','roles','batches'].forEach(key => {
@@ -169,6 +171,7 @@ const App = {
       this.orderCoverage = Array.isArray(cached.orderCoverage) ? cached.orderCoverage : [];
       this.lastSyncAt = cached.lastSync || '';
       this.productsLastSyncAt = cached.productsLastSync || '';
+      this.datasetSyncTimes = cached.datasetSyncTimes || {};
       if (this.lastSyncAt) console.log('IndexedDB: Using cached data from', this.lastSyncAt);
     } catch (error) {
       console.warn('IndexedDB cache load failed:', error);
@@ -179,6 +182,18 @@ const App = {
     if (!window.KHS_DB) return;
     try { await window.KHS_DB.save(key, value); }
     catch (error) { console.warn(`IndexedDB save ${key} failed:`, error); }
+  },
+
+  isDatasetFresh(key, maxAgeMs) {
+    const syncedAt = key === 'products'
+      ? (this.productsLastSyncAt || this.datasetSyncTimes?.products)
+      : this.datasetSyncTimes?.[key];
+    return !!syncedAt && Date.now() - new Date(syncedAt).getTime() <= maxAgeMs;
+  },
+
+  async markDatasetSynced(key, syncedAt = new Date().toISOString()) {
+    this.datasetSyncTimes = { ...(this.datasetSyncTimes || {}), [key]: syncedAt };
+    await this.saveCacheValue('datasetSyncTimes', this.datasetSyncTimes);
   },
 
   async refreshProductsOnly(options = {}) {
@@ -195,12 +210,146 @@ const App = {
       this.productsLastSyncAt = new Date().toISOString();
       await Promise.all([
         this.saveCacheValue('products', this.products),
-        this.saveCacheValue('productsLastSync', this.productsLastSyncAt)
+        this.saveCacheValue('productsLastSync', this.productsLastSyncAt),
+        this.markDatasetSynced('products', this.productsLastSyncAt)
       ]);
       return this.products;
     })();
     try { return await this._productRefreshPromise; }
     finally { this._productRefreshPromise = null; }
+  },
+
+  async refreshArrayDataset(key, action, options = {}) {
+    this._datasetRefreshPromises = this._datasetRefreshPromises || {};
+    if (this._datasetRefreshPromises[key]) return this._datasetRefreshPromises[key];
+    const promise = (async () => {
+    const apiUrl = localStorage.getItem('khs_api_url');
+    if (!apiUrl) throw new Error('Chưa cấu hình API');
+    const response = await this.fetchApiJson(`${apiUrl}?action=${action}`, {
+      retries: options.retries ?? 2,
+      timeoutMs: options.timeoutMs ?? 45000
+    });
+    if (!Array.isArray(response.data)) throw new Error(`${action} trả về dữ liệu không hợp lệ`);
+    this[key] = response.data;
+    await Promise.all([this.saveCacheValue(key, this[key]), this.markDatasetSynced(key)]);
+    return { key, count: this[key].length };
+    })();
+    this._datasetRefreshPromises[key] = promise;
+    try { return await promise; }
+    finally { delete this._datasetRefreshPromises[key]; }
+  },
+
+  async refreshStoreConfigOnly() {
+    const apiUrl = localStorage.getItem('khs_api_url');
+    if (!apiUrl) throw new Error('Chưa cấu hình API');
+    const response = await this.fetchApiJson(`${apiUrl}?action=getConfig`, { retries: 2 });
+    const config = response.data || {};
+    if (config.store_name) localStorage.setItem('khs_store_name', config.store_name);
+    if (config.store_addr) localStorage.setItem('khs_store_addr', config.store_addr);
+    if (config.store_phone) localStorage.setItem('khs_store_phone', config.store_phone);
+    if (Object.prototype.hasOwnProperty.call(config, 'qr_info')) localStorage.setItem('khs_qr_info', config.qr_info || '');
+    await this.markDatasetSynced('config');
+    return { key: 'config', count: Object.keys(config).length };
+  },
+
+  async syncCurrentPage(options = {}) {
+    const startupSplash = options.reason === 'startup' ? document.getElementById('loading-splash') : null;
+    const hideStartupSplash = () => {
+      if (startupSplash?.parentNode) {
+        startupSplash.style.opacity = '0';
+        startupSplash.style.transition = '0.3s';
+        setTimeout(() => startupSplash.remove(), 300);
+      }
+    };
+    const splashSafety = startupSplash ? setTimeout(hideStartupSplash, 5000) : null;
+    const jobs = new Map();
+    const addJob = (key, run) => { if (!jobs.has(key)) jobs.set(key, run); };
+    const force = options.force !== false;
+    const addDatasetJob = (key, maxAgeMs, run) => {
+      if (force || !this.isDatasetFresh(key, maxAgeMs)) addJob(key, run);
+    };
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Stock is shared by every workflow and can change on another device, so
+    // every deliberate refresh includes products even when the current page is
+    // not the product page.
+    addDatasetJob('products', 2 * 60 * 1000, async () => ({ key: 'products', count: (await this.refreshProductsOnly()).length }));
+    if (options.reason === 'startup') {
+      addDatasetJob('config', 60 * 60 * 1000, () => this.refreshStoreConfigOnly());
+    }
+
+    switch (this.page) {
+      case 'products':
+      case 'inventory':
+        addDatasetJob('batches', 5 * 60 * 1000, () => this.refreshArrayDataset('batches', 'getBatches'));
+        break;
+      case 'orders': {
+        const range = this._getDateRange(this.oTime);
+        const all = this.oTime === 'all';
+        const startDate = range?.start || new Date(0);
+        const endDate = range?.end || now;
+        if (force || !this.hasFreshOrderCoverage(startDate, endDate, 5 * 60 * 1000, all)) {
+          addJob('orders', async () => ({ key: 'orders', ...(await this.ensureOrdersForRange(startDate, endDate, { all, force })) }));
+        }
+        addDatasetJob('returns', 5 * 60 * 1000, () => this.refreshArrayDataset('returns', 'getReturns'));
+        break;
+      }
+      case 'returns':
+        addDatasetJob('returns', 5 * 60 * 1000, () => this.refreshArrayDataset('returns', 'getReturns'));
+        if (force || !this.hasFreshOrderCoverage(currentMonthStart, now)) {
+          addJob('orders', async () => ({ key: 'orders', ...(await this.ensureOrdersForRange(currentMonthStart, now, { force })) }));
+        }
+        break;
+      case 'customers':
+        addDatasetJob('customers', 10 * 60 * 1000, () => this.refreshArrayDataset('customers', 'getCustomers'));
+        break;
+      case 'reports':
+      case 'dashboard':
+        if (this.reportType === 'inventory') {
+          addDatasetJob('batches', 5 * 60 * 1000, () => this.refreshArrayDataset('batches', 'getBatches'));
+        } else {
+          const [startDate, endDate] = this.getReportDateRange();
+          if (force || !this.hasFreshOrderCoverage(startDate, endDate)) {
+            addJob('orders', async () => ({ key: 'orders', ...(await this.ensureOrdersForRange(startDate, endDate, { force })) }));
+          }
+          addDatasetJob('returns', 5 * 60 * 1000, () => this.refreshArrayDataset('returns', 'getReturns'));
+        }
+        break;
+      case 'settings':
+        addDatasetJob('users', 30 * 60 * 1000, () => this.refreshArrayDataset('users', 'getUsers'));
+        addDatasetJob('roles', 30 * 60 * 1000, () => this.refreshArrayDataset('roles', 'getRoles'));
+        addDatasetJob('config', 30 * 60 * 1000, () => this.refreshStoreConfigOnly());
+        break;
+    }
+
+    const entries = Array.from(jobs.entries());
+    const results = await this.runLimited(entries.map(([, run]) => run), 2);
+    const errors = [];
+    const synced = [];
+    results.forEach((result, index) => {
+      const key = entries[index][0];
+      if (result?.ok) synced.push(key);
+      else errors.push(`${key}: ${result?.error?.message || 'lỗi tải'}`);
+    });
+
+    if (synced.length) {
+      this.lastSyncAt = new Date().toISOString();
+      await this.saveCacheValue('lastSync', this.lastSyncAt);
+      this.handleRoute();
+    }
+    if (!entries.length) {
+      if (splashSafety) clearTimeout(splashSafety);
+      hideStartupSplash();
+      return { success: true, synced: [], errors: [] };
+    }
+    if (options.userInitiated) {
+      if (errors.length) this.toast('warning', `Đã cập nhật một phần. ${errors.join('; ')}`);
+      else this.toast('success', 'Đã cập nhật dữ liệu màn hình hiện tại!');
+    }
+    if (splashSafety) clearTimeout(splashSafety);
+    hideStartupSplash();
+    return { success: errors.length === 0, synced, errors };
   },
 
   parseOrderDate(value) {
@@ -308,6 +457,7 @@ const App = {
         if (key !== 'config' && Array.isArray(payload.data)) {
           this[key] = payload.data;
           this.saveCacheValue(key, this[key]);
+          this.markDatasetSynced(key);
           if (key === 'products') {
             this.productsLastSyncAt = new Date().toISOString();
             this.saveCacheValue('productsLastSync', this.productsLastSyncAt);
@@ -325,6 +475,7 @@ const App = {
         if (cfg.store_phone) localStorage.setItem('khs_store_phone', cfg.store_phone);
         // QR info: đồng bộ từ config
         if (cfg.hasOwnProperty('qr_info')) localStorage.setItem('khs_qr_info', cfg.qr_info || '');
+        this.markDatasetSynced('config');
         // QR image: đồng bộ từ sheet "Ảnh SP" (ở syncImagesFromCloud phía dưới)
       }
       this.lastSyncAt = new Date().toISOString();
@@ -489,6 +640,11 @@ const App = {
       el.classList.toggle('active', el.dataset.page === h);
     });
     this.render(h);
+    if (this._routeSyncEnabled) {
+      setTimeout(() => {
+        if (this.page === h) this.syncCurrentPage({ force: false, reason: 'navigation' });
+      }, 250);
+    }
   },
 
   render(page) {
@@ -633,7 +789,7 @@ const App = {
       pc.addEventListener('touchend', async () => {
         if (ptr.classList.contains('active')) {
           ptr.classList.add('loading');
-          await this.autoSync({ userInitiated: true, forceOrders: true });
+          await this.syncCurrentPage({ userInitiated: true, reason: 'pull', force: true });
           ptr.classList.remove('loading');
         }
         pulling = false; ptr.classList.remove('active');
