@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '377';
+const KHS_APP_VERSION = '378';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -435,9 +435,28 @@ const App = {
     return match ? new Date(+match[3], +match[2] - 1, +match[1], +(match[4] || 0), +(match[5] || 0)) : null;
   },
 
-  mergeOrders(incoming) {
-    const byId = new Map((this.orders || []).map(order => [String(order.id), order]));
-    (incoming || []).forEach(order => byId.set(String(order.id), order));
+  reconcileOrdersForRange(incoming, startDate, endDate, options = {}) {
+    const received = Array.isArray(incoming) ? incoming : [];
+    const replaceAll = !!options.replaceAll;
+    const incomingIds = new Set(received.map(order => String(order.id)));
+    let kept = [];
+
+    if (!replaceAll) {
+      const rangeStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
+      const rangeEnd = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999).getTime();
+      kept = (this.orders || []).filter(order => {
+        // An incoming row with the same ID is always the authoritative copy,
+        // even if its date was edited and moved into the requested range.
+        if (incomingIds.has(String(order.id))) return false;
+        const orderDate = this.parseOrderDate(order.createdAt);
+        if (!orderDate) return true;
+        const orderTime = orderDate.getTime();
+        return orderTime < rangeStart || orderTime > rangeEnd;
+      });
+    }
+
+    const byId = new Map(kept.map(order => [String(order.id), order]));
+    received.forEach(order => byId.set(String(order.id), order));
     this.orders = Array.from(byId.values()).sort((a, b) => {
       const ad = this.parseOrderDate(a.createdAt)?.getTime() || 0;
       const bd = this.parseOrderDate(b.createdAt)?.getTime() || 0;
@@ -501,14 +520,17 @@ const App = {
         params.set('to', this._formatDateInput(endDate));
       }
       const response = await this.fetchApiJson(`${apiUrl}?${params.toString()}`, { retries: 2, timeoutMs: 60000 });
-      this.mergeOrders(Array.isArray(response.data) ? response.data : []);
-      await this.saveCacheValue('orders', this.orders);
+      const incoming = Array.isArray(response.data) ? response.data : [];
       // Older Apps Script deployments ignore from/to and return the complete
-      // history without meta. Mark that response as full coverage so devices
-      // waiting to update the backend do not download it again for every filter.
+      // history without meta. Treat those responses, and an explicit "all"
+      // request, as an authoritative replacement of the complete order cache.
       const legacyFullResponse = !response.meta;
+      this.reconcileOrdersForRange(incoming, startDate, endDate, {
+        replaceAll: all || legacyFullResponse
+      });
+      await this.saveCacheValue('orders', this.orders);
       await this.recordOrderCoverage(startDate, endDate, all || legacyFullResponse);
-      return { cached: false, count: Array.isArray(response.data) ? response.data.length : 0 };
+      return { cached: false, count: incoming.length };
     })();
     this._orderRangeRequests[key] = promise;
     try { return await promise; }
