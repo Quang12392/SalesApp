@@ -1220,12 +1220,63 @@ const POS = {
     }
   },
 
+  applyQrVerificationToBox(result, ids) {
+    const box = document.getElementById(ids.box);
+    const image = document.getElementById(ids.image);
+    const info = document.getElementById(ids.info);
+    if (!box || !image || !info) return;
+
+    image.src = '';
+    image.style.display = 'none';
+    const lines = [];
+    if (result?.qrInfo) lines.push(result.qrInfo);
+    if (!result?.verified) lines.push('⚠️ Chưa kiểm tra được QR mới. Hóa đơn này không kèm mã QR.');
+    info.textContent = lines.join('\n');
+    if (result?.verified && result?.exists && result?.image) {
+      image.src = result.image;
+      image.style.display = 'block';
+    }
+    box.style.display = (image.style.display !== 'none' || info.textContent) ? 'block' : 'none';
+  },
+
+  async waitForImages(root, timeoutMs = 5000) {
+    if (!root?.querySelectorAll) return;
+    const images = Array.from(root.querySelectorAll('img')).filter(img => img.getAttribute('src'));
+    await Promise.all(images.map(async img => {
+      if (img.complete && img.naturalWidth > 0) {
+        if (typeof img.decode === 'function') {
+          try { await img.decode(); } catch (_) {}
+        }
+        return;
+      }
+      await new Promise(resolve => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          img.removeEventListener('load', finish);
+          img.removeEventListener('error', finish);
+          resolve();
+        };
+        const timer = setTimeout(finish, timeoutMs);
+        img.addEventListener('load', finish, { once: true });
+        img.addEventListener('error', finish, { once: true });
+      });
+    }));
+  },
+
   async captureCart() {
     if (!this.cart.length) return;
     const btn = document.getElementById('btn-capture-cart');
     const origHTML = btn.innerHTML;
-    btn.textContent = '...';
+    btn.textContent = 'Đang kiểm tra QR...';
     btn.disabled = true;
+
+    const qrResult = await App.ensureQrFresh({ maxAgeMs: 0 });
+    if (!qrResult.verified) {
+      App.toast('warning', 'Không kiểm tra được QR mới; ảnh đơn hàng sẽ không kèm mã QR.');
+    }
 
     const subtotal = this.cart.reduce((s, i) => s + i.price * i.qty, 0);
     const discount = parseInt(document.getElementById('pos-discount').value.replace(/\D/g, '')) || 0;
@@ -1289,20 +1340,11 @@ const POS = {
     `;
     document.body.appendChild(temp);
 
-    // Load saved QR code into invoice
-    const savedQR = await App.getProductImage('__QR_CODE__');
-    if (savedQR) {
-      const qrImg = document.getElementById('inv-capture-qr');
-      const box = document.getElementById('inv-capture-qr-box');
-      qrImg.src = savedQR; qrImg.style.display = 'block';
-      if (box) box.style.display = 'block';
-    }
-    const qrInfo = localStorage.getItem('khs_qr_info');
-    if (qrInfo) {
-      document.getElementById('inv-capture-qr-info').textContent = qrInfo;
-      const box = document.getElementById('inv-capture-qr-box');
-      if (box) box.style.display = 'block';
-    }
+    this.applyQrVerificationToBox(qrResult, {
+      box: 'inv-capture-qr-box',
+      image: 'inv-capture-qr',
+      info: 'inv-capture-qr-info'
+    });
 
     // Load product images into invoice before capture
     const defaultImg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="6" fill="#f0f4ff"/><path d="M16 32l6-8 4 5 6-7 6 10H10z" fill="#c5d5f7"/><circle cx="18" cy="18" r="3" fill="#a0b8e8"/></svg>');
@@ -1313,8 +1355,9 @@ const POS = {
       const saved = await App.getProductImage(it.id);
       img.src = saved || defaultImg;
     }
-    // Wait for images to load
-    await new Promise(r => setTimeout(r, 300));
+    // Safari/iOS có thể giải mã data URL chậm hơn 300 ms. Chờ trạng thái tải
+    // thật của logo, QR và ảnh sản phẩm trước khi html2canvas chụp.
+    await this.waitForImages(temp);
 
     try {
       const canvas = await html2canvas(temp, { backgroundColor: '#ffffff', scale: 2 });
@@ -1756,9 +1799,20 @@ const POS = {
     const el = document.getElementById('invoice-content');
     if (!el) return;
     const btn = document.getElementById('btn-capture-invoice');
-    btn.textContent = '⏳ Đang chụp...';
+    btn.textContent = '⏳ Đang kiểm tra QR...';
     btn.disabled = true;
     try {
+      const qrResult = await App.ensureQrFresh({ maxAgeMs: 2 * 60 * 1000 });
+      this.applyQrVerificationToBox(qrResult, {
+        box: 'inv-popup-qr-box',
+        image: 'inv-popup-qr',
+        info: 'inv-popup-qr-info'
+      });
+      if (!qrResult.verified) {
+        App.toast('warning', 'Không kiểm tra được QR mới; hóa đơn sẽ được tải không kèm mã QR.');
+      }
+      btn.textContent = '⏳ Đang chụp...';
+      await this.waitForImages(el);
       const canvas = await html2canvas(el, {
         backgroundColor: '#ffffff',
         scale: 2,
@@ -1824,23 +1878,45 @@ const POS = {
         <p>Kiều Hương Store</p>
       </div>
     `;
-    // Load QR + info into popup
-    App.getProductImage('__QR_CODE__').then(saved => {
-      if (saved) {
-        const qr = document.getElementById('inv-popup-qr');
-        const box = document.getElementById('inv-popup-qr-box');
-        if (qr) { qr.src = saved; qr.style.display = 'block'; }
-        if (box) box.style.display = 'block';
-      }
-    });
-    const qrInfoPopup = localStorage.getItem('khs_qr_info');
-    if (qrInfoPopup) {
-      const infoEl = document.getElementById('inv-popup-qr-info');
-      if (infoEl) infoEl.textContent = qrInfoPopup;
-      const box = document.getElementById('inv-popup-qr-box');
-      if (box) box.style.display = 'block';
-    }
     document.getElementById('invoice-overlay').style.display = 'flex';
+
+    // Hiện hóa đơn ngay sau khi tạo đơn; QR được xác minh nền. Nút tải ảnh
+    // chỉ mở lại khi kết quả xác minh đã rõ để không chụp nhầm QR cũ.
+    const qrBox = document.getElementById('inv-popup-qr-box');
+    const qrInfo = document.getElementById('inv-popup-qr-info');
+    const captureBtn = document.getElementById('btn-capture-invoice');
+    if (qrBox && qrInfo) {
+      qrBox.style.display = 'block';
+      qrInfo.textContent = 'Đang kiểm tra mã QR mới...';
+    }
+    if (captureBtn) {
+      captureBtn.disabled = true;
+      captureBtn.textContent = '⏳ Đang kiểm tra QR...';
+    }
+    const requestId = (this._invoiceQrRequestId || 0) + 1;
+    this._invoiceQrRequestId = requestId;
+    App.ensureQrFresh({ maxAgeMs: 0 }).then(result => {
+      if (this._invoiceQrRequestId !== requestId) return;
+      this.applyQrVerificationToBox(result, {
+        box: 'inv-popup-qr-box',
+        image: 'inv-popup-qr',
+        info: 'inv-popup-qr-info'
+      });
+      if (!result.verified) {
+        App.toast('warning', 'Không kiểm tra được QR mới; sẽ không dùng QR đang lưu cũ.');
+      }
+    }).catch(error => {
+      if (this._invoiceQrRequestId !== requestId) return;
+      this.applyQrVerificationToBox({ verified: false, qrInfo: localStorage.getItem('khs_qr_info') || '', error: error.message }, {
+        box: 'inv-popup-qr-box',
+        image: 'inv-popup-qr',
+        info: 'inv-popup-qr-info'
+      });
+    }).finally(() => {
+      if (this._invoiceQrRequestId !== requestId || !captureBtn) return;
+      captureBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> 📷 Tải ảnh`;
+      captureBtn.disabled = false;
+    });
   },
 
   // ── Offline Sync Queue ──

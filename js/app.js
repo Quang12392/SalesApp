@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '378';
+const KHS_APP_VERSION = '379';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -116,7 +116,12 @@ const App = {
     }
     // Cached data is already visible. Startup only refreshes the datasets
     // needed by the current page; other screens load their own data on demand.
-    this.syncCurrentPage({ reason: 'startup', force: false });
+    const startupSync = this.syncCurrentPage({ reason: 'startup', force: false });
+    // Ảnh được lưu riêng theo từng origin (Firebase/GitHub). Đồng bộ nền sau
+    // dữ liệu màn hình để avatar và ảnh sản phẩm có mặt trên mọi thiết bị.
+    Promise.resolve(startupSync)
+      .catch(() => {})
+      .finally(() => this.syncImagesFromCloud({ reason: 'startup' }).catch(e => console.warn('Startup image sync failed:', e)));
     // Notifications are secondary. Start them after the main sync has had a
     // chance to use the limited Apps Script concurrency.
     setTimeout(() => this.initNotifications(), 5000);
@@ -130,7 +135,9 @@ const App = {
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
       try {
-        const response = await fetch(url, controller ? { signal: controller.signal } : undefined);
+        const fetchOptions = { ...(options.fetchOptions || {}) };
+        if (controller) fetchOptions.signal = controller.signal;
+        const response = await fetch(url, fetchOptions);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const payload = await response.json();
         if (!payload || payload.success === false) throw new Error(payload?.error || 'API trả về dữ liệu không hợp lệ');
@@ -339,6 +346,9 @@ const App = {
     if (options.reason === 'startup') {
       addDatasetJob('config', 60 * 60 * 1000, () => this.refreshStoreConfigOnly());
     }
+    if (options.userInitiated || options.reason === 'pull') {
+      addJob('images', () => this.syncImagesFromCloud({ force: true, retries: 0, timeoutMs: 30000 }));
+    }
 
     switch (this.page) {
       case 'products':
@@ -396,7 +406,8 @@ const App = {
       customers: 'Khách hàng',
       users: 'Người dùng',
       roles: 'Phân quyền',
-      config: 'Cấu hình'
+      config: 'Cấu hình',
+      images: 'Ảnh/QR'
     };
     results.forEach((result, index) => {
       const key = entries[index][0];
@@ -593,8 +604,16 @@ const App = {
       this.lastSyncAt = new Date().toISOString();
       await this.saveCacheValue('lastSync', this.lastSyncAt);
       this.handleRoute();
-      // Sync ảnh từ cloud (background, không block UI)
-      this.syncImagesFromCloud();
+      // Nút đồng bộ thủ công phải chờ cả ảnh; các luồng nền không chặn UI.
+      if (options.userInitiated) {
+        try {
+          await this.syncImagesFromCloud({ force: true, retries: 0, timeoutMs: 30000 });
+        } catch (imageError) {
+          errors.push(`images: ${imageError.message || 'lỗi tải'}`);
+        }
+      } else {
+        this.syncImagesFromCloud({ force: true }).catch(e => console.warn('Image sync failed:', e));
+      }
       if (options.userInitiated) {
         if (errors.length) this.toast('warning', `Đã cập nhật một phần. ${errors.join('; ')}`);
         else this.toast('success', 'Đã cập nhật dữ liệu!');
@@ -855,9 +874,14 @@ const App = {
       reader.onload = async (ev) => {
         const dataUrl = ev.target.result;
         const key = 'avatar_' + this.user.username;
-        await this.saveProductImage(key, dataUrl);
-        this.setAvatarImage(await this.getProductImage(key));
-        this.toast('success', 'Đã cập nhật ảnh đại diện!');
+        this.setAvatarImage(dataUrl);
+        try {
+          await this.saveProductImage(key, dataUrl);
+          this.setAvatarImage(await this.getProductImage(key));
+          this.toast('success', 'Đã cập nhật và đồng bộ ảnh đại diện!');
+        } catch (error) {
+          this.toast('error', 'Ảnh đã lưu trên máy nhưng chưa đồng bộ: ' + error.message);
+        }
       };
       reader.readAsDataURL(file);
       e.target.value = '';
@@ -1474,11 +1498,16 @@ const App = {
         if (!file) return;
         const pid = inp.dataset.id;
         const reader = new FileReader();
-        reader.onload = (ev) => {
+        reader.onload = async (ev) => {
           const dataUrl = ev.target.result;
-          this.saveProductImage(pid, dataUrl);
           const img = document.getElementById('pimg-' + pid);
           if (img) img.src = dataUrl;
+          try {
+            const saved = await this.saveProductImage(pid, dataUrl);
+            if (img) img.src = saved || dataUrl;
+          } catch (error) {
+            this.toast('error', 'Ảnh đã lưu trên máy nhưng chưa đồng bộ: ' + error.message);
+          }
         };
         reader.readAsDataURL(file);
       });
@@ -1864,7 +1893,7 @@ const App = {
 
           if (oldId !== p.id) {
             this.getProductImage(oldId).then(img => {
-              if (img) { this.saveProductImage(p.id, img); }
+              if (img) { this.saveProductImage(p.id, img).catch(() => {}); }
             });
           }
 
@@ -4205,9 +4234,7 @@ const App = {
 
       // Lưu IndexedDB để app hiển thị ngay
       try {
-        const db = await this._openImgDB();
-        const tx = db.transaction('images', 'readwrite');
-        tx.objectStore('images').put(compressed, '__QR_CODE__');
+        await this._putProductImageLocal('__QR_CODE__', compressed);
       } catch(e) {}
 
       const qrInfo = document.getElementById('qr-decoded-info').value;
@@ -4216,10 +4243,12 @@ const App = {
       const url = localStorage.getItem('khs_api_url');
       if (url) {
         let errs = [];
+        let savedVersion = '';
         try {
           const r1 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveImage', sku:'__QR_CODE__', base64: compressed }) });
           const d1 = await r1.json();
           if (!d1.success) errs.push('Lỗi ảnh: ' + d1.error);
+          else savedVersion = String(d1.version || this._imageFingerprint(compressed));
         } catch (err) {
           errs.push('Lỗi mạng lưu ảnh: ' + err.message);
         }
@@ -4238,6 +4267,12 @@ const App = {
         if (errs.length > 0) {
           this.toast('error', '⚠️ Lỗi đồng bộ: ' + errs.join(', '));
         } else {
+          await this._saveQrVerification({
+            exists: true,
+            version: savedVersion,
+            hasQrInfo: true,
+            qrInfo: qrInfo
+          });
           this.toast('success', '💾 Đã lưu QR + thông tin (đồng bộ tất cả thiết bị)!');
         }
       } else {
@@ -4259,17 +4294,23 @@ const App = {
       
       // Xóa khỏi IndexedDB cục bộ
       try {
-        const db = await this._openImgDB();
-        const tx = db.transaction('images', 'readwrite');
-        tx.objectStore('images').delete('__QR_CODE__');
+        await this._deleteProductImageLocal('__QR_CODE__');
       } catch(e) {}
 
       const url = localStorage.getItem('khs_api_url');
       if (url) {
-        fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteImage', sku:'__QR_CODE__' }) }).catch(() => {});
-        fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: '' }) }).catch(() => {});
+        try {
+          const deleteRes = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteImage', sku:'__QR_CODE__' }) }).then(r => r.json());
+          const configRes = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: '' }) }).then(r => r.json());
+          if (!deleteRes.success || !configRes.success) throw new Error(deleteRes.error || configRes.error || 'Google Sheet từ chối thao tác');
+          await this._saveQrVerification({ exists: false, version: '', hasQrInfo: true, qrInfo: '' });
+          this.toast('success', '🗑 Đã xóa QR trên tất cả thiết bị!');
+        } catch (error) {
+          this.toast('error', 'Đã xóa trên máy này nhưng chưa đồng bộ: ' + error.message);
+        }
+      } else {
+        this.toast('success', '🗑 Đã xóa QR trên thiết bị này!');
       }
-      this.toast('success', '🗑 Đã xóa tất cả!');
     });
     // Load existing saved QR từ sheet "Ảnh SP"
     this.getProductImage('__QR_CODE__').then(saved => {
@@ -4656,11 +4697,20 @@ const App = {
   },
 
   // ── Config Backup (IndexedDB) ──
+  _waitForImgTransaction(tx) {
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('Không thể ghi dữ liệu ảnh trên thiết bị'));
+      tx.onabort = () => reject(tx.error || new Error('Giao dịch ảnh trên thiết bị đã bị hủy'));
+    });
+  },
+
   async saveConfigValue(key, value) {
     try {
       const db = await this._openImgDB();
       const tx = db.transaction('config', 'readwrite');
       tx.objectStore('config').put(value, key);
+      await this._waitForImgTransaction(tx);
     } catch(e) { console.warn('Config save error:', e); }
   },
 
@@ -4670,7 +4720,7 @@ const App = {
       return new Promise(resolve => {
         const tx = db.transaction('config', 'readonly');
         const req = tx.objectStore('config').get(key);
-        req.onsuccess = () => resolve(req.result || null);
+        req.onsuccess = () => resolve(req.result === undefined ? null : req.result);
         req.onerror = () => resolve(null);
       });
     } catch(e) { return null; }
@@ -4679,6 +4729,8 @@ const App = {
   // ── Product Image Storage (IndexedDB + Google Sheets Cloud) ──
   _imgDB: null,
   _imgSynced: false,
+  _imageSyncPromise: null,
+  _qrFreshPromise: null,
   async _openImgDB() {
     if (this._imgDB) return this._imgDB;
     return new Promise((resolve, reject) => {
@@ -4691,6 +4743,81 @@ const App = {
       req.onsuccess = () => { this._imgDB = req.result; resolve(req.result); };
       req.onerror = () => reject(req.error);
     });
+  },
+
+  async _putProductImageLocal(productId, dataUrl) {
+    const db = await this._openImgDB();
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').put(dataUrl, productId);
+    await this._waitForImgTransaction(tx);
+    return dataUrl;
+  },
+
+  async _deleteProductImageLocal(productId) {
+    const db = await this._openImgDB();
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').delete(productId);
+    await this._waitForImgTransaction(tx);
+  },
+
+  async _replaceProductImagesLocal(images) {
+    const db = await this._openImgDB();
+    const tx = db.transaction('images', 'readwrite');
+    const store = tx.objectStore('images');
+    store.clear();
+    for (const [sku, base64] of Object.entries(images || {})) {
+      if (sku && typeof base64 === 'string' && base64) store.put(base64, sku);
+    }
+    await this._waitForImgTransaction(tx);
+  },
+
+  _imageFingerprint(dataUrl) {
+    const value = String(dataUrl || '');
+    let hash = 2166136261;
+    for (let i = 0; i < value.length; i++) {
+      hash ^= value.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `local-${value.length}-${(hash >>> 0).toString(16)}`;
+  },
+
+  _extractQrSnapshot(payload) {
+    const data = payload?.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const qrKey = '__QR_CODE__';
+    const isVersionMetadata = data.sku === qrKey && Object.prototype.hasOwnProperty.call(data, 'exists');
+    if (isVersionMetadata) {
+      return {
+        metadataOnly: true,
+        exists: !!data.exists,
+        version: String(data.version || ''),
+        image: null,
+        hasQrInfo: Object.prototype.hasOwnProperty.call(data, 'qrInfo'),
+        qrInfo: String(data.qrInfo || '')
+      };
+    }
+
+    const meta = payload?.meta?.qr || (payload?.meta?.sku === qrKey ? payload.meta : null);
+    const hasImageKey = Object.prototype.hasOwnProperty.call(data, qrKey);
+    const image = hasImageKey && typeof data[qrKey] === 'string' && data[qrKey] ? data[qrKey] : null;
+    const exists = meta && Object.prototype.hasOwnProperty.call(meta, 'exists') ? !!meta.exists : !!image;
+    return {
+      metadataOnly: false,
+      exists,
+      version: String(meta?.version || (image ? this._imageFingerprint(image) : '')),
+      image,
+      hasQrInfo: !!meta && Object.prototype.hasOwnProperty.call(meta, 'qrInfo'),
+      qrInfo: String(meta?.qrInfo || '')
+    };
+  },
+
+  async _saveQrVerification(snapshot) {
+    if (snapshot.hasQrInfo) localStorage.setItem('khs_qr_info', snapshot.qrInfo || '');
+    await Promise.all([
+      this.saveConfigValue('qr_image_version', snapshot.version || ''),
+      this.saveConfigValue('qr_image_exists', !!snapshot.exists),
+      this.saveConfigValue('qr_verified_at', Date.now())
+    ]);
   },
 
   // Nén ảnh → 100×100 JPEG (~5-15KB)
@@ -4714,24 +4841,23 @@ const App = {
   },
 
   async saveProductImage(productId, dataUrl) {
-    try {
-      // Nén trước
-      const compressed = await this.compressImage(dataUrl);
-      // Lưu IndexedDB (instant)
-      const db = await this._openImgDB();
-      const tx = db.transaction('images', 'readwrite');
-      tx.objectStore('images').put(compressed, productId);
-      // Upload lên Google Sheets (background)
-      const url = localStorage.getItem('khs_api_url');
-      if (url) {
-        fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action: 'saveImage', sku: productId, base64: compressed })
-        }).catch(e => console.warn('Cloud save image failed:', e));
-      }
-      if (!productId.startsWith('avatar_')) this.toast('success', 'Đã lưu ảnh sản phẩm!');
-    } catch(e) { console.error('Save image error:', e); }
+    // Lưu cục bộ trước để UI phản hồi ngay, sau đó chờ cloud xác nhận để không
+    // báo thành công giả khi thiết bị khác chưa thể nhận ảnh.
+    const compressed = await this.compressImage(dataUrl);
+    await this._putProductImageLocal(productId, compressed);
+    const url = localStorage.getItem('khs_api_url');
+    if (url) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'saveImage', sku: productId, base64: compressed })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+      if (!result?.success) throw new Error(result?.error || 'Google Sheet không lưu được ảnh');
+    }
+    if (!productId.startsWith('avatar_')) this.toast('success', 'Đã lưu và đồng bộ ảnh sản phẩm!');
+    return compressed;
   },
 
   async getProductImage(productId) {
@@ -4746,38 +4872,156 @@ const App = {
     } catch(e) { return null; }
   },
 
-  // Sync ảnh từ cloud → IndexedDB (chạy 1 lần khi init)
-  async syncImagesFromCloud() {
-    if (this._imgSynced) return;
-    const url = localStorage.getItem('khs_api_url');
-    if (!url) return;
-    try {
-      const res = await fetch(url + '?action=getImages');
-      const json = await res.json();
-      if (!json.success || !json.data) return;
-      const cloudImages = json.data; // { sku: base64, ... }
-      const db = await this._openImgDB();
-      
-      // Xóa các ảnh cũ không còn trên cloud, sau đó thêm ảnh mới
-      const tx = db.transaction('images', 'readwrite');
-      const store = tx.objectStore('images');
-      
-      const req = store.getAllKeys();
-      req.onsuccess = () => {
-        const localKeys = req.result;
-        for (const key of localKeys) {
-          if (!cloudImages[key]) store.delete(key);
-        }
-        for (const [sku, base64] of Object.entries(cloudImages)) {
-          store.put(base64, sku);
-        }
-      };
+  async reloadImagesFromLocal() {
+    const jobs = [this.loadAllProductImages()];
+    if (this.user) jobs.push(this.loadUserAvatar());
+    if (typeof POS !== 'undefined') {
+      if (typeof POS.loadPosImages === 'function') jobs.push(POS.loadPosImages(this.products || []));
+      if (typeof POS.loadCartImages === 'function') jobs.push(POS.loadCartImages());
+    }
+    await Promise.allSettled(jobs);
+  },
 
+  // Sync toàn bộ sheet Ảnh SP vào IndexedDB của origin hiện tại.
+  async syncImagesFromCloud(options = {}) {
+    if (this._imageSyncPromise) return this._imageSyncPromise;
+    if (this._imgSynced && !options.force) return { success: true, skipped: true, count: 0 };
+    const url = localStorage.getItem('khs_api_url');
+    if (!url) throw new Error('Chưa cấu hình API');
+    const task = (async () => {
+      const separator = url.includes('?') ? '&' : '?';
+      const json = await this.fetchApiJson(`${url}${separator}action=getImages&_=${Date.now()}`, {
+        retries: options.retries ?? 1,
+        timeoutMs: options.timeoutMs ?? 30000,
+        fetchOptions: { cache: 'no-store' }
+      });
+      if (!json.data || typeof json.data !== 'object' || Array.isArray(json.data)) {
+        throw new Error('Ảnh trên cloud không hợp lệ');
+      }
+      await this._replaceProductImagesLocal(json.data);
+      const qrSnapshot = this._extractQrSnapshot(json);
+      if (qrSnapshot) await this._saveQrVerification(qrSnapshot);
       this._imgSynced = true;
-      console.log(`☁️ Synced ${Object.keys(cloudImages).length} ảnh từ cloud`);
-      // Reload images on page
-      this.loadAllProductImages();
-    } catch(e) { console.warn('Image sync failed:', e); }
+      await this.reloadImagesFromLocal();
+      const count = Object.keys(json.data).length;
+      console.log(`☁️ Synced ${count} ảnh từ cloud`);
+      return { success: true, count };
+    })();
+    this._imageSyncPromise = task;
+    try {
+      return await task;
+    } finally {
+      if (this._imageSyncPromise === task) this._imageSyncPromise = null;
+    }
+  },
+
+  // QR phải được đối chiếu với cloud trước khi tạo ảnh hóa đơn. Nếu backend
+  // cũ chưa hỗ trợ versionOnly, response getImages đầy đủ vẫn được nhận diện.
+  async ensureQrFresh(options = {}) {
+    const maxAgeMs = Math.max(0, Number(options.maxAgeMs) || 0);
+    if (maxAgeMs > 0) {
+      const [verifiedAt, cachedExists, cachedImage] = await Promise.all([
+        this.getConfigValue('qr_verified_at'),
+        this.getConfigValue('qr_image_exists'),
+        this.getProductImage('__QR_CODE__')
+      ]);
+      if (Number(verifiedAt) > 0 && Date.now() - Number(verifiedAt) <= maxAgeMs && (!cachedExists || cachedImage)) {
+        return {
+          verified: true,
+          exists: !!cachedExists && !!cachedImage,
+          image: cachedExists ? cachedImage : null,
+          qrInfo: localStorage.getItem('khs_qr_info') || '',
+          cached: true
+        };
+      }
+    }
+    if (this._qrFreshPromise) return this._qrFreshPromise;
+
+    const task = (async () => {
+      const url = localStorage.getItem('khs_api_url');
+      if (!url) throw new Error('Chưa cấu hình API để kiểm tra QR');
+      const separator = url.includes('?') ? '&' : '?';
+      const versionUrl = `${url}${separator}action=getImages&sku=${encodeURIComponent('__QR_CODE__')}&versionOnly=1&_=${Date.now()}`;
+      const versionPayload = await this.fetchApiJson(versionUrl, {
+        retries: 0,
+        timeoutMs: options.timeoutMs ?? 20000,
+        fetchOptions: { cache: 'no-store' }
+      });
+      let snapshot = this._extractQrSnapshot(versionPayload);
+      if (!snapshot) throw new Error('API không trả về trạng thái QR hợp lệ');
+
+      // Backend cũ bỏ qua sku/versionOnly và trả luôn toàn bộ object ảnh.
+      if (!snapshot.metadataOnly) {
+        if (snapshot.exists && !snapshot.image) throw new Error('API báo có QR nhưng không trả dữ liệu ảnh');
+      } else if (snapshot.exists) {
+        const [localVersion, localImage] = await Promise.all([
+          this.getConfigValue('qr_image_version'),
+          this.getProductImage('__QR_CODE__')
+        ]);
+        if (localImage && snapshot.version && String(localVersion || '') === snapshot.version) {
+          await this._saveQrVerification(snapshot);
+          return {
+            verified: true,
+            exists: true,
+            image: localImage,
+            version: snapshot.version,
+            qrInfo: localStorage.getItem('khs_qr_info') || '',
+            cached: true
+          };
+        }
+        const imageUrl = `${url}${separator}action=getImages&sku=${encodeURIComponent('__QR_CODE__')}&_=${Date.now()}`;
+        const imagePayload = await this.fetchApiJson(imageUrl, {
+          retries: 0,
+          timeoutMs: options.timeoutMs ?? 20000,
+          fetchOptions: { cache: 'no-store' }
+        });
+        const downloaded = this._extractQrSnapshot(imagePayload);
+        if (!downloaded?.exists || !downloaded.image) throw new Error('Không tải được QR mới từ Google Sheet');
+        // Giữ qrInfo từ lần kiểm tra version nếu response ảnh không chứa nó.
+        if (!downloaded.hasQrInfo && snapshot.hasQrInfo) {
+          downloaded.hasQrInfo = true;
+          downloaded.qrInfo = snapshot.qrInfo;
+        }
+        snapshot = downloaded;
+      }
+
+      if (!snapshot.exists) {
+        await this._deleteProductImageLocal('__QR_CODE__');
+        await this._saveQrVerification(snapshot);
+        return {
+          verified: true,
+          exists: false,
+          image: null,
+          version: '',
+          qrInfo: localStorage.getItem('khs_qr_info') || ''
+        };
+      }
+
+      await this._putProductImageLocal('__QR_CODE__', snapshot.image);
+      await this._saveQrVerification(snapshot);
+      return {
+        verified: true,
+        exists: true,
+        image: snapshot.image,
+        version: snapshot.version,
+        qrInfo: localStorage.getItem('khs_qr_info') || ''
+      };
+    })();
+    this._qrFreshPromise = task;
+    try {
+      return await task;
+    } catch (error) {
+      console.warn('QR verification failed:', error);
+      return {
+        verified: false,
+        exists: false,
+        image: null,
+        qrInfo: localStorage.getItem('khs_qr_info') || '',
+        error: error.message || 'Không thể kiểm tra QR'
+      };
+    } finally {
+      if (this._qrFreshPromise === task) this._qrFreshPromise = null;
+    }
   },
 
   async loadAllProductImages() {
