@@ -13,8 +13,10 @@ Use port `3000` for local frontend checks. Do not introduce another local port f
 When changing frontend files that the browser caches, update all version references together:
 
 - `js/app.js`: `KHS_APP_VERSION`
-- `index.html`: `css/index.css?v=...`, `js/app.js?v=...`, `js/pos.js?v=...`
-- `sw.js`: `CACHE_NAME`, `STATIC_ASSETS` query strings
+- `index.html`: `css/index.css?v=...`, `js/auth.js?v=...`, `js/app.js?v=...`, `js/pos.js?v=...`
+- `sw.js`: `CACHE_NAME`, `STATIC_ASSETS` query strings, and the `importScripts('./js/auth.js?v=...')` version
+
+Since v380, `js/auth.js` is a cached asset shared with the Service Worker. Any change to its Worker URL, release gate, or session logic requires the same frontend version bump; never flip the gate without a new asset version.
 
 The notification panel and update banner show the current frontend version from `KHS_APP_VERSION`.
 
@@ -154,3 +156,19 @@ Do not use `sku` or product `id` as the unique cart-row key when a TikTok cart/o
 - Trong giai đoạn chuyển tiếp, app và extension chưa ghép Worker vẫn dùng API cũ. Extension đã ghép máy không âm thầm fallback khi mã sai/thu hồi/lỗi mạng. Đường API Apps Script legacy vẫn còn mở đến bước chuyển PWA; KHÔNG báo đã bảo mật hoàn chỉnh hoặc không thể gọi vòng chỉ vì gateway mã máy đã được viết.
 - SalesApp chỉ có hai vợ chồng dùng: yêu cầu là không bắt nhập mật khẩu lại theo chu kỳ ngắn. Hướng thiết kế là thiết bị tin cậy lâu dài, tự gia hạn access token nền bằng refresh credential riêng có thể thu hồi; không lưu mật khẩu để gửi lại. Chỉ buộc đăng nhập lại khi đăng xuất/thu hồi/khóa tài khoản, dữ liệu máy bị xóa hoặc không thể duy trì phiên theo chính sách được chốt. Phần tự gia hạn PWA CHƯA triển khai trong bản extension này; không hứa app đã có chức năng đó.
 - Việc tiếp theo: thử backend/Worker trên môi trường riêng theo hướng dẫn `docs/DEVICE_CONNECTIONS.md`, chốt thời điểm chuyển production, deploy backend mới và cấu hình secret/registry, rồi cấp mã từng máy. Không lấy 2FA Cloudflare làm xác thực cho người dùng SalesApp. Sau đó hoàn thiện phiên tin cậy PWA và khóa toàn bộ đường API legacy mới có thể coi bảo mật hoàn tất.
+
+### Triển khai cả mã máy và phiên PWA — mốc mới nhất 08/09/2026
+
+Mục này thay thế các trạng thái "chưa viết/chưa deploy/chưa cấp mã" ở các mốc cũ phía trên; không tự coi các bước còn lại đã xong.
+
+- Frontend chuẩn bị `v380` có `js/auth.js`: IndexedDB `khs_auth` giữ refresh credential riêng theo origin, access token chỉ trong bộ nhớ, tự gia hạn nền và gộp các lần gia hạn đồng thời. Access token 15 phút, thiết bị tin cậy có hạn trượt 365 ngày không sử dụng; hai vợ chồng dùng thường xuyên không phải nhập mật khẩu theo chu kỳ ngắn. Đăng xuất, thu hồi, khóa tài khoản, đổi mật khẩu hoặc xóa dữ liệu máy vẫn cần đăng nhập lại.
+- Đã thêm menu **Thiết bị đã đăng nhập** (chỉ hiện khi gateway bật) để xem/thu hồi phiên. Lỗi xác thực trước khi gửi giữ giỏ, không tạo/đánh dấu đơn thành công; hàng chờ giữ cả các mục chưa xử lý, không xóa chỉ vì HTTP 200. Hàng chờ có nhãn user không tự gửi bằng user khác.
+- Mọi đường gọi API trong App/POS và Service Worker đi qua adapter phiên. **`GATEWAY_ENABLED=false` trong `js/auth.js` hiện vẫn giữ luồng production cũ.** URL Worker đã được điền sẵn nhưng chưa kích hoạt. Không báo chức năng đăng nhập lâu dài/bảo vệ API đã chạy production chỉ vì v380 có source.
+- Backend Private đã thêm `appGateway`: xác thực phong bì ký, nonce, phiên/token, trạng thái User và quyền hiện tại; không tin role/permissions/createdBy từ client. Login dùng PBKDF2-SHA256 100.000 vòng tại Worker + HMAC pepper tại Apps Script; lần login Worker hợp lệ đầu tiên chuyển password rõ trong Users sang hash mà không đổi mật khẩu người dùng nhập. Không thử migration user production trước khi frontend chuyển đã sẵn sàng.
+- Worker đã deploy tại `https://salesapp-device-gateway.salesapp-backend.workers.dev` (lần upload ban đầu version ID `acdb8b3c-ea40-4712-953f-3ad015e5b161`, secret uploads có thể tạo version deployment tiếp theo). Có cả routes mã máy, `/v1/auth/*` và `/v1/api`; rate limit riêng cho thiết bị/login/API PWA. Không đăng ký gói trả phí.
+- Đã tạo một mã máy chính và khóa gateway ngẫu nhiên bằng `scripts/provision.ps1`, lưu bản local bằng Windows DPAPI trong repo Private `.local/provisioning.dpapi`; registry hash ở `.local/device-registry.json`, đều bị Git ignore. Đã nạp `KH_GATEWAY_SECRET` và `KH_DEVICE_REGISTRY` vào Worker. Không in/ghi mã thật vào chat, source hoặc log. **Không tạo lại khóa** nếu file protected đã có; mất file phải theo hướng khôi phục, không ghi đè registry hiện có.
+- Kiểm tra live: `/health` HTTP 200; `provision.ps1 -Mode check` trả device authorized=true, backend configured=false. API login trả 503 khi chưa cấu hình upstream, không gọi Sheet. **Chưa đặt `KH_APPS_SCRIPT_URL`; chưa deploy code Apps Script mới, chưa sửa Script Properties của Google, chưa ghép mã vào extension và chưa bật PWA gateway.**
+- Hướng dẫn cấu hình cuối/khôi phục: `G:\Antigravity\SalesApp-Backend\docs\TRUSTED_SESSIONS.md`. Helper `provision.ps1` có `copy-gateway`/`copy-device` cho người dùng copy trực tiếp vào clipboard mà không đưa secret lên chat. DPAPI phụ thuộc tài khoản Windows/máy; Git clone không khôi phục được các khóa này.
+- Bộ kiểm tra hiện có: 19 test Worker/Apps Script, 13 test auth/POS frontend, 6 test extension; thêm kiểm thử hồi quy ảnh và reconcile đơn cũ. Build Worker dry-run và Firebase đạt. Kiểm tra local cổng 3000 thấy v380 và không có lỗi JS; các test ghi/login dùng mock, chưa kiểm thử giao dịch hoặc password migration trên Sheet production.
+- Bước người dùng phải làm: deploy bản mới `G:\Antigravity\SalesApp-Backend\apps-script\Code.gs`, đặt Script Property `KH_GATEWAY_SECRET` bằng đúng khóa Worker (dùng helper copy), **chưa bật `KH_REQUIRE_GATEWAY`**. Sau khi xác nhận backend đúng môi trường mới nạp URL upstream, kiểm thử staging, phát hành frontend bật gateway bằng version mới và ghép từng thiết bị.
+- Chỉ bật `KH_REQUIRE_GATEWAY=true` khi hai PWA/Extension đã chuyển, và đóng tất cả deployment cũ không có guard. Không xóa dữ liệu tạm/hàng chờ hoặc fallback âm thầm về API không xác thực. Lịch sử Public vẫn chưa được viết lại; bảo mật production chưa hoàn tất tại mốc này.

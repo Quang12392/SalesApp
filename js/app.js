@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '379';
+const KHS_APP_VERSION = '380';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -61,8 +61,11 @@ const App = {
   pSearch: '', pFilter: 'all', cSearch: '',
 
   async init() {
-    this.checkAuth();
+    await this.checkAuth();
     this.bind();
+    window.addEventListener('khs-auth-required', () => {
+      if (!this._authNoticeShown) { this._authNoticeShown=true; this.toast('warning','Thiết bị cần xác nhận lại. Dùng Đăng xuất rồi đăng nhập lại; giỏ và đơn tạm không bị xóa.'); }
+    });
     this.initReturn();
     await this.loadCachedSnapshot();
     this._routeSyncEnabled = false;
@@ -127,6 +130,10 @@ const App = {
     setTimeout(() => this.initNotifications(), 5000);
   },
 
+  apiFetch(url, options = {}) {
+    return typeof KHS_AUTH !== 'undefined' ? KHS_AUTH.fetchApi(url, KHS_AUTH.enabled ? {...options,authUsername:this.user?.username} : options) : fetch(url, options);
+  },
+
   async fetchApiJson(url, options = {}) {
     const retries = options.retries ?? 2;
     const timeoutMs = options.timeoutMs ?? 45000;
@@ -137,13 +144,15 @@ const App = {
       try {
         const fetchOptions = { ...(options.fetchOptions || {}) };
         if (controller) fetchOptions.signal = controller.signal;
-        const response = await fetch(url, fetchOptions);
+        const response = await App.apiFetch(url, fetchOptions);
+        if ([401,403].includes(response.status)) throw Object.assign(new Error('Phiên đăng nhập hoặc quyền truy cập không hợp lệ.'), { code:'AUTH_REQUIRED', notSubmitted:true });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const payload = await response.json();
         if (!payload || payload.success === false) throw new Error(payload?.error || 'API trả về dữ liệu không hợp lệ');
         return payload;
       } catch (error) {
         lastError = error;
+        if (error.notSubmitted || /^AUTH_|^FORBIDDEN/.test(error.code || '')) break;
         if (attempt < retries) await new Promise(resolve => setTimeout(resolve, 600 * Math.pow(2, attempt)));
       } finally {
         if (timer) clearTimeout(timer);
@@ -635,7 +644,15 @@ const App = {
     return !!perms[perm];
   },
 
-  checkAuth() {
+  async checkAuth() {
+    if (typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled) {
+      try {
+        const session = await KHS_AUTH.restore();
+        if (session?.user) { this.user=session.user; this.showApp(); }
+        else localStorage.removeItem('khs_user');
+      } catch (_) { localStorage.removeItem('khs_user'); }
+      return;
+    }
     const s = localStorage.getItem('khs_user');
     if (s) {
       this.user = JSON.parse(s);
@@ -648,11 +665,23 @@ const App = {
   },
 
   async login(u, p) {
+    if (typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled) {
+      try {
+        const label = /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone / iPad' : /Android/.test(navigator.userAgent) ? 'Android' : 'Máy tính';
+        this.user = await KHS_AUTH.login(u,p,label);
+        localStorage.setItem('khs_user',JSON.stringify(this.user));
+        this.showApp(); location.hash='#dashboard';
+        this.toast('success','Đã đăng nhập. Thiết bị sẽ tự gia hạn phiên.');
+        this.syncCurrentPage({reason:'login',force:true});
+        this.syncImagesFromCloud({force:true}).catch(()=>{});
+        return true;
+      } catch (error) { return error.message || 'Chưa đăng nhập được. Thử lại khi có mạng.'; }
+    }
     const url = localStorage.getItem('khs_api_url');
     // Try API auth first
     if (url) {
       try {
-        const res = await fetch(url + '?action=auth&user=' + encodeURIComponent(u) + '&pass=' + encodeURIComponent(p)).then(r => r.json());
+        const res = await App.apiFetch(url + '?action=auth&user=' + encodeURIComponent(u) + '&pass=' + encodeURIComponent(p)).then(r => r.json());
         if (res.success && res.user) {
           this.user = res.user;
           localStorage.setItem('khs_user', JSON.stringify(this.user));
@@ -677,15 +706,21 @@ const App = {
     return 'Sai tên đăng nhập hoặc mật khẩu!';
   },
 
-  logout() {
+  async logout() {
+    const revoke = typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled ? KHS_AUTH.logout() : null;
     this.user = null;
     localStorage.removeItem('khs_user');
     document.getElementById('app-shell').style.display = 'none';
     document.getElementById('login-page').style.display = 'flex';
     location.hash = '';
+    if (revoke) {
+      try { if (!(await revoke).revoked) this.toast('warning','Đã đăng xuất trên máy; chưa thu hồi được phiên server. Có thể thu hồi từ thiết bị khác.'); }
+      catch (_) { this.toast('warning','Chưa thu hồi được phiên server. Kiểm tra lại trên thiết bị khác.'); }
+    }
   },
 
   showApp() {
+    this._authNoticeShown=false;
     document.getElementById('login-page').style.display = 'none';
     document.getElementById('app-shell').style.display = 'flex';
     const dn = this.user.displayName;
@@ -694,6 +729,8 @@ const App = {
     document.getElementById('dropdown-role').textContent = this.user.role || 'Nhân viên';
     const versionEl = document.getElementById('dropdown-app-version');
     if (versionEl) versionEl.textContent = `Ver ${KHS_APP_VERSION}`;
+    const deviceBtn = document.getElementById('btn-auth-devices');
+    if (deviceBtn) deviceBtn.style.display = typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled ? '' : 'none';
 
     // Load avatar
     this.loadUserAvatar();
@@ -723,6 +760,28 @@ const App = {
     // Dropdown avatar
     const da = document.getElementById('dropdown-avatar-img');
     if (da) da.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent='${(this.user?.displayName||'U')[0]}'">`;
+  },
+
+  async showAuthDevices() {
+    if (typeof KHS_AUTH === 'undefined' || !KHS_AUTH.enabled) return;
+    try {
+      const devices = await KHS_AUTH.sessions();
+      document.getElementById('modal-title').textContent='Thiết bị đã đăng nhập';
+      const body=document.getElementById('modal-body'); body.replaceChildren();
+      const hint=document.createElement('p'); hint.textContent='Thiết bị đang dùng tự gia hạn phiên. Thu hồi nếu mất máy hoặc không còn sử dụng.'; body.appendChild(hint);
+      for (const item of devices) {
+        const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #ddd';
+        const label=document.createElement('span'); label.textContent=`${item.label} — ${item.username}${item.current?' (máy này)':''}`;
+        const button=document.createElement('button'); button.className='btn btn-sm';button.textContent='Thu hồi';
+        button.addEventListener('click',async()=>{
+          if(!confirm('Thu hồi phiên của thiết bị này? Thiết bị đó phải đăng nhập lại.'))return;
+          button.disabled=true;
+          try {await KHS_AUTH.revoke(item.id);if(item.current){this.closeModal();await this.logout();}else row.remove();}
+          catch(error){this.toast('error',error.message);button.disabled=false;}
+        }); row.append(label,button);body.appendChild(row);
+      }
+      this.openModal();
+    } catch(error) { this.toast('error',error.message); }
   },
 
   enforcePermissions() {
@@ -854,6 +913,7 @@ const App = {
     }
     if (apiSave) {
       apiSave.addEventListener('click', () => {
+        if (typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled) { this.toast('info','Worker đã được cấu hình chung; không đổi API trực tiếp tại đây.'); return; }
         const url = apiInput.value.trim();
         if (!url) { apiStatus.textContent = '❌ Vui lòng nhập URL'; apiStatus.style.color = '#EF4444'; return; }
         localStorage.setItem('khs_api_url', url);
@@ -1594,7 +1654,7 @@ const App = {
       const url = localStorage.getItem('khs_api_url');
       if (url) {
         try {
-          await fetch(url, {
+          await App.apiFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ action: 'addProduct', sku: clone.sku, name: clone.name, category: clone.category, sellPrice: clone.sellPrice, costPrice: clone.costPrice, stock: clone.stock })
@@ -1770,7 +1830,7 @@ const App = {
         saveBtn.disabled = true;
         this.showSheetProgress('Đang lưu lô lên Google Sheet...');
         try {
-          const res = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
+          const res = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
             body: JSON.stringify({
               action:'updateBatch',
               batchId: bid,
@@ -1828,7 +1888,7 @@ const App = {
       if (!url) return;
       this.showSheetProgress('Đang xóa lô trên Google Sheet...');
       try {
-        const res = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
+        const res = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
           body: JSON.stringify({ action:'deleteBatch', batchId: bid })
         }).then(r=>r.json());
         if (res.success) {
@@ -1903,7 +1963,7 @@ const App = {
             const skuBatchCount = (this.batches||[]).filter(b => b.sku === d.sku).length;
             const updateData = { action: 'updateProduct', oldSku: oldSku, newSku: d.sku, name: d.name, category: d.category, sellPrice: d.sellPrice, costPrice: d.costPrice, _hasBatch: skuBatchCount >= 2 };
             if (!hasBatch) updateData.stock = d.stock;
-            const updateRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            const updateRes = await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
               body: JSON.stringify(updateData)
             }).then(r => r.json());
             if (!updateRes.success) throw new Error(updateRes.error || 'Không cập nhật được sản phẩm');
@@ -1919,7 +1979,7 @@ const App = {
             const bDateStr = bd ? (bd.d + bd.m + bd.y) : dateInputLocal().split('-').reverse().join('');
             const customBatchId = 'LOT-' + bDateStr + (bSuffix ? '-' + bSuffix : '');
             if (bQty > 0) {
-              const bRes = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
+              const bRes = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
                 body: JSON.stringify({ action:'addBatch', sku: d.sku, name: d.name, qty: bQty, costPrice: bCost, sellPrice: d.sellPrice, importedBy: this.user?.displayName||'Admin', note: bNote, customBatchId, importDate: bDate })
               }).then(r=>r.json());
               if (!bRes.success) throw new Error(bRes.error || 'Không nhập được lô mới');
@@ -1931,7 +1991,7 @@ const App = {
           productId = d.id;
           this.products.push(d);
           if (url) {
-            const addRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            const addRes = await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
               body: JSON.stringify({ action: 'addProduct', sku: d.sku, name: d.name, category: d.category, sellPrice: d.sellPrice, costPrice: d.costPrice, stock: d.stock })
             }).then(r => r.json());
             if (!addRes.success) throw new Error(addRes.error || 'Không thêm được sản phẩm');
@@ -2010,7 +2070,7 @@ const App = {
 
       this.showSheetProgress('Đang xóa sản phẩm trên Google Sheet...');
       try {
-        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        const res = await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({ action: 'deleteProduct', sku: p.sku })
         }).then(response => response.json());
         if (!res.success) throw new Error(res.error || 'Không xóa được sản phẩm');
@@ -2775,7 +2835,7 @@ const App = {
         this.toast('success', 'Đã cập nhật khách hàng!');
         if (url) {
           try {
-            await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
               body: JSON.stringify({ action: 'updateCustomer', id: cu.id, ...d })
             });
           } catch (e) { console.warn('Sync customer update failed:', e); }
@@ -2787,7 +2847,7 @@ const App = {
         this.toast('success', 'Đã thêm khách hàng!');
         if (url) {
           try {
-            await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
               body: JSON.stringify({ action: 'addCustomer', id: newId, ...d })
             });
           } catch (e) { console.warn('Sync customer add failed:', e); }
@@ -2812,7 +2872,7 @@ const App = {
       // Sync delete to Google Sheets
       const url = localStorage.getItem('khs_api_url');
       if (url) {
-        fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({ action: 'deleteCustomer', id: cu.id })
         }).catch(e => console.warn('Sync customer delete failed:', e));
       }
@@ -3437,7 +3497,7 @@ const App = {
       if (!url) return;
       this.toast('info', 'Đang khởi tạo...');
       try {
-        const res = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'initBatches' }) }).then(r=>r.json());
+        const res = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'initBatches' }) }).then(r=>r.json());
         if (res.success) {
           const inventoryRefresh = await this.refreshInventoryOnly();
           this.toast(inventoryRefresh.success ? 'success' : 'warning', inventoryRefresh.success ? res.message : `${res.message}. Chưa tải lại đầy đủ dữ liệu kho.`);
@@ -3514,7 +3574,7 @@ const App = {
       const saveBtn = document.getElementById('batch-save');
       saveBtn.textContent = 'Đang nhập...'; saveBtn.disabled = true;
       try {
-        const res = await fetch(url, {
+        const res = await App.apiFetch(url, {
           method:'POST', headers:{'Content-Type':'text/plain'},
           body: JSON.stringify({ action:'addBatch', sku, name: prod?.name||'', qty, costPrice: cost, importedBy: this.user?.displayName||'Admin', note })
         }).then(r=>r.json());
@@ -3578,7 +3638,7 @@ const App = {
     const url = localStorage.getItem('khs_api_url');
     if (!url) return;
     try {
-      const res = await fetch(url + '?action=getNotifications').then(r => r.json());
+      const res = await App.apiFetch(url + '?action=getNotifications').then(r => r.json());
       if (res.success && res.data) {
         this.notifications = res.data;
         this.updateNotifBadge();
@@ -3949,7 +4009,7 @@ const App = {
     const apiUrl = localStorage.getItem('khs_api_url');
     if(apiUrl) {
       try {
-        const res = await fetch(apiUrl, {
+        const res = await App.apiFetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
@@ -4093,7 +4153,7 @@ const App = {
       // Sync lên Google Sheets
       const url = localStorage.getItem('khs_api_url');
       if (url) {
-        const saveToCloud = (key, value) => fetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key, value }) }).catch(() => {});
+        const saveToCloud = (key, value) => App.apiFetch(url, { method:'POST', body: JSON.stringify({ action:'saveConfig', key, value }) }).catch(() => {});
         saveToCloud('store_name', name);
         saveToCloud('store_addr', addr);
         saveToCloud('store_phone', phone);
@@ -4245,7 +4305,7 @@ const App = {
         let errs = [];
         let savedVersion = '';
         try {
-          const r1 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveImage', sku:'__QR_CODE__', base64: compressed }) });
+          const r1 = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveImage', sku:'__QR_CODE__', base64: compressed }) });
           const d1 = await r1.json();
           if (!d1.success) errs.push('Lỗi ảnh: ' + d1.error);
           else savedVersion = String(d1.version || this._imageFingerprint(compressed));
@@ -4257,7 +4317,7 @@ const App = {
         await new Promise(r => setTimeout(r, 1000));
 
         try {
-          const r2 = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: qrInfo }) });
+          const r2 = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: qrInfo }) });
           const d2 = await r2.json();
           if (!d2.success) errs.push('Lỗi info: ' + d2.error);
         } catch (err) {
@@ -4300,8 +4360,8 @@ const App = {
       const url = localStorage.getItem('khs_api_url');
       if (url) {
         try {
-          const deleteRes = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteImage', sku:'__QR_CODE__' }) }).then(r => r.json());
-          const configRes = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: '' }) }).then(r => r.json());
+          const deleteRes = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteImage', sku:'__QR_CODE__' }) }).then(r => r.json());
+          const configRes = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'saveConfig', key:'qr_info', value: '' }) }).then(r => r.json());
           if (!deleteRes.success || !configRes.success) throw new Error(deleteRes.error || configRes.error || 'Google Sheet từ chối thao tác');
           await this._saveQrVerification({ exists: false, version: '', hasQrInfo: true, qrInfo: '' });
           this.toast('success', '🗑 Đã xóa QR trên tất cả thiết bị!');
@@ -4413,7 +4473,7 @@ const App = {
     document.querySelectorAll('.del-u').forEach(b => b.addEventListener('click', async () => {
       if(!confirm('Xóa tài khoản ' + b.dataset.u + '?')) return;
       const url = localStorage.getItem('khs_api_url');
-      if(url) await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteUser', username: b.dataset.u }) });
+      if(url) await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteUser', username: b.dataset.u }) });
       this.users = this.users.filter(u => u.username !== b.dataset.u);
       this.toast('success', 'Đã xóa!');
       this.renderUsersTab();
@@ -4465,7 +4525,7 @@ const App = {
       if(pass) d.password = pass;
       const url = localStorage.getItem('khs_api_url');
       if(url) {
-        const res = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action: u?'updateUser':'addUser', ...d }) }).then(r=>r.json());
+        const res = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action: u?'updateUser':'addUser', ...d }) }).then(r=>r.json());
         if(!res.success) { this.toast('error', res.error); return; }
       }
       if(u) Object.assign(u, d);
@@ -4504,7 +4564,7 @@ const App = {
     document.querySelectorAll('.del-r').forEach(b => b.addEventListener('click', async () => {
       if(!confirm('Xóa vai trò ' + b.dataset.r + '?')) return;
       const url = localStorage.getItem('khs_api_url');
-      if(url) await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteRole', name: b.dataset.r }) });
+      if(url) await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action:'deleteRole', name: b.dataset.r }) });
       this.roles = this.roles.filter(r => r.name !== b.dataset.r);
       this.toast('success', 'Đã xóa!');
       this.renderRolesTab();
@@ -4548,7 +4608,7 @@ const App = {
         document.querySelectorAll('.rf-perm').forEach(cb => { if(cb.checked) permissions[cb.dataset.key] = true; });
         const url = localStorage.getItem('khs_api_url');
         if(url) {
-          const res = await fetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action: r?'updateRole':'addRole', name, permissions }) }).then(r=>r.json());
+          const res = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ action: r?'updateRole':'addRole', name, permissions }) }).then(r=>r.json());
           if(!res.success) { this.toast('error', res.error); return; }
         }
         if(r) r.permissions = permissions;
@@ -4561,12 +4621,13 @@ const App = {
   },
 
   async saveApiUrl() {
+    if (typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled) { this.toast('info','Đang dùng Worker đã cấu hình cho cửa hàng. Không đổi API trực tiếp ở đây.'); return; }
     const url = document.getElementById('set-api-url').value.trim();
     if (!url) { this.toast('error', 'Vui lòng nhập URL!'); return; }
     const status = document.getElementById('api-status');
     status.textContent = '⏳ Đang kiểm tra...';
     try {
-      const res = await fetch(url + '?action=getProducts');
+      const res = await App.apiFetch(url + '?action=getProducts');
       const data = await res.json();
       if (data.success) {
         localStorage.setItem('khs_api_url', url);
@@ -4847,7 +4908,7 @@ const App = {
     await this._putProductImageLocal(productId, compressed);
     const url = localStorage.getItem('khs_api_url');
     if (url) {
-      const response = await fetch(url, {
+      const response = await App.apiFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'saveImage', sku: productId, base64: compressed })
@@ -5047,7 +5108,7 @@ const App = {
     const btn = document.querySelector('.btn-sync-tiktok');
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Đang đồng bộ...'; }
     try {
-      const res = await fetch(url, {
+      const res = await App.apiFetch(url, {
         method: 'POST',
         headers: {'Content-Type':'text/plain'},
         body: JSON.stringify({ action: 'syncTikTok' })
@@ -5058,7 +5119,7 @@ const App = {
         if (data.notFound && data.notFound.length) msg += '\n\n⚠️ SKU chưa mapping: ' + data.notFound.join(', ');
         alert('✅ ' + msg);
         // Reload orders
-        const orderRes = await fetch(url + '?action=getOrders');
+        const orderRes = await App.apiFetch(url + '?action=getOrders');
         const orderData = await orderRes.json();
         if (orderData.success) { this.orders = orderData.data; this.renderOrders(document.getElementById('page-container')); }
       } else {
@@ -5077,7 +5138,7 @@ const App = {
     const url = localStorage.getItem('khs_api_url');
     if (!url) { this.toast('error', '❌ Chưa cấu hình API URL!'); return; }
     try {
-      const res = await fetch(url, {
+      const res = await App.apiFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'cancelTikTokOrder', orderId })

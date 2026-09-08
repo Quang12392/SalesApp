@@ -539,7 +539,7 @@ const POS = {
 
     try {
       await App.waitForSheetPopupPaint();
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+      const res = await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (data.success) {
         if (data.stocks) this.applyStockSnapshot(data.stocks);
@@ -1640,13 +1640,16 @@ const POS = {
           'Google Sheet đang khóa tồn kho, kiểm tra số lượng và ghi đơn hàng. Vui lòng chờ.'
         );
         await App.waitForSheetPopupPaint();
-        const response = await fetch(apiUrl, {
+        const response = await App.apiFetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify(orderPayload)
         });
         const res = await response.json();
 
+        if (typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled && ['UPSTREAM_UNCONFIRMED','GATEWAY_ERROR'].includes(res.code)) {
+          throw Object.assign(new Error(res.error || 'Chưa xác nhận được kết quả.'), {code:'ORDER_UNCONFIRMED'});
+        }
         if (!res.success) {
           const errorMessage = res.error || 'Google Sheet không chấp nhận dữ liệu đơn hàng.';
           if (res.stocks) this.applyStockSnapshot(res.stocks);
@@ -1677,7 +1680,17 @@ const POS = {
         );
       }
     } catch (err) {
+      if (err.notSubmitted || /^AUTH_|^FORBIDDEN/.test(err.code || '')) {
+        App.showSheetError('Chưa gửi đơn lên Sheet',err.message || 'Vui lòng kiểm tra đăng nhập. Giỏ hàng vẫn được giữ nguyên.');
+        return;
+      }
       this.addToSyncQueue(orderPayload);
+      if (typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled) {
+        this.cart = [];
+        this.close(true);
+        App.showSheetError('Đơn đang chờ xác nhận', `Yêu cầu ${clientRequestId} được giữ trong hàng chờ với cùng mã chống trùng. Chưa ghi nhận là đơn hoàn tất; không tạo lại cùng giao dịch.`);
+        return;
+      }
       finishCheckout(order.id, {
         toast: false
       });
@@ -1923,6 +1936,7 @@ const POS = {
   addToSyncQueue(payload) {
     const queue = JSON.parse(localStorage.getItem('khs_sync_queue') || '[]');
     payload._queuedAt = new Date().toLocaleString('vi-VN');
+    if (App.user?.username) payload._authUsername = App.user.username;
     queue.push(payload);
     localStorage.setItem('khs_sync_queue', JSON.stringify(queue));
     this.updateSyncBadge();
@@ -1936,9 +1950,10 @@ const POS = {
 
     App.toast('info', `📡 Đang đồng bộ ${queue.length} đơn chờ...`);
     const remaining = [];
-    for (const payload of queue) {
+    for (let index = 0; index < queue.length; index++) {
+      const payload = queue[index];
       try {
-        const res = await fetch(apiUrl, {
+        const res = await App.apiFetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify(payload)
@@ -1946,12 +1961,17 @@ const POS = {
         const json = await res.json();
         if (json.success) {
           this.applyStockSnapshot(json.stocks, json.checkedAt);
+          if (typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled) {
+            App.orderCoverage = [];
+            if (App.saveCacheValue) App.saveCacheValue('orderCoverage', []).catch(() => {});
+          }
           App.toast('success', `✅ Đã sync đơn: ${json.orderId || 'OK'}`);
         } else {
           remaining.push(payload);
+          if ([401,403].includes(res.status)) { remaining.push(...queue.slice(index + 1)); break; }
         }
       } catch(e) {
-        remaining.push(payload);
+        remaining.push(...queue.slice(index));
         break; // Mất mạng lại → dừng
       }
     }

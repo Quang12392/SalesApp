@@ -1,10 +1,12 @@
 // Service Worker for QLBH Kieu Huong Store - PWA Offline Support
-const CACHE_NAME = 'khs-v379';
+importScripts('./js/auth.js?v=380');
+const CACHE_NAME = 'khs-v380';
 const STATIC_ASSETS = [
   './index.html',
-  './css/index.css?v=379',
-  './js/app.js?v=379',
-  './js/pos.js?v=379',
+  './css/index.css?v=380',
+  './js/auth.js?v=380',
+  './js/app.js?v=380',
+  './js/pos.js?v=380',
   './manifest.json',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png'
@@ -78,10 +80,18 @@ async function syncPendingOrders() {
         const items = request.result;
         for (const item of items) {
           try {
-            await fetch(item.url, { method: 'POST', body: JSON.stringify(item.data) });
-            const dtx = db.transaction('pendingSync', 'readwrite');
-            dtx.objectStore('pendingSync').delete(item.id);
-          } catch(err) { /* will retry next sync */ }
+            const response = await KHS_AUTH.fetchApi(item.url, { method: 'POST', body: JSON.stringify(item.data), authUsername:item.data?._authUsername });
+            const data = await response.json();
+            if (!response.ok || data.success !== true) {
+              if ([401,403].includes(response.status)) break;
+              continue;
+            }
+            await new Promise((done, failed) => {
+              const dtx = db.transaction('pendingSync', 'readwrite');
+              dtx.objectStore('pendingSync').delete(item.id);
+              dtx.oncomplete=done; dtx.onerror=dtx.onabort=()=>failed(dtx.error);
+            });
+          } catch(err) { break; /* Keep this and every untouched queued item. */ }
         }
         resolve();
       };
