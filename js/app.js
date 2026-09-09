@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '383';
+const KHS_APP_VERSION = '384';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -2799,6 +2799,13 @@ const App = {
         if (typeof result.customer[field] === 'string') savedCustomer[field] = result.customer[field];
       }
       if (!existing) this.customers.push(savedCustomer);
+      // Persist confirmed fields so a quick reopen cannot restore the previous draft.
+      // A single mutation does not certify freshness of the entire customer dataset.
+      this.datasetSyncTimes = {...(this.datasetSyncTimes || {}),customers:''};
+      if (typeof this.saveCacheValue === 'function') {
+        try { await Promise.all([this.saveCacheValue('customers',this.customers),this.saveCacheValue('datasetSyncTimes',this.datasetSyncTimes)]); }
+        catch (_) { /* The server already acknowledged this write; never report it as failed. */ }
+      }
       // Cleanup failure must not turn an acknowledged write into a reported failure.
       if (!cu) { try { if (localStorage.getItem(key) === JSON.stringify(pending)) localStorage.removeItem(key); } catch (_) {} }
       return savedCustomer;

@@ -82,3 +82,14 @@ test('pending optional fields reappear in the form and text cannot escape HTML a
  assert.ok(html.includes('value="Nữ" selected'));assert.ok(html.includes('FB &quot;quoted&quot;'));
  assert.ok(html.includes('&lt;/textarea&gt;&lt;img src=x&gt;'));assert.ok(!html.includes('</textarea><img src=x>'));
 });
+test('confirmed fields update cache and mark the whole customer dataset stale',async()=>{
+ const h=setup(),cache=new Map();h.app.datasetSyncTimes={products:'keep',customers:'old'};
+ h.app.saveCacheValue=async(k,v)=>cache.set(k,JSON.parse(JSON.stringify(v)));
+ h.app.apiFetch=async()=>response({success:true,id:'KH9',customer:{...draft,id:'KH9',gender:'Nữ',facebook:'Saved FB',note:'Saved note'}});
+ await h.app.saveCustomerConfirmed({...draft,note:'Draft'},null);
+ assert.equal(cache.get('customers')[0].note,'Saved note');assert.equal(cache.get('datasetSyncTimes').customers,'');assert.equal(cache.get('datasetSyncTimes').products,'keep');
+});
+test('cache failure after server success never reports an unconfirmed write',async()=>{
+ const h=setup();h.app.saveCacheValue=async()=>{throw new Error('cache unavailable');};h.app.apiFetch=async()=>response({success:true,id:'KH10'});
+ assert.equal((await h.app.saveCustomerConfirmed(draft,null)).id,'KH10');assert.equal(h.store.size,0);
+});
