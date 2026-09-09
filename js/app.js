@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '381';
+const KHS_APP_VERSION = '382';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -2751,9 +2751,64 @@ const App = {
     return `<svg viewBox="0 0 80 80" width="60" height="60"><circle cx="40" cy="40" r="40" fill="#C8E6C9"/><circle cx="40" cy="30" r="13" fill="#1B5E20"/><path d="M18 68c0-12.15 9.85-22 22-22s22 9.85 22 22" fill="#1B5E20"/></svg>`;
   },
 
+  async saveCustomerConfirmed(d, cu, requestedId = '') {
+    if (this._customerSaveBusy) throw new Error('Đang lưu khách hàng. Vui lòng chờ.');
+    const username = this.user?.username;
+    const url = localStorage.getItem('khs_api_url');
+    if (!username || !url) throw new Error('Cần đăng nhập và kết nối API trước khi lưu khách hàng.');
+    this._customerSaveBusy = true;
+    const key = 'khs_customer_create_pending:' + username;
+    let pending;
+    try {
+      let payload = { action: cu ? 'updateCustomer' : 'addCustomer', id: cu?.id || requestedId.trim(), name: d.name, phone: d.phone, address: d.address };
+      if (!cu) {
+        const stored = localStorage.getItem(key);
+        pending = stored ? JSON.parse(stored) : null;
+        if (pending && JSON.stringify(pending.data) !== JSON.stringify(payload)) throw new Error('Còn yêu cầu thêm khách chưa xác nhận. Đóng rồi mở Thêm khách hàng để khôi phục đúng thông tin và thử lại, không tạo yêu cầu khác.');
+        if (!pending) {
+          pending = { data: payload, clientRequestId: 'customer:' + crypto.randomUUID() };
+          localStorage.setItem(key, JSON.stringify(pending));
+        }
+        payload = { ...pending.data, clientRequestId: pending.clientRequestId };
+      }
+      let result;
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 75000);
+        try {
+          const response = await this.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({...payload,_authUsername:username}), signal: controller.signal });
+          result = await response.json();
+          if (!response.ok || result.success !== true) {
+            if (!cu && ['CUSTOMER_BUSY','CUSTOMER_ID_EXISTS','INVALID_REQUEST_ID','AUTH_REQUIRED','FORBIDDEN'].includes(result.code) && localStorage.getItem(key) === JSON.stringify(pending)) localStorage.removeItem(key);
+            throw new Error(result.error || 'Server chưa xác nhận lưu khách hàng. Giữ nguyên thông tin và thử lại.');
+          }
+        } finally { clearTimeout(timer); }
+      } catch (error) {
+        if (!cu && error.notSubmitted === true && localStorage.getItem(key) === JSON.stringify(pending)) localStorage.removeItem(key);
+        throw error;
+      }
+      const savedId = cu?.id || result.id;
+      if (!savedId) throw new Error('Phản hồi thiếu mã khách hàng. Giữ nguyên yêu cầu để kiểm tra lại.');
+      if (this.user?.username !== username) throw new Error('Tài khoản đã thay đổi. Khách hàng có thể đã lưu; đăng nhập lại tài khoản cũ để kiểm tra.');
+      const existing = this.customers.find(item => item.id === savedId);
+      const savedCustomer = existing || {id:savedId,totalOrders:0,totalSpent:0,lastOrder:''};
+      Object.assign(savedCustomer,d,{id:savedId});
+      if (!existing) this.customers.push(savedCustomer);
+      // Cleanup failure must not turn an acknowledged write into a reported failure.
+      if (!cu) { try { if (localStorage.getItem(key) === JSON.stringify(pending)) localStorage.removeItem(key); } catch (_) {} }
+      return savedCustomer;
+    } finally { this._customerSaveBusy = false; }
+  },
+
   customerModal(id, options = {}) {
     const cu = id ? this.customers.find(x => x.id === id) : null;
-    const prefill = !cu ? (options.prefill || {}) : {};
+    let prefill = !cu ? (options.prefill || {}) : {};
+    if (!cu && this.user?.username) {
+      try {
+        const pending = JSON.parse(localStorage.getItem('khs_customer_create_pending:' + this.user.username) || 'null');
+        if (pending?.data) { prefill = pending.data; this.toast('warning','Đã khôi phục yêu cầu thêm khách chưa xác nhận. Bấm Thêm mới để kiểm tra/lưu lại cùng yêu cầu, không tạo trùng.'); }
+      } catch (_) { this.toast('warning','Không đọc được yêu cầu khách hàng đang chờ. Không xóa dữ liệu trình duyệt; hãy kiểm tra trước khi thêm.'); }
+    }
     document.getElementById('modal-title').textContent = cu ? 'Sửa khách hàng' : 'Thêm khách hàng mới';
     const gender = cu?.gender || '';
     const avatarUrl = cu?.avatar || '';
@@ -2816,6 +2871,7 @@ const App = {
     this.openModal();
     document.getElementById('m-cancel').addEventListener('click', () => this.closeModal());
     document.getElementById('m-save').addEventListener('click', async () => {
+      if (this._customerSaveBusy) return;
       const name = document.getElementById('cf-name').value.trim();
       if (!name) { this.toast('error', 'Vui lòng nhập tên khách hàng!'); return; }
       const d = {
@@ -2827,32 +2883,23 @@ const App = {
         note: document.getElementById('cf-note').value.trim(),
         avatar: document.getElementById('cf-avatar-data').value
       };
-      const url = localStorage.getItem('khs_api_url');
-      let savedCustomer = cu || null;
-      if (cu) {
-        Object.assign(cu, d);
-        savedCustomer = cu;
-        this.toast('success', 'Đã cập nhật khách hàng!');
-        if (url) {
-          try {
-            await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify({ action: 'updateCustomer', id: cu.id, ...d })
-            });
-          } catch (e) { console.warn('Sync customer update failed:', e); }
-        }
-      } else {
-        const newId = document.getElementById('cf-id').value.trim() || 'KH' + String(this.customers.length + 800).padStart(6, '0');
-        savedCustomer = { id: newId, ...d, totalOrders: 0, totalSpent: 0, lastOrder: '' };
-        this.customers.push(savedCustomer);
-        this.toast('success', 'Đã thêm khách hàng!');
-        if (url) {
-          try {
-            await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify({ action: 'addCustomer', id: newId, ...d })
-            });
-          } catch (e) { console.warn('Sync customer add failed:', e); }
-        }
+      const saveBtn = document.getElementById('m-save'), cancelBtn = document.getElementById('m-cancel');
+      const controls = [...document.querySelectorAll('#cf input, #cf textarea, #cf select')];
+      const disabledBefore = controls.map(control => control.disabled);
+      const requestedId = document.getElementById('cf-id').value;
+      saveBtn.disabled = true; cancelBtn.disabled = true; saveBtn.textContent = 'Đang lưu…';
+      controls.forEach(control => { control.disabled = true; });
+      let savedCustomer;
+      try {
+        savedCustomer = await this.saveCustomerConfirmed(d,cu,requestedId);
+      } catch (error) {
+        this.toast('error', error.name === 'AbortError' ? 'Chưa xác nhận được kết quả. Giữ nguyên thông tin và bấm lưu lại để kiểm tra cùng yêu cầu.' : (error.message || 'Chưa lưu được khách hàng. Vui lòng thử lại.'));
+        return;
+      } finally {
+        saveBtn.disabled = false; cancelBtn.disabled = false; saveBtn.textContent = cu ? 'Cập nhật' : 'Thêm mới';
+        controls.forEach((control,index) => { control.disabled = disabledBefore[index]; });
       }
+      this.toast('success',cu ? 'Đã cập nhật khách hàng!' : 'Đã lưu khách hàng!');
       this.closeModal();
       if (typeof options.afterSave === 'function') {
         options.afterSave(savedCustomer, { isEdit: !!cu });
@@ -4653,7 +4700,7 @@ const App = {
 
   // ═════════ MODAL & TOAST ═════════
   openModal() { document.getElementById('modal-overlay').style.display = 'flex'; document.body.style.overflow = 'hidden'; },
-  closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
+  closeModal() { if (this._customerSaveBusy) return; document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
   showSheetProgress(message, detail) {
     const existing = document.getElementById('sheet-progress-overlay');
     if (existing?.dataset.sheetProgress === 'true') {
