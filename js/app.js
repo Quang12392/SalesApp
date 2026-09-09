@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '382';
+const KHS_APP_VERSION = '383';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -2760,11 +2760,12 @@ const App = {
     const key = 'khs_customer_create_pending:' + username;
     let pending;
     try {
-      let payload = { action: cu ? 'updateCustomer' : 'addCustomer', id: cu?.id || requestedId.trim(), name: d.name, phone: d.phone, address: d.address };
+      const normalize = value => ({ action:value.action, id:value.id || '', name:value.name || '', phone:value.phone || '', address:value.address || '', gender:String(value.gender ?? '').trim(), facebook:String(value.facebook ?? '').trim(), note:String(value.note ?? '').trim() });
+      let payload = normalize({ ...d, action: cu ? 'updateCustomer' : 'addCustomer', id: cu?.id || requestedId.trim() });
       if (!cu) {
         const stored = localStorage.getItem(key);
         pending = stored ? JSON.parse(stored) : null;
-        if (pending && JSON.stringify(pending.data) !== JSON.stringify(payload)) throw new Error('Còn yêu cầu thêm khách chưa xác nhận. Đóng rồi mở Thêm khách hàng để khôi phục đúng thông tin và thử lại, không tạo yêu cầu khác.');
+        if (pending && JSON.stringify(normalize(pending.data)) !== JSON.stringify(payload)) throw new Error('Còn yêu cầu thêm khách chưa xác nhận. Đóng rồi mở Thêm khách hàng để khôi phục đúng thông tin và thử lại. Chỉ sửa thông tin sau khi xác nhận yêu cầu cũ, không tạo yêu cầu khác.');
         if (!pending) {
           pending = { data: payload, clientRequestId: 'customer:' + crypto.randomUUID() };
           localStorage.setItem(key, JSON.stringify(pending));
@@ -2779,7 +2780,7 @@ const App = {
           const response = await this.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({...payload,_authUsername:username}), signal: controller.signal });
           result = await response.json();
           if (!response.ok || result.success !== true) {
-            if (!cu && ['CUSTOMER_BUSY','CUSTOMER_ID_EXISTS','INVALID_REQUEST_ID','AUTH_REQUIRED','FORBIDDEN'].includes(result.code) && localStorage.getItem(key) === JSON.stringify(pending)) localStorage.removeItem(key);
+            if (!cu && ['CUSTOMER_BUSY','CUSTOMER_ID_EXISTS','INVALID_REQUEST_ID','CUSTOMER_SCHEMA_NOT_READY','AUTH_REQUIRED','FORBIDDEN'].includes(result.code) && localStorage.getItem(key) === JSON.stringify(pending)) localStorage.removeItem(key);
             throw new Error(result.error || 'Server chưa xác nhận lưu khách hàng. Giữ nguyên thông tin và thử lại.');
           }
         } finally { clearTimeout(timer); }
@@ -2789,10 +2790,14 @@ const App = {
       }
       const savedId = cu?.id || result.id;
       if (!savedId) throw new Error('Phản hồi thiếu mã khách hàng. Giữ nguyên yêu cầu để kiểm tra lại.');
+      if (result.customerFieldsVersion !== 1 || result.customer?.id !== savedId || ['gender','facebook','note'].some(field => typeof result.customer[field] !== 'string')) throw new Error('Backend chưa xác nhận đủ Giới tính/Facebook/Ghi chú. Giữ yêu cầu đang chờ và kiểm tra phiên bản Apps Script; không tạo lại khách mới.');
       if (this.user?.username !== username) throw new Error('Tài khoản đã thay đổi. Khách hàng có thể đã lưu; đăng nhập lại tài khoản cũ để kiểm tra.');
       const existing = this.customers.find(item => item.id === savedId);
       const savedCustomer = existing || {id:savedId,totalOrders:0,totalSpent:0,lastOrder:''};
       Object.assign(savedCustomer,d,{id:savedId});
+      for (const field of ['name','phone','address','gender','facebook','note']) {
+        if (typeof result.customer[field] === 'string') savedCustomer[field] = result.customer[field];
+      }
       if (!existing) this.customers.push(savedCustomer);
       // Cleanup failure must not turn an acknowledged write into a reported failure.
       if (!cu) { try { if (localStorage.getItem(key) === JSON.stringify(pending)) localStorage.removeItem(key); } catch (_) {} }
@@ -2810,7 +2815,8 @@ const App = {
       } catch (_) { this.toast('warning','Không đọc được yêu cầu khách hàng đang chờ. Không xóa dữ liệu trình duyệt; hãy kiểm tra trước khi thêm.'); }
     }
     document.getElementById('modal-title').textContent = cu ? 'Sửa khách hàng' : 'Thêm khách hàng mới';
-    const gender = cu?.gender || '';
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const gender = cu?.gender ?? prefill.gender ?? '';
     const avatarUrl = cu?.avatar || '';
     document.getElementById('modal-body').innerHTML = `
       <form class="modal-form" id="cf">
@@ -2823,10 +2829,10 @@ const App = {
             <div style="font-size:0.7rem;color:#9CA3AF;margin-top:4px">Click để đổi ảnh</div>
           </div>
           <div style="flex:1">
-            <div class="form-group"><label>Tên khách hàng</label><input class="form-control" id="cf-name" value="${cu?.name || prefill.name || ''}" required placeholder="Nhập tên khách hàng"></div>
+            <div class="form-group"><label>Tên khách hàng</label><input class="form-control" id="cf-name" value="${esc(cu?.name ?? prefill.name ?? '')}" required placeholder="Nhập tên khách hàng"></div>
             <div class="form-row">
-              <div class="form-group"><label>Số điện thoại</label><input class="form-control" id="cf-phone" value="${cu?.phone || prefill.phone || ''}" placeholder="VD: 0912345678"></div>
-              <div class="form-group"><label>Mã KH</label><input class="form-control" id="cf-id" value="${cu?.id || prefill.id || ''}" ${cu?'readonly style="opacity:0.6"':''} placeholder="Tự động"></div>
+              <div class="form-group"><label>Số điện thoại</label><input class="form-control" id="cf-phone" value="${esc(cu?.phone ?? prefill.phone ?? '')}" placeholder="VD: 0912345678"></div>
+              <div class="form-group"><label>Mã KH</label><input class="form-control" id="cf-id" value="${esc(cu?.id ?? prefill.id ?? '')}" ${cu?'readonly style="opacity:0.6"':''} placeholder="Tự động"></div>
             </div>
           </div>
         </div>
@@ -2838,10 +2844,10 @@ const App = {
               <option value="Nữ" ${gender==='Nữ'?'selected':''}>Nữ</option>
             </select>
           </div>
-          <div class="form-group"><label>Facebook</label><input class="form-control" id="cf-facebook" value="${cu?.facebook||''}" placeholder="Link hoặc tên FB"></div>
+          <div class="form-group"><label>Facebook</label><input class="form-control" id="cf-facebook" value="${esc(cu?.facebook ?? prefill.facebook ?? '')}" placeholder="Link hoặc tên FB"></div>
         </div>
-        <div class="form-group"><label>Địa chỉ</label><textarea class="form-control" id="cf-addr" rows="2" placeholder="Nhập địa chỉ" style="resize:vertical">${cu?.address || prefill.address || ''}</textarea></div>
-        <div class="form-group"><label>Ghi chú</label><textarea class="form-control" id="cf-note" rows="2" placeholder="Ghi chú về khách hàng..." style="resize:vertical">${cu?.note||''}</textarea></div>
+        <div class="form-group"><label>Địa chỉ</label><textarea class="form-control" id="cf-addr" rows="2" placeholder="Nhập địa chỉ" style="resize:vertical">${esc(cu?.address ?? prefill.address ?? '')}</textarea></div>
+        <div class="form-group"><label>Ghi chú</label><textarea class="form-control" id="cf-note" rows="2" placeholder="Ghi chú về khách hàng..." style="resize:vertical">${esc(cu?.note ?? prefill.note ?? '')}</textarea></div>
         <input type="hidden" id="cf-avatar-data" value="${avatarUrl}">
       </form>
     `;
