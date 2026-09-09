@@ -3,7 +3,7 @@
   'use strict';
   // Release gate: set only after Worker + Apps Script configuration and live verification.
   const DEFAULT_GATEWAY_ORIGIN = 'https://salesapp-device-gateway.salesapp-backend.workers.dev';
-  const GATEWAY_ENABLED = false;
+  const GATEWAY_ENABLED = true;
   function authError(code, message, notSubmitted = true) { return Object.assign(new Error(message), {code,notSubmitted}); }
   function indexedStorage() {
     let pending;
