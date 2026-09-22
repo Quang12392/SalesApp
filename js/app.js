@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '384';
+const KHS_APP_VERSION = '385';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -1664,9 +1664,99 @@ const App = {
     });
   },
 
+  productPendingKey(sku) { return 'khs_product_save_v2:' + this.user?.username + ':' + encodeURIComponent(sku); },
+
+  async applyProductSaveResultV2(result) {
+    const sku = result.product.sku;
+    const current = this.products.find(item => item.sku === sku);
+    if (current) Object.assign(current, result.product);
+    else this.products.push({...result.product});
+    this.batches = (this.batches || []).filter(batch => batch.sku !== sku).concat(result.batches);
+    // This is a receipt for ONE SKU, not a fresh snapshot of the whole inventory.
+    if (typeof this.saveCacheValue === 'function') {
+      try { await Promise.all([this.saveCacheValue('products',this.products),this.saveCacheValue('batches',this.batches)]); }
+      catch (_) { /* Server receipt remains valid even if local cache cannot be saved. */ }
+    }
+  },
+
+  async saveProductConfirmed(base, draft, batch = null, image = null) {
+    if (this._productSaveBusy) throw new Error('Đang lưu sản phẩm. Vui lòng chờ.');
+    const username = this.user?.username, url = localStorage.getItem('khs_api_url');
+    if (!username || !url) throw new Error('Cần đăng nhập và kết nối API trước khi lưu.');
+    if (draft.sku !== base.sku) throw new Error('Không đổi SKU trong thao tác cập nhật này.');
+    this._productSaveBusy = true;
+    const key = this.productPendingKey(base.sku);
+    const progress = (title,detail='') => { if (this.showSheetProgress) this.showSheetProgress(title,detail); };
+    try {
+      const intent = {name:String(draft.name||'').trim(),category:String(draft.category||'').trim(),sellPrice:draft.sellPrice,costPrice:draft.costPrice,stock:batch?null:draft.stock,batch};
+      if (!intent.name) throw new Error('Thiếu tên sản phẩm.');
+      for (const field of ['sellPrice','costPrice',...(batch?[]:['stock'])]) if (!Number.isFinite(intent[field]) || intent[field]<0) throw new Error('Giá và tồn kho phải là số không âm.');
+      if (!batch && !Number.isSafeInteger(intent.stock)) throw new Error('Tồn kho phải là số nguyên.');
+      if (batch && (!Number.isSafeInteger(batch.qty)||batch.qty<=0||!Number.isFinite(batch.costPrice)||batch.costPrice<0)) throw new Error('Số lượng lô phải là số nguyên dương, giá nhập không âm.');
+      let record = JSON.parse(localStorage.getItem(key) || 'null');
+      const imageHash = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
+      if (record) {
+        if (record.version!==2 || record.sku!==base.sku || JSON.stringify(record.intent)!==JSON.stringify(intent)) throw new Error('Còn yêu cầu kho chưa hoàn tất. Đóng rồi mở lại sản phẩm để khôi phục đúng yêu cầu; không nhập lô lại bằng yêu cầu mới.');
+        if (!!record.image!==!!image || (image && image!==record.image && await imageHash(image)!==record.imageHash)) throw new Error('Ảnh của yêu cầu đang chờ đã thay đổi. Mở lại sản phẩm và hoàn tất yêu cầu cũ trước.');
+      } else {
+        const changes={},expected={};
+        for (const field of ['name','category','sellPrice','costPrice',...(batch?[]:['stock'])]) {
+          const original=['name','category'].includes(field)?String(base[field]||'').trim():Number(base[field]||0);
+          const displayed=['sellPrice','costPrice'].includes(field)?Math.round(original):original;
+          if (intent[field]!==displayed) { changes[field]=intent[field];expected[field]=original; }
+        }
+        const needsInventory=!!batch||Object.keys(changes).length>0;
+        if (!needsInventory && !image) return {success:true,noop:true};
+        let compressed=null,hash=null;
+        if (image) {
+          if (!image.startsWith('data:image/')) throw new Error('Ảnh không hợp lệ.');
+          progress('Đang chuẩn bị ảnh sản phẩm…');
+          hash=await imageHash(image);compressed=await this.compressImage(image);
+        }
+        // Recheck after asynchronous image preparation before allocating a new request.
+        if (localStorage.getItem(key)) throw new Error('Đã có yêu cầu khác trên tab này. Mở lại sản phẩm để tiếp tục yêu cầu đang chờ.');
+        record={version:2,sku:base.sku,base:{...base},draft:{...draft},intent,image:compressed,imageHash:hash,confirmed:!needsInventory,result:null,
+          request:needsInventory?{action:'updateProduct',productMutationVersion:2,sku:base.sku,clientRequestId:'product:'+crypto.randomUUID(),changes,expected,batch}:null};
+        localStorage.setItem(key,JSON.stringify(record));
+      }
+      if (this.user?.username!==username) throw new Error('Tài khoản vừa thay đổi. Đăng nhập lại tài khoản tạo yêu cầu.');
+      if (!record.confirmed) {
+        progress('Đang lưu sản phẩm và tồn kho…','Ghi một lần; không tải lại toàn bộ kho.');
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
+        let result;
+        try {
+          const response=await this.apiFetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({...record.request,_authUsername:username}),signal:controller.signal});
+          result=await response.json();
+          if (!response.ok||result.success!==true) {
+            // Backend checks its receipt/pending marker BEFORE returning this conflict.
+            if (result.code==='PRODUCT_CONFLICT'&&result.notSubmitted===true) localStorage.removeItem(key);
+            throw new Error(result.error||'Chưa xác nhận được cập nhật. Giữ nguyên yêu cầu và thử lại.');
+          }
+        } finally {clearTimeout(timer);}
+        if (result.productSaveVersion!==2 || result.product?.sku!==base.sku || ['stock','costPrice','sellPrice'].some(field=>!Number.isFinite(result.product[field])||result.product[field]<0) || !Array.isArray(result.batches) || result.batches.some(item=>item.sku!==base.sku)) throw new Error('Backend chưa trả đủ dữ liệu cập nhật gộp. Giữ yêu cầu để kiểm tra, không tạo lô mới.');
+        if (this.user?.username!==username) throw new Error('Kho có thể đã lưu nhưng tài khoản vừa thay đổi. Trở lại tài khoản cũ để kiểm tra cùng yêu cầu.');
+        record.confirmed=true;record.result=result;
+        try {localStorage.setItem(key,JSON.stringify(record));}
+        catch (_) {throw new Error('Kho đã lưu nhưng chưa lưu được biên nhận trên máy. Giữ biểu mẫu và thử lại để kiểm tra cùng mã yêu cầu.');}
+        await this.applyProductSaveResultV2(result);
+      }
+      if (record.image) {
+        progress(record.result?'Đã lưu kho, đang lưu ảnh…':'Đang lưu ảnh sản phẩm…','Nếu ảnh lỗi, lần thử lại chỉ lưu ảnh, không nhập thêm lô.');
+        try {await this.saveProductImage(base.sku,record.image,{alreadyCompressed:true,authUsername:username});}
+        catch (error) {throw new Error((record.result?'Kho đã lưu. ':'')+'Ảnh chưa lưu; bấm lại để thử ảnh, không tạo yêu cầu nhập lô khác. '+(error.message||''));}
+      }
+      if (this.user?.username!==username) throw new Error('Tài khoản vừa thay đổi. Trở lại tài khoản cũ để kiểm tra.');
+      try {const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved?.request?.clientRequestId===record.request?.clientRequestId)localStorage.removeItem(key);}catch(_){/* Replay remains safe if receipt cleanup fails. */}
+      return record.result || {success:true,imageOnly:true};
+    } finally {this._productSaveBusy=false;}
+  },
+
   productModal(id, options = {}) {
     const p = id ? this.products.find(x => x.id === id) : null;
-    const cats = [...new Set(this.products.map(x => x.category))].sort();
+    const productBaseline=p?{...p}:null;
+    let restoredProductSave=null,productImageDirty=false,productImageLoading=false,imageGeneration=0;
+    if(p){try{restoredProductSave=JSON.parse(localStorage.getItem(this.productPendingKey(p.sku))||'null');}catch(_){this.toast('warning','Không đọc được yêu cầu sản phẩm đang chờ. Không xóa dữ liệu trình duyệt.');}}
+    const cats = [...new Set([...this.products.map(x => x.category),...(restoredProductSave?.draft?.category?[restoredProductSave.draft.category]:[])])].sort();
     const skuBatchCount = p ? (this.batches||[]).filter(b => b.sku === p.sku).length : 0;
     const hasAnyBatch = skuBatchCount > 0;
     const hasBatches = skuBatchCount > 1;
@@ -1676,7 +1766,7 @@ const App = {
         <div style="display:flex;gap:12px;align-items:flex-start">
           <div style="flex:1">
             <div class="form-row">
-              <div class="form-group"><label>Mã hàng (SKU)${hasAnyBatch?' <span style="font-size:0.7rem;color:#EF4444">🔒</span>':''}</label><input class="form-control" id="pf-sku" value="${p?.sku||''}" required ${hasAnyBatch?'readonly style="background:#F3F4F6;cursor:not-allowed"':''}></div>
+              <div class="form-group"><label>Mã hàng (SKU)${p?' <span style="font-size:0.7rem;color:#EF4444">🔒</span>':''}</label><input class="form-control" id="pf-sku" value="${p?.sku||''}" required ${p?'readonly style="background:#F3F4F6;cursor:not-allowed"':''}></div>
               <div class="form-group"><label>Nhóm hàng</label><select class="form-control" id="pf-cat">${cats.map(ca=>`<option ${p?.category===ca?'selected':''}>${ca}</option>`).join('')}</select></div>
             </div>
           </div>
@@ -1744,25 +1834,24 @@ const App = {
         })() : ''}
       </form>
     `;
-    // Load existing image
+    const productPreview = document.getElementById('pf-img-preview');
     if (p) {
       this.getProductImage(p.id).then(saved => {
-        const preview = document.getElementById('pf-img-preview');
-        if (saved) { preview.src = saved; preview.style.display = 'block'; document.getElementById('pf-img-text').style.display = 'none'; }
+        if (saved && !productImageDirty && document.getElementById('pf-img-preview') === productPreview) { productPreview.src = saved; productPreview.style.display = 'block'; document.getElementById('pf-img-text').style.display = 'none'; }
       });
     }
-    // Image upload click
     document.getElementById('pf-img-upload').addEventListener('click', () => document.getElementById('pf-img-input').click());
     document.getElementById('pf-img-input').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      const generation=++imageGeneration,previousDirty=productImageDirty;
+      productImageDirty=true;productImageLoading=true;
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const preview = document.getElementById('pf-img-preview');
-        preview.src = ev.target.result;
-        preview.style.display = 'block';
-        document.getElementById('pf-img-text').style.display = 'none';
+        if(generation!==imageGeneration || document.getElementById('pf-img-preview')!==productPreview)return;
+        productImageLoading=false;productPreview.src=ev.target.result;productPreview.style.display='block';document.getElementById('pf-img-text').style.display='none';
       };
+      reader.onerror = () => {if(generation===imageGeneration){productImageLoading=false;productImageDirty=previousDirty;this.toast('error','Không đọc được ảnh. Vui lòng chọn lại.');}};
       reader.readAsDataURL(file);
     });
     // Batch toggle + live preview
@@ -1782,6 +1871,16 @@ const App = {
     document.getElementById('pf-batch-date')?.addEventListener('change', updateBatchPreview);
     document.getElementById('pf-batch-suffix')?.addEventListener('input', updateBatchPreview);
     updateBatchPreview();
+
+    if(p && restoredProductSave?.version===2 && restoredProductSave.sku===p.sku){
+      const draft=restoredProductSave.draft, batch=restoredProductSave.intent.batch;
+      for(const [field,input] of [['sku','pf-sku'],['name','pf-name'],['category','pf-cat'],['stock','pf-stock'],['unit','pf-unit']])if(document.getElementById(input))document.getElementById(input).value=draft[field]??'';
+      document.getElementById('pf-sell').value=fmt(draft.sellPrice||0);document.getElementById('pf-cost').value=fmt(draft.costPrice||0);
+      document.getElementById('pf-batch-toggle').checked=!!batch;document.getElementById('pf-batch-fields').style.display=batch?'':'none';
+      if(batch){document.getElementById('pf-batch-date').value=batch.importDate;document.getElementById('pf-batch-qty').value=batch.qty;document.getElementById('pf-batch-cost').value=fmt(batch.costPrice);document.getElementById('pf-batch-note').value=batch.note;document.getElementById('pf-batch-suffix').value=(batch.customBatchId||'').slice(13);updateBatchPreview();}
+      if(restoredProductSave.image){productImageDirty=true;productPreview.src=restoredProductSave.image;productPreview.style.display='block';document.getElementById('pf-img-text').style.display='none';}
+      this.toast('warning',restoredProductSave.confirmed?'Kho đã xác nhận; tiếp tục hoàn tất phần ảnh đang chờ.':'Đã khôi phục yêu cầu kho đang chờ. Giữ nguyên thông tin và bấm cập nhật để kiểm tra cùng yêu cầu.');
+    }
 
 
     // Batch edit buttons
@@ -1917,16 +2016,38 @@ const App = {
     document.getElementById('m-save').addEventListener('click', async () => {
       const saveBtn = document.getElementById('m-save');
       const originalBtnText = saveBtn.textContent;
+      if(this._productSaveBusy)return;
+      if(productImageLoading){this.toast('warning','Đang đọc ảnh, vui lòng chờ.');return;}
       const d = {
         sku: document.getElementById('pf-sku').value.trim(),
         name: document.getElementById('pf-name').value.trim(),
         category: document.getElementById('pf-cat').value,
         sellPrice: unfmt(document.getElementById('pf-sell').value),
         costPrice: unfmt(document.getElementById('pf-cost').value),
-        stock: parseInt(document.getElementById('pf-stock').value)||0,
+        stock: Number(document.getElementById('pf-stock').value),
         unit: document.getElementById('pf-unit').value.trim()||'hộp'
       };
       if (!d.sku || !d.name) { this.toast('error','Vui lòng nhập đầy đủ thông tin!'); return; }
+      if(p){
+        let batch=null;
+        if(document.getElementById('pf-batch-toggle')?.checked){
+          const date=document.getElementById('pf-batch-date').value,parts=parseDateInputParts(date);
+          if(!parts){this.toast('error','Chọn ngày nhập lô hợp lệ.');return;}
+          const suffix=document.getElementById('pf-batch-suffix').value.trim();
+          batch={qty:Number(document.getElementById('pf-batch-qty').value),costPrice:unfmt(document.getElementById('pf-batch-cost').value),importDate:date,note:document.getElementById('pf-batch-note').value||'',customBatchId:'LOT-'+parts.d+parts.m+parts.y+(suffix?'-'+suffix:'')};
+        }
+        const controls=[...document.querySelectorAll('#pf input, #pf select, #pf textarea, #pf button, #modal-footer button')];
+        const disabled=controls.map(control=>control.disabled);controls.forEach(control=>control.disabled=true);saveBtn.textContent='Đang lưu…';
+        let result;
+        try {result=await this.saveProductConfirmed(productBaseline,d,batch,productImageDirty?productPreview.src:null);}
+        catch(error){this.toast('error',error.name==='AbortError'?'Chưa xác nhận được kết quả. Giữ yêu cầu và bấm cập nhật lại, không tạo lô mới.':error.message);return;}
+        finally {this.hideSheetProgress();controls.forEach((control,i)=>control.disabled=disabled[i]);saveBtn.textContent=originalBtnText;}
+        this.toast(result.noop?'info':'success',result.noop?'Không có thay đổi cần lưu.':'Đã xác nhận cập nhật sản phẩm'+(result.createdBatchIds?.length?' và lô hàng.':'.'));
+        this.closeModal();
+        if(typeof options.afterSave==='function')options.afterSave(this.products.find(item=>item.sku===p.sku),{productId:p.id,isEdit:true});
+        else this.renderProducts(document.getElementById('page-container'));
+        return;
+      }
       if (!p) {
         const existingSku = this.products.find(pp => pp.sku === d.sku);
         if (existingSku) {
@@ -1938,55 +2059,12 @@ const App = {
       let productId;
       let inventoryRefreshFailed = false;
       const url = localStorage.getItem('khs_api_url');
-      const oldProduct = p ? { ...p } : null;
       saveBtn.disabled = true;
       saveBtn.textContent = p ? 'Đang cập nhật...' : 'Đang thêm...';
       if (url) this.showSheetProgress(p ? 'Đang cập nhật sản phẩm lên Google Sheet...' : 'Đang thêm sản phẩm lên Google Sheet...');
 
       try {
-        if (p) {
-          const oldSku = p.sku;
-          const oldId = p.id;
-          Object.assign(p, d);
-          p.id = d.sku; // ID luôn = SKU
-          productId = p.id;
-
-          if (oldId !== p.id) {
-            this.getProductImage(oldId).then(img => {
-              if (img) { this.saveProductImage(p.id, img).catch(() => {}); }
-            });
-          }
-
-          const batchToggle = document.getElementById('pf-batch-toggle');
-          const hasBatch = batchToggle?.checked;
-          if (url) {
-            const skuBatchCount = (this.batches||[]).filter(b => b.sku === d.sku).length;
-            const updateData = { action: 'updateProduct', oldSku: oldSku, newSku: d.sku, name: d.name, category: d.category, sellPrice: d.sellPrice, costPrice: d.costPrice, _hasBatch: skuBatchCount >= 2 };
-            if (!hasBatch) updateData.stock = d.stock;
-            const updateRes = await App.apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify(updateData)
-            }).then(r => r.json());
-            if (!updateRes.success) throw new Error(updateRes.error || 'Không cập nhật được sản phẩm');
-          }
-
-          if (hasBatch && url) {
-            const bQty = parseInt(document.getElementById('pf-batch-qty').value)||0;
-            const bCost = unfmt(document.getElementById('pf-batch-cost').value);
-            const bNote = document.getElementById('pf-batch-note').value||'';
-            const bDate = document.getElementById('pf-batch-date').value||'';
-            const bSuffix = document.getElementById('pf-batch-suffix').value?.trim()||'';
-            const bd = parseDateInputParts(bDate);
-            const bDateStr = bd ? (bd.d + bd.m + bd.y) : dateInputLocal().split('-').reverse().join('');
-            const customBatchId = 'LOT-' + bDateStr + (bSuffix ? '-' + bSuffix : '');
-            if (bQty > 0) {
-              const bRes = await App.apiFetch(url, { method:'POST', headers:{'Content-Type':'text/plain'},
-                body: JSON.stringify({ action:'addBatch', sku: d.sku, name: d.name, qty: bQty, costPrice: bCost, sellPrice: d.sellPrice, importedBy: this.user?.displayName||'Admin', note: bNote, customBatchId, importDate: bDate })
-              }).then(r=>r.json());
-              if (!bRes.success) throw new Error(bRes.error || 'Không nhập được lô mới');
-              this.toast('success','Đã nhập lô: '+bRes.batchId);
-            }
-          }
-        } else {
+        {
           d.id = d.sku; // Dùng SKU làm ID — khớp với backend
           productId = d.id;
           this.products.push(d);
@@ -2008,7 +2086,7 @@ const App = {
         }
 
         const imgPreview = document.getElementById('pf-img-preview');
-        if (imgPreview.src && imgPreview.style.display !== 'none' && imgPreview.src.startsWith('data:')) {
+        if (productImageDirty && imgPreview.src && imgPreview.style.display !== 'none' && imgPreview.src.startsWith('data:')) {
           this.showSheetProgress('Đang lưu ảnh sản phẩm...', 'Sản phẩm và tồn kho đã được cập nhật.');
           await this.saveProductImage(productId, imgPreview.src);
         }
@@ -2027,7 +2105,6 @@ const App = {
         }
       } catch (e) {
         this.hideSheetProgress();
-        if (oldProduct && p) Object.assign(p, oldProduct);
         if (!p && productId) this.products = this.products.filter(x => x.id !== productId);
         saveBtn.disabled = false;
         saveBtn.textContent = originalBtnText;
@@ -4713,7 +4790,7 @@ const App = {
 
   // ═════════ MODAL & TOAST ═════════
   openModal() { document.getElementById('modal-overlay').style.display = 'flex'; document.body.style.overflow = 'hidden'; },
-  closeModal() { if (this._customerSaveBusy) return; document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
+  closeModal() { if (this._customerSaveBusy || this._productSaveBusy) return; document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
   showSheetProgress(message, detail) {
     const existing = document.getElementById('sheet-progress-overlay');
     if (existing?.dataset.sheetProgress === 'true') {
@@ -4961,17 +5038,17 @@ const App = {
     });
   },
 
-  async saveProductImage(productId, dataUrl) {
+  async saveProductImage(productId, dataUrl, options = {}) {
     // Lưu cục bộ trước để UI phản hồi ngay, sau đó chờ cloud xác nhận để không
     // báo thành công giả khi thiết bị khác chưa thể nhận ảnh.
-    const compressed = await this.compressImage(dataUrl);
+    const compressed = options.alreadyCompressed ? dataUrl : await this.compressImage(dataUrl);
     await this._putProductImageLocal(productId, compressed);
     const url = localStorage.getItem('khs_api_url');
     if (url) {
       const response = await App.apiFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'saveImage', sku: productId, base64: compressed })
+        body: JSON.stringify({ action: 'saveImage', sku: productId, base64: compressed, _authUsername: options.authUsername })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
