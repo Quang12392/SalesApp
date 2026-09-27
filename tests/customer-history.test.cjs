@@ -6,6 +6,7 @@ function setup(){
  const document={getElementById:id=>{if(!elements.has(id))elements.set(id,{innerHTML:'',textContent:'',addEventListener(){}});return elements.get(id);}};
  const app=vm.runInNewContext('({'+methods+'})',{document,URLSearchParams,localStorage:{getItem:()=> 'https://test.invalid/api'},fmtd:n=>String(n)});
  Object.assign(app,{user:{username:'owner'},customers:[{id:'KH1',name:'Synthetic'}],orders:[{id:'global'}],orderCoverage:['unchanged'],returns:['unchanged'],openModal(){},saveCacheValue:async()=>{},formatSyncStatus:x=>x,getOrderStatusLabel:()=> 'Hoàn thành'});
+ app.getOrderReturnState=()=> 'none';
  app._customerHistory={custId:'KH1',key:'owner:KH1',user:app.user,orders:[],offset:0,busy:false};
  return {app,elements};
 }
