@@ -3,7 +3,7 @@ const source=fs.readFileSync(require('node:path').join(__dirname,'../js/app.js')
 const methods=source.slice(source.indexOf('  viewCustomerHistory('),source.indexOf('  // SVG avatars by gender'));
 function setup(){
  const elements=new Map();
- const document={getElementById:id=>{if(!elements.has(id))elements.set(id,{innerHTML:'',textContent:'',addEventListener(){}});return elements.get(id);}};
+ const document={querySelectorAll:()=>[],getElementById:id=>{if(!elements.has(id))elements.set(id,{innerHTML:'',textContent:'',addEventListener(){}});return elements.get(id);}};
  const app=vm.runInNewContext('({'+methods+'})',{document,URLSearchParams,localStorage:{getItem:()=> 'https://test.invalid/api'},fmtd:n=>String(n)});
  Object.assign(app,{user:{username:'owner'},customers:[{id:'KH1',name:'Synthetic'}],orders:[{id:'global'}],orderCoverage:['unchanged'],returns:['unchanged'],openModal(){},saveCacheValue:async()=>{},formatSyncStatus:x=>x,getOrderStatusLabel:()=> 'Hoàn thành'});
  app.getOrderReturnState=()=> 'none';

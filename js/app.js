@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '388';
+const KHS_APP_VERSION = '389';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -2576,8 +2576,8 @@ const App = {
     document.querySelectorAll('.order-mobile-card').forEach(card => card.addEventListener('click', () => this.viewOrder(card.dataset.oid)));
   },
 
-  viewOrder(orderId) {
-    const o = this.orders.find(x => x.id === orderId);
+  viewOrder(orderId, suppliedOrder = null, onBack = null) {
+    const o = suppliedOrder || this.orders.find(x => x.id === orderId);
     if (!o) return;
     document.getElementById('modal-title').textContent = 'Chi tiết đơn hàng';
     document.getElementById('modal-body').innerHTML = `
@@ -2610,8 +2610,9 @@ const App = {
     `;
     document.getElementById('modal-footer').innerHTML = `
       <button class="btn btn-secondary" id="m-cancel">Đóng</button>
+      ${onBack ? '<button class="btn btn-secondary" id="m-history-back">Quay lại lịch sử</button>' : ''}
       <button class="btn btn-primary" id="m-print-order">In hóa đơn</button>
-      ${o.status === 'completed' ? '<button class="btn" id="m-return-order" style="background:linear-gradient(135deg,#EF4444,#B91C1C);color:#fff;font-weight:600">↩ Trả hàng</button>' : ''}
+      ${this.isReturnableOrder(o) ? '<button class="btn" id="m-return-order" style="background:linear-gradient(135deg,#EF4444,#B91C1C);color:#fff;font-weight:600">↩ Trả hàng</button>' : ''}
     `;
     this.openModal();
     document.getElementById('m-cancel').addEventListener('click', () => this.closeModal());
@@ -2619,15 +2620,25 @@ const App = {
       this.closeModal();
       if (typeof POS !== 'undefined' && POS.showInvoice) POS.showInvoice(o);
     });
+    document.getElementById('m-history-back')?.addEventListener('click', onBack);
     const returnBtn = document.getElementById('m-return-order');
     if (returnBtn) {
-      returnBtn.addEventListener('click', () => {
-        this.closeModal();
-        setTimeout(() => {
-          this.openReturn();
-          setTimeout(() => this.selectReturnOrder(o.id), 200);
-        }, 300);
-      });
+      returnBtn.addEventListener('click', () => this.startDetailReturn(o, returnBtn));
+    }
+  },
+
+  async startDetailReturn(order, button) {
+    if (button.disabled) return;
+    const user = this.user;
+    button.disabled = true; button.textContent = 'Đang kiểm tra phiếu trả…';
+    try {
+      await this.refreshArrayDataset('returns','getReturns',{retries:0,timeoutMs:30000});
+      if (!button.isConnected || this.user !== user || document.getElementById('modal-overlay').style.display === 'none') return;
+      const latest = {...order, returns:this.returns.filter(r => String(r.orderId).trim() === String(order.id).trim())};
+      if (!this.isReturnableOrder(latest)) { this.toast('warning','Đơn này đã trả hết hoặc không còn được trả hàng.'); button.textContent = 'Không thể trả thêm'; return; }
+      this.closeModal(); this.openReturn(); this.selectReturnOrder(latest.id, latest);
+    } catch (error) {
+      if (button.isConnected && this.user === user) { this.toast('error','Chưa kiểm tra được phiếu trả: ' + error.message); button.disabled = false; button.textContent = '↩ Thử lại trả hàng'; }
     }
   },
 
@@ -2862,10 +2873,11 @@ const App = {
       <p style="font-size:0.75rem;color:var(--text-secondary)">* Số chứng từ bán hoàn thành, gồm đơn đã trả hàng. Tổng tiền đã trừ hàng trả.</p>
       <p role="status">${h.busy ? 'Đang cập nhật lịch sử… ' : ''}${h.error ? esc(h.error) + ' ' : ''}${h.checkedAt ? 'Dữ liệu đã lưu · ' + esc(this.formatSyncStatus(h.checkedAt)) : 'Chưa có dữ liệu đã xác nhận'}</p>
       <button class="btn btn-secondary" id="ch-refresh" ${h.busy ? 'disabled' : ''}>${h.error ? 'Thử lại từ đầu' : 'Làm mới'}</button>
-      ${h.orders.map(o => `<details style="padding:12px 0;border-bottom:1px solid #ddd">
+      ${h.orders.map((o,index) => `<details data-history-index="${index}" style="padding:12px 0;border-bottom:1px solid #ddd">
         <summary style="cursor:pointer;overflow-wrap:anywhere">${esc(o.id)} · ${esc(o.createdAt)}<br><strong>${fmtd(o.netRevenue)}</strong> · <span class="${this.getOrderReturnState(o) === 'full' ? 'returned-full' : ''}">${esc(this.getOrderStatusLabel(o))}</span></summary>
         <div style="padding:10px 0">${(o.items || []).map(i => esc(i.name) + ' × ' + esc(i.qty)).join('<br>')}
         <p>Giá trị đơn gốc: ${fmtd(o.finalTotal)} · Sau trả: ${fmtd(o.netRevenue)}</p>
+        <button class="btn btn-primary ch-view-detail" data-index="${index}" ${h.busy ? 'disabled' : ''}>Xem chi tiết / Trả hàng</button>
         ${(o.returns || []).map(r => `<p>Phiếu ${esc(r.id)} · ${esc(r.createdAt)}<br>${(r.items || []).map(i => esc(i.name) + ' × ' + esc(i.qty)).join('<br>')}</p>`).join('')}</div>
       </details>`).join('')}
       ${!h.busy && !h.error && !h.orders.length ? '<p>Chưa có đơn hàng.</p>' : ''}
@@ -2873,6 +2885,23 @@ const App = {
     </div>`;
     document.getElementById('ch-refresh')?.addEventListener('click', () => this.loadCustomerHistory(false));
     document.getElementById('ch-more')?.addEventListener('click', () => this.loadCustomerHistory(true));
+    document.querySelectorAll('.ch-view-detail').forEach(button => button.addEventListener('click', () => {
+      const order = h.orders[Number(button.dataset.index)];
+      if (!order || h.busy) return;
+      const body = document.getElementById('modal-body'), scrollTop = body.scrollTop;
+      const expanded = [...body.querySelectorAll('details[open]')].map(el => el.dataset.historyIndex);
+      const title = document.getElementById('modal-title').textContent;
+      this.viewOrder(order.id, order, () => {
+        if (this.user !== h.user) return;
+        this._customerHistory = h;
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-footer').innerHTML = '<button class="btn btn-secondary" id="m-cancel">Đóng</button>';
+        this.openModal(true); this.renderCustomerHistory();
+        document.getElementById('m-cancel').addEventListener('click', () => this.closeModal());
+        body.querySelectorAll('details').forEach(el => { el.open = expanded.includes(el.dataset.historyIndex); });
+        body.scrollTop = scrollTop;
+      });
+    }));
   },
 
   async loadCustomerHistory(more = false) {
@@ -4030,8 +4059,8 @@ const App = {
     pg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { this.returnPage=parseInt(b.dataset.rp); this.renderReturnOrders(); }));
   },
 
-  selectReturnOrder(orderId) {
-    const order = this.orders.find(o => o.id === orderId);
+  selectReturnOrder(orderId, suppliedOrder = null) {
+    const order = suppliedOrder || this.orders.find(o => o.id === orderId);
     if(!order) return;
     if(!this.isReturnableOrder(order)) {
       this.toast('error', 'Chỉ đơn hoàn thành mới được trả hàng');
