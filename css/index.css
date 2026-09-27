@@ -700,6 +700,9 @@ ul, ol { list-style: none; }
   font-size: 0.75rem; font-weight: 600;
 }
 .order-status.completed { background: var(--success-bg); color: var(--success); }
+.returned-full,
+.order-status.completed.returned-full,
+.omc-status.completed.returned-full { color: #DC2626; }
 .order-status.pending { background: var(--warning-bg); color: var(--warning); }
 .order-status.cancelled { background: var(--danger-bg); color: var(--danger); }
 .customer-avatar-cell {

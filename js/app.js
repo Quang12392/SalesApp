@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '387';
+const KHS_APP_VERSION = '388';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -2527,7 +2527,7 @@ const App = {
             ${mc > 0 ? `<span class="omc-more">+${mc} mặt hàng khác</span>` : ''}
           </div>
           <div class="omc-row3">
-            <span class="omc-status ${o.status}">${st}</span>
+            <span class="omc-status ${o.status} ${this.getOrderReturnState(o) === 'full' ? 'returned-full' : ''}">${st}</span>
             <span class="omc-profit">LN: ${fmtd(pf)}</span>
             ${isTK ? `<button class="btn-confirm-tk" onclick="event.stopPropagation();App.confirmTikTokOrder('${o.id}')" title="Xác nhận">✅</button><button class="btn-reject-tk" onclick="event.stopPropagation();App.rejectTikTokOrder('${o.id}')" title="Hủy">❌</button>` : ''}
           </div>
@@ -2549,7 +2549,7 @@ const App = {
       <td class="oc-total"><span class="price-text">${fmtd(netRevenue)}</span></td>
       <td class="oc-profit" style="color:#1B5E20;font-weight:600">${fmtd(profit)}</td>
       <td class="oc-payment">${o.payment||''}</td>
-      <td class="oc-status"><span class="order-status ${o.status}">${this.getOrderStatusLabel(o)}</span></td>
+      <td class="oc-status"><span class="order-status ${o.status} ${this.getOrderReturnState(o) === 'full' ? 'returned-full' : ''}">${this.getOrderStatusLabel(o)}</span></td>
       <td class="oc-date" style="white-space:nowrap;color:var(--text-secondary)">${o.createdAt||''}</td>
       <td class="oc-actions"><div class="table-actions">
         <button class="btn-icon view-order" data-id="${o.id}" title="Xem / In hóa đơn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -2588,7 +2588,7 @@ const App = {
           <div class="od-info"><span class="od-label">Khách hàng:</span><strong>${o.customerName}</strong></div>
           <div class="od-info"><span class="od-label">Thanh toán:</span>${o.payment}</div>
           <div class="od-info"><span class="od-label">Người bán:</span>${o.createdBy}</div>
-          <div class="od-info"><span class="od-label">Trạng thái:</span><span class="order-status ${o.status}">${this.getOrderStatusLabel(o)}</span></div>
+          <div class="od-info"><span class="od-label">Trạng thái:</span><span class="order-status ${o.status} ${this.getOrderReturnState(o) === 'full' ? 'returned-full' : ''}">${this.getOrderStatusLabel(o)}</span></div>
         </div>
         <table class="data-table" style="margin-top:16px">
           <thead><tr><th>#</th><th>Sản phẩm</th><th style="text-align:right">SL</th><th style="text-align:right">Đơn giá</th><th style="text-align:right">Thành tiền</th></tr></thead>
@@ -2863,7 +2863,7 @@ const App = {
       <p role="status">${h.busy ? 'Đang cập nhật lịch sử… ' : ''}${h.error ? esc(h.error) + ' ' : ''}${h.checkedAt ? 'Dữ liệu đã lưu · ' + esc(this.formatSyncStatus(h.checkedAt)) : 'Chưa có dữ liệu đã xác nhận'}</p>
       <button class="btn btn-secondary" id="ch-refresh" ${h.busy ? 'disabled' : ''}>${h.error ? 'Thử lại từ đầu' : 'Làm mới'}</button>
       ${h.orders.map(o => `<details style="padding:12px 0;border-bottom:1px solid #ddd">
-        <summary style="cursor:pointer;overflow-wrap:anywhere">${esc(o.id)} · ${esc(o.createdAt)}<br><strong>${fmtd(o.netRevenue)}</strong> · ${esc(this.getOrderStatusLabel(o))}</summary>
+        <summary style="cursor:pointer;overflow-wrap:anywhere">${esc(o.id)} · ${esc(o.createdAt)}<br><strong>${fmtd(o.netRevenue)}</strong> · <span class="${this.getOrderReturnState(o) === 'full' ? 'returned-full' : ''}">${esc(this.getOrderStatusLabel(o))}</span></summary>
         <div style="padding:10px 0">${(o.items || []).map(i => esc(i.name) + ' × ' + esc(i.qty)).join('<br>')}
         <p>Giá trị đơn gốc: ${fmtd(o.finalTotal)} · Sau trả: ${fmtd(o.netRevenue)}</p>
         ${(o.returns || []).map(r => `<p>Phiếu ${esc(r.id)} · ${esc(r.createdAt)}<br>${(r.items || []).map(i => esc(i.name) + ' × ' + esc(i.qty)).join('<br>')}</p>`).join('')}</div>
