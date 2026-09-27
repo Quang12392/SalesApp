@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '385';
+const KHS_APP_VERSION = '386';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -302,6 +302,7 @@ const App = {
       timeoutMs: options.timeoutMs ?? 45000
     });
     if (!Array.isArray(response.data)) throw new Error(`${action} trả về dữ liệu không hợp lệ`);
+    if (key === 'customers' && response.customerStatsVersion !== 1) throw new Error('Backend chưa hỗ trợ tổng mua đầy đủ. Giữ dữ liệu cũ.');
     this[key] = response.data;
     await Promise.all([this.saveCacheValue(key, this[key]), this.markDatasetSynced(key)]);
     return { key, count: this[key].length };
@@ -382,7 +383,7 @@ const App = {
         }
         break;
       case 'customers':
-        addDatasetJob('customers', 10 * 60 * 1000, () => this.refreshArrayDataset('customers', 'getCustomers'));
+        addDatasetJob('customers', this.customers.some(cu => cu.customerStatsVersion !== 1) ? 0 : 10 * 60 * 1000, () => this.refreshArrayDataset('customers', 'getCustomers'));
         break;
       case 'reports':
       case 'dashboard':
@@ -586,6 +587,7 @@ const App = {
         const result = results[index];
         if (!result?.ok) { errors.push(`${key}: ${result?.error?.message || 'lỗi tải'}`); return; }
         const payload = result.value;
+        if (key === 'customers' && payload.customerStatsVersion !== 1) { errors.push('customers: Backend chưa hỗ trợ tổng mua đầy đủ'); return; }
         if (key !== 'config' && Array.isArray(payload.data)) {
           this[key] = payload.data;
           this.saveCacheValue(key, this[key]);
@@ -707,6 +709,8 @@ const App = {
   },
 
   async logout() {
+    this._customerHistory = null;
+    this._customerHistoryCache = {};
     const revoke = typeof KHS_AUTH !== 'undefined' && KHS_AUTH.enabled ? KHS_AUTH.logout() : null;
     this.user = null;
     localStorage.removeItem('khs_user');
@@ -2710,22 +2714,19 @@ const App = {
     });
     const spendMap = {};
     const lastOrderMap = {};
-    this.orders.filter(o => o.status === 'completed').forEach(o => {
-      const cid = o.customerId;
-      if (cid) {
-        spendMap[cid] = (spendMap[cid] || 0) + this.getOrderNetRevenue(o);
-        if (!lastOrderMap[cid] || o.createdAt > lastOrderMap[cid]) lastOrderMap[cid] = o.createdAt;
-      }
+    this.customers.forEach(cu => {
+      if (cu.customerStatsVersion === 1) spendMap[cu.id] = cu.totalSpent;
+      lastOrderMap[cu.id] = cu.customerStatsVersion === 1 ? cu.lastOrder : '';
     });
     const totalSpent = list.reduce((s, cu) => s + (spendMap[cu.id] || 0), 0);
     const sumEl = document.getElementById('c-summary');
-    if (sumEl) sumEl.innerHTML = `<span>${list.length} khách hàng</span><span>Tổng bán: <span style="color:var(--primary);font-weight:700">${fmtd(totalSpent)}</span></span>`;
+    if (sumEl) sumEl.innerHTML = `<span>${list.length} khách hàng</span><span>Tổng bán: <span style="color:var(--primary);font-weight:700">${list.every(cu => cu.customerStatsVersion === 1) ? fmtd(totalSpent) : 'Chưa cập nhật'}</span></span>`;
 
     const cardList = document.getElementById('c-card-list');
     if (cardList) {
       cardList.innerHTML = list.length ? list.map(cu => {
-        const spent = spendMap[cu.id] || 0;
-        const lastOrd = cu.lastOrder || lastOrderMap[cu.id] || '';
+        const spent = spendMap[cu.id];
+        const lastOrd = lastOrderMap[cu.id] || '';
         const initial = (cu.name||'?')[0].toUpperCase();
         const bg = cu.gender==='Nữ'?'#FCE7F3':cu.gender==='Nam'?'#C8E6C9':avatarColor(cu.name);
         const clr = cu.gender==='Nữ'?'#BE185D':cu.gender==='Nam'?'#1B5E20':'#fff';
@@ -2737,7 +2738,7 @@ const App = {
             ${lastOrd ? `<div style="font-size:0.7rem;color:#9CA3AF">${lastOrd}</div>` : ''}
           </div>
           <div class="cmc-right">
-            <div class="cmc-total">${fmtd(spent)}</div>
+            <div class="cmc-total">${spent === undefined ? 'Chưa cập nhật' : fmtd(spent)}</div>
             <div class="cmc-actions">
               <button class="btn-icon hist-c" data-id="${cu.id}" title="Lịch sử">🕐</button>
               <button class="btn-icon edit-c" data-id="${cu.id}" title="Sửa">✏️</button>
@@ -2751,8 +2752,8 @@ const App = {
     const tbody = document.getElementById('c-tbody');
     if (!tbody) return;
     tbody.innerHTML = list.map(cu => {
-      const spent = spendMap[cu.id] || 0;
-      const lastOrd = cu.lastOrder || lastOrderMap[cu.id] || '';
+      const spent = spendMap[cu.id];
+      const lastOrd = lastOrderMap[cu.id] || '';
       return `<tr>
       <td><span class="product-sku">${cu.id}</span></td>
       <td>
@@ -2763,7 +2764,7 @@ const App = {
       </td>
       <td>${cu.phone||'—'}</td>
       <td style="max-width:180px;font-size:0.8rem;color:var(--text-secondary)">${cu.address||'—'}</td>
-      <td><span class="price-text">${fmtd(spent)}</span></td>
+      <td><span class="price-text">${spent === undefined ? 'Chưa cập nhật' : fmtd(spent)}</span></td>
       <td style="color:var(--text-secondary)">${lastOrd||'—'}</td>
       <td><div class="table-actions">
         <button class="btn-icon hist-c" data-id="${cu.id}" title="Lịch sử mua"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
@@ -2787,39 +2788,84 @@ const App = {
   viewCustomerHistory(custId) {
     const cu = this.customers.find(x => x.id === custId);
     if (!cu) return;
-    const orders = this.orders.filter(o => o.customerId === custId);
-    const totalSpent = orders.reduce((s, o) => s + this.getOrderNetRevenue(o), 0);
+    const key = `${this.user?.username || ''}:${custId}`;
+    const cached = this._customerHistoryCache?.[key];
+    this._customerHistory = { custId, key, user: this.user, orders: cached?.orders || [], summary: cached?.summary,
+      checkedAt: cached?.checkedAt, offset: 0, hasMore: false, busy: false, error: '' };
     document.getElementById('modal-title').textContent = `Lịch sử mua hàng - ${cu.name}`;
-    document.getElementById('modal-body').innerHTML = `
-      <div class="cust-history">
-        <div class="ch-stats">
-          <div class="ch-stat"><span class="ch-stat-label">Tổng đơn</span><strong>${cu.totalOrders || orders.length}</strong></div>
-          <div class="ch-stat"><span class="ch-stat-label">Tổng chi tiêu</span><strong class="price-text">${fmtd(totalSpent)}</strong></div>
-          <div class="ch-stat"><span class="ch-stat-label">Giao dịch cuối</span><strong>${cu.lastOrder || '-'}</strong></div>
-        </div>
-        ${orders.length ? `<table class="data-table" style="margin-top:16px;table-layout:fixed;width:100%">
-          <thead><tr><th style="width:30%">Mã đơn</th><th>Sản phẩm</th><th style="text-align:right;width:25%">Tổng</th><th style="width:10%">TT</th></tr></thead>
-          <tbody>
-            ${orders.map(o => `<tr class="ch-order-row" data-oid="${o.id}" style="cursor:pointer">
-              <td style="font-size:0.7rem;word-break:break-all"><span class="product-sku">${o.id}</span><br><span style="color:#9CA3AF;font-size:0.65rem">${o.createdAt||''}</span></td>
-              <td style="font-size:0.75rem;word-break:break-word">${(o.items||[]).map(i => i.name + ' x' + i.qty).join(', ')}</td>
-              <td style="text-align:right"><span class="price-text">${fmtd(this.getOrderNetRevenue(o))}</span></td>
-              <td><span class="order-status ${o.status}">${o.status === 'completed' ? 'OK' : '...'}</span></td>
-            </tr>`).join('')}
-          </tbody>
-        </table>` : '<p style="text-align:center;color:var(--text-secondary);padding:24px">Chưa có đơn hàng nào</p>'}
-      </div>
-    `;
     document.getElementById('modal-footer').innerHTML = '<button class="btn btn-secondary" id="m-cancel">Đóng</button>';
-    this.openModal();
+    this.openModal(true);
     document.getElementById('m-cancel').addEventListener('click', () => this.closeModal());
-    // Click order row → view order detail
-    document.querySelectorAll('.ch-order-row').forEach(tr => {
-      tr.addEventListener('click', () => {
-        this.closeModal();
-        setTimeout(() => this.viewOrder(tr.dataset.oid), 300);
-      });
-    });
+    this.loadCustomerHistory(false);
+  },
+
+  renderCustomerHistory() {
+    const h = this._customerHistory;
+    if (!h) return;
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const s = h.summary;
+    document.getElementById('modal-body').innerHTML = `<div class="cust-history">
+      <div class="ch-stats">
+        <div class="ch-stat"><span class="ch-stat-label">Đơn hoàn thành*</span><strong>${s ? s.totalOrders : '—'}</strong></div>
+        <div class="ch-stat"><span class="ch-stat-label">Tổng mua sau trả</span><strong class="price-text">${s ? fmtd(s.totalSpent) : '—'}</strong></div>
+        <div class="ch-stat"><span class="ch-stat-label">Giao dịch cuối</span><strong>${esc(s?.lastOrder || '—')}</strong></div>
+      </div>
+      <p style="font-size:0.75rem;color:var(--text-secondary)">* Số chứng từ bán hoàn thành, gồm đơn đã trả hàng. Tổng tiền đã trừ hàng trả.</p>
+      <p role="status">${h.busy ? 'Đang cập nhật lịch sử… ' : ''}${h.error ? esc(h.error) + ' ' : ''}${h.checkedAt ? 'Dữ liệu đã lưu · ' + esc(this.formatSyncStatus(h.checkedAt)) : 'Chưa có dữ liệu đã xác nhận'}</p>
+      <button class="btn btn-secondary" id="ch-refresh" ${h.busy ? 'disabled' : ''}>${h.error ? 'Thử lại từ đầu' : 'Làm mới'}</button>
+      ${h.orders.map(o => `<details style="padding:12px 0;border-bottom:1px solid #ddd">
+        <summary style="cursor:pointer;overflow-wrap:anywhere">${esc(o.id)} · ${esc(o.createdAt)}<br><strong>${fmtd(o.netRevenue)}</strong> · ${esc(o.status)}${o.returns?.length ? ' · Có trả hàng' : ''}</summary>
+        <div style="padding:10px 0">${(o.items || []).map(i => esc(i.name) + ' × ' + esc(i.qty)).join('<br>')}
+        <p>Giá trị đơn gốc: ${fmtd(o.finalTotal)} · Sau trả: ${fmtd(o.netRevenue)}</p>
+        ${(o.returns || []).map(r => `<p>Phiếu ${esc(r.id)} · ${esc(r.createdAt)}<br>${(r.items || []).map(i => esc(i.name) + ' × ' + esc(i.qty)).join('<br>')}</p>`).join('')}</div>
+      </details>`).join('')}
+      ${!h.busy && !h.error && !h.orders.length ? '<p>Chưa có đơn hàng.</p>' : ''}
+      ${h.hasMore ? `<button class="btn btn-secondary" id="ch-more" ${h.busy ? 'disabled' : ''}>Xem thêm</button>` : ''}
+    </div>`;
+    document.getElementById('ch-refresh')?.addEventListener('click', () => this.loadCustomerHistory(false));
+    document.getElementById('ch-more')?.addEventListener('click', () => this.loadCustomerHistory(true));
+  },
+
+  async loadCustomerHistory(more = false) {
+    const h = this._customerHistory;
+    if (!h || h.busy) return;
+    h.busy = true; h.error = '';
+    this.renderCustomerHistory();
+    const offset = more ? h.offset : 0;
+    try {
+      const apiUrl = localStorage.getItem('khs_api_url');
+      if (!apiUrl) throw new Error('Chưa cấu hình API');
+      const params = new URLSearchParams({action:'getCustomers',mode:'history',customerId:h.custId,offset:String(offset),limit:'30'});
+      const result = await this.fetchApiJson(`${apiUrl}?${params}`, {retries:0,timeoutMs:30000});
+      if (this._customerHistory !== h || this.user !== h.user) return;
+      if (result.customerStatsVersion !== 1 || result.customerId !== h.custId || !Array.isArray(result.data)
+        || !result.summary || !result.meta || result.meta.offset !== offset
+        || !Number.isFinite(result.summary.totalSpent) || !Number.isFinite(result.summary.totalOrders)
+        || !result.checkedAt || (result.meta.hasMore && !result.data.length)
+        || result.data.some(o => o.customerId !== h.custId || !Number.isFinite(o.netRevenue))) throw new Error('Lịch sử trả về chưa hợp lệ; giữ dữ liệu cũ.');
+      h.orders = [...new Map([...(more ? h.orders : []), ...result.data].map(o => [o.id,o])).values()];
+      h.summary = result.summary; h.checkedAt = result.checkedAt;
+      h.offset = offset + result.data.length; h.hasMore = result.meta.hasMore;
+      this._customerHistoryCache = this._customerHistoryCache || {};
+      this._customerHistoryCache[h.key] = {orders:h.orders,summary:h.summary,checkedAt:h.checkedAt};
+      const cu = this.customers.find(c => c.id === h.custId);
+      if (cu) {
+        Object.assign(cu, result.summary, {customerStatsVersion:1,statsCheckedAt:result.checkedAt});
+        this.saveCacheValue('customers',this.customers).catch(() => {});
+        if (this.page === 'customers') this.updateCustomerTable();
+      }
+    } catch (error) {
+      if (this._customerHistory === h && this.user === h.user) h.error = 'Không cập nhật được: ' + error.message;
+    } finally {
+      if (this._customerHistory === h && this.user === h.user) { h.busy = false; this.renderCustomerHistory(); }
+    }
+  },
+
+  invalidateCustomerAccounting() {
+    this._customerHistoryCache = {};
+    this.datasetSyncTimes = {...(this.datasetSyncTimes || {}),customers:''};
+    this.saveCacheValue('datasetSyncTimes',this.datasetSyncTimes).catch(() => {});
+    if (this.page === 'customers') this.setDatasetSyncStatus('c-sync-status','customers');
   },
 
   // SVG avatars by gender
@@ -4185,6 +4231,7 @@ const App = {
     }
 
     this.returns.unshift(returnRecord);
+    this.invalidateCustomerAccounting();
     this.returnSubmitting = false;
     this.toast('success', `Đã tạo phiếu trả hàng ${returnId} - Hoàn ${fmtd(returnTotal)}`);
     this.closeReturn();
@@ -4789,8 +4836,8 @@ const App = {
   },
 
   // ═════════ MODAL & TOAST ═════════
-  openModal() { document.getElementById('modal-overlay').style.display = 'flex'; document.body.style.overflow = 'hidden'; },
-  closeModal() { if (this._customerSaveBusy || this._productSaveBusy) return; document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
+  openModal(keepCustomerHistory = false) { if (!keepCustomerHistory) this._customerHistory = null; document.getElementById('modal-overlay').style.display = 'flex'; document.body.style.overflow = 'hidden'; },
+  closeModal() { if (this._customerSaveBusy || this._productSaveBusy) return; this._customerHistory = null; document.getElementById('modal-overlay').style.display = 'none'; document.body.style.overflow = ''; },
   showSheetProgress(message, detail) {
     const existing = document.getElementById('sheet-progress-overlay');
     if (existing?.dataset.sheetProgress === 'true') {

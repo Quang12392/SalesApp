@@ -1608,10 +1608,7 @@ const POS = {
       if (syncedOrderId) order.id = syncedOrderId;
 
       // Update customer spending only after the order is accepted.
-      if (this.selectedCustomer?.id) {
-        const cust = App.customers.find(c => c.id === this.selectedCustomer.id);
-        if (cust) { cust.totalSpent += finalTotal; cust.lastOrder = dateStr; }
-      }
+      App.invalidateCustomerAccounting();
 
       App.orders.unshift(order);
 
