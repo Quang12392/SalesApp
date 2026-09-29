@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '390';
+const KHS_APP_VERSION = '391';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -236,6 +236,7 @@ const App = {
   async refreshProductsOnly(options = {}) {
     if (this._productRefreshPromise) return this._productRefreshPromise;
     this._productRefreshPromise = (async () => {
+      const epoch = this._returnDataEpoch || 0, user = this.user;
       const apiUrl = localStorage.getItem('khs_api_url');
       if (!apiUrl) throw new Error('Chưa cấu hình API');
       const response = await this.fetchApiJson(`${apiUrl}?action=getProducts`, {
@@ -243,6 +244,7 @@ const App = {
         timeoutMs: options.timeoutMs ?? 30000
       });
       if (!Array.isArray(response.data)) throw new Error('API tồn kho trả về dữ liệu không hợp lệ');
+      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this.user !== user) throw new Error('Kho vừa thay đổi, bỏ phản hồi cũ.');
       this.products = response.data;
       this.productsLastSyncAt = new Date().toISOString();
       await Promise.all([
@@ -292,6 +294,7 @@ const App = {
   },
 
   async refreshArrayDataset(key, action, options = {}) {
+    const epoch = this._returnDataEpoch || 0, user = this.user;
     this._datasetRefreshPromises = this._datasetRefreshPromises || {};
     if (this._datasetRefreshPromises[key]) return this._datasetRefreshPromises[key];
     const promise = (async () => {
@@ -302,6 +305,7 @@ const App = {
       timeoutMs: options.timeoutMs ?? 45000
     });
     if (!Array.isArray(response.data)) throw new Error(`${action} trả về dữ liệu không hợp lệ`);
+    if (['batches','returns','customers'].includes(key) && (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this.user !== user)) throw new Error('Dữ liệu vừa thay đổi, bỏ phản hồi cũ.');
     if (key === 'customers' && response.customerStatsVersion !== 1) throw new Error('Backend chưa hỗ trợ tổng mua đầy đủ. Giữ dữ liệu cũ.');
     this[key] = response.data;
     await Promise.all([this.saveCacheValue(key, this[key]), this.markDatasetSynced(key)]);
@@ -526,6 +530,7 @@ const App = {
   },
 
   async ensureOrdersForRange(startDate, endDate, options = {}) {
+    const epoch = this._returnDataEpoch || 0, user = this.user;
     const all = !!options.all;
     const force = !!options.force;
     if (!force && this.hasFreshOrderCoverage(startDate, endDate, options.maxAgeMs, all)) return { cached: true };
@@ -541,6 +546,7 @@ const App = {
         params.set('to', this._formatDateInput(endDate));
       }
       const response = await this.fetchApiJson(`${apiUrl}?${params.toString()}`, { retries: 2, timeoutMs: 60000 });
+      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this.user !== user) throw new Error('Đơn vừa thay đổi, bỏ phản hồi cũ.');
       const incoming = Array.isArray(response.data) ? response.data : [];
       // Older Apps Script deployments ignore from/to and return the complete
       // history without meta. Treat those responses, and an explicit "all"
@@ -559,6 +565,7 @@ const App = {
   },
 
   async autoSync(options = {}) {
+    const epoch = this._returnDataEpoch || 0, user = this.user;
     const splash = document.getElementById('loading-splash');
     const hideSplash = () => {
       if (splash && splash.parentNode) { splash.style.opacity='0'; splash.style.transition='0.3s'; setTimeout(()=>{ if(splash.parentNode) splash.remove(); },300); }
@@ -584,6 +591,7 @@ const App = {
       const results = await this.runLimited(tasks, 2);
       const errors = [];
       definitions.forEach(([key], index) => {
+        if (['products','batches','returns','customers'].includes(key) && (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this.user !== user)) { errors.push(`${key}: Bỏ phản hồi trước khi trả hàng`); return; }
         const result = results[index];
         if (!result?.ok) { errors.push(`${key}: ${result?.error?.message || 'lỗi tải'}`); return; }
         const payload = result.value;
@@ -2629,13 +2637,16 @@ const App = {
 
   async startDetailReturn(order, button) {
     if (button.disabled) return;
+    try { if (this.getPendingReturn()) { this.closeModal(); this.openReturn(); return; } }
+    catch (error) { this.toast('error',error.message); return; }
     const user = this.user;
     button.disabled = true; button.textContent = 'Đang kiểm tra phiếu trả…';
     try {
       this.showSheetProgress('Đang kiểm tra phiếu trả…', 'Đang tải các lần trả trước để kiểm tra số lượng còn được trả.');
-      await this.refreshArrayDataset('returns','getReturns',{retries:0,timeoutMs:30000});
+      const rows = await this.fetchOrderReturns(order.id);
       if (!button.isConnected || this.user !== user || document.getElementById('modal-overlay').style.display === 'none') return;
-      const latest = {...order, returns:this.returns.filter(r => String(r.orderId).trim() === String(order.id).trim())};
+      this.mergeOrderReturns(order.id, rows);
+      const latest = {...order, returns:rows};
       if (!this.isReturnableOrder(latest)) { this.toast('warning','Đơn này đã trả hết hoặc không còn được trả hàng.'); button.textContent = 'Không thể trả thêm'; return; }
       this.closeModal(); this.openReturn(); this.selectReturnOrder(latest.id, latest);
     } catch (error) {
@@ -2908,6 +2919,7 @@ const App = {
   },
 
   async loadCustomerHistory(more = false) {
+    const epoch = this._returnDataEpoch || 0;
     const h = this._customerHistory;
     if (!h || h.busy) return;
     h.busy = true; h.error = '';
@@ -2919,6 +2931,7 @@ const App = {
       const params = new URLSearchParams({action:'getCustomers',mode:'history',customerId:h.custId,offset:String(offset),limit:'30'});
       const result = await this.fetchApiJson(`${apiUrl}?${params}`, {retries:0,timeoutMs:30000});
       if (this._customerHistory !== h || this.user !== h.user) return;
+      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting) throw new Error('Dữ liệu trả hàng vừa thay đổi. Mở lại lịch sử để cập nhật.');
       if (result.customerStatsVersion !== 1 || result.customerId !== h.custId || !Array.isArray(result.data)
         || !result.summary || !result.meta || result.meta.offset !== offset
         || !Number.isFinite(result.summary.totalSpent) || !Number.isFinite(result.summary.totalOrders)
@@ -3988,6 +4001,10 @@ const App = {
 
   openReturn() {
     if (this.returnSubmitting) return;
+    this._returnOpenGeneration = (this._returnOpenGeneration || 0) + 1;
+    let pending;
+    try { pending = this.getPendingReturn(); }
+    catch (error) { this.toast('error',error.message); return; }
     this.returnSearch = '';
     this.returnPage = 1;
     this.returnSelectedOrder = null;
@@ -3996,10 +4013,29 @@ const App = {
     document.getElementById('return-search').value = '';
     this.returnStep1();
     this.renderReturnOrders();
+    if (pending) {
+      this.selectReturnOrder(pending.order.id, pending.order, true);
+      document.getElementById('return-title').textContent = 'Kiểm tra phiếu đang chờ / ' + pending.request.returnId;
+      const quantities = {};
+      pending.request.items.forEach(item => { const key = this.getReturnItemKey(item); quantities[key] = (quantities[key] || 0) + item.qty; });
+      (pending.order.items || []).forEach((item,i) => {
+        const key = this.getReturnItemKey(item), qty = Math.min(item.qty,quantities[key] || 0);
+        quantities[key] = Math.max(0,(quantities[key] || 0)-qty);
+        const input = document.querySelector(`.return-qty-input[data-idx="${i}"]`), check = document.querySelector(`.return-item-check[data-idx="${i}"]`);
+        if (input) input.value = qty;
+        if (check) check.checked = qty > 0;
+      });
+      document.querySelectorAll('#return-overlay input, #return-overlay textarea, #return-overlay select').forEach(el => { el.disabled = true; });
+      document.getElementById('return-note').value = pending.request.note;
+      document.getElementById('rd-refund').textContent = fmtd(pending.request.returnTotal);
+      document.getElementById('return-confirm').textContent = 'KIỂM TRA PHIẾU ĐANG CHỜ';
+      this.toast('warning','Đã khôi phục phiếu ' + pending.request.returnId + '. Bấm kiểm tra để tiếp tục cùng yêu cầu; không tạo phiếu mới.');
+    }
   },
 
   closeReturn() {
     if (this.returnSubmitting) return;
+    this._returnOpenGeneration = (this._returnOpenGeneration || 0) + 1;
     document.getElementById('return-overlay').style.display = 'none';
   },
 
@@ -4044,7 +4080,7 @@ const App = {
           <td style="text-align:right;font-weight:600">${hasReturn?`<span style="text-decoration:line-through;color:#9CA3AF;font-size:0.75rem">${fmtd(o.finalTotal||0)}</span> ${fmtd(remaining)}`:fmtd(o.finalTotal||0)}</td>
         </tr>`;}).join('')}</tbody></table>`;
       el.querySelectorAll('.return-row').forEach(r => {
-        r.addEventListener('click', () => this.selectReturnOrder(r.dataset.oid));
+        r.addEventListener('click', () => this.prepareReturnOrder(r.dataset.oid));
         r.addEventListener('mouseenter', () => r.style.background = '#EFF6FF');
         r.addEventListener('mouseleave', () => r.style.background = '');
       });
@@ -4065,16 +4101,35 @@ const App = {
     pg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { this.returnPage=parseInt(b.dataset.rp); this.renderReturnOrders(); }));
   },
 
-  selectReturnOrder(orderId, suppliedOrder = null) {
+  async prepareReturnOrder(orderId) {
+    if (this._returnCheckBusy || this.returnSubmitting) return;
+    const order = this.orders.find(o => o.id === orderId), user = this.user, generation = this._returnOpenGeneration;
+    if (!order) return;
+    this._returnCheckBusy = true;
+    try {
+      if (this.getPendingReturn()) { this.openReturn(); return; }
+      this.showSheetProgress('Đang kiểm tra phiếu trả…','Chỉ tải các lần trả của đơn đang chọn.');
+      const rows = await this.fetchOrderReturns(orderId);
+      if (this.user !== user || generation !== this._returnOpenGeneration || document.getElementById('return-overlay').style.display === 'none') return;
+      this.mergeOrderReturns(orderId,rows);
+      this.selectReturnOrder(orderId,{...order,returns:rows});
+    } catch (error) { if (this.user === user) this.toast('error',error.message); }
+    finally { this._returnCheckBusy = false; this.hideSheetProgress(); }
+  },
+
+  selectReturnOrder(orderId, suppliedOrder = null, recovering = false) {
     const order = suppliedOrder || this.orders.find(o => o.id === orderId);
     if(!order) return;
-    if(!this.isReturnableOrder(order)) {
+    if(!recovering && !this.isReturnableOrder(order)) {
       this.toast('error', 'Chỉ đơn hoàn thành mới được trả hàng');
       this.returnStep1();
       this.renderReturnOrders();
       return;
     }
     this.returnSelectedOrder = order;
+    document.getElementById('return-note').disabled = false;
+    document.getElementById('return-note').value = '';
+    document.getElementById('return-confirm').textContent = 'TRẢ HÀNG';
     document.getElementById('return-step1').style.display = 'none';
     document.getElementById('return-step2').style.display = '';
     document.getElementById('return-title').textContent = 'Trả hàng / ' + order.id;
@@ -4087,7 +4142,7 @@ const App = {
 
     // Calculate already-returned qty per item. Key includes price so same SKU
     // sold on separate TikTok lines is not mixed up.
-    const returnedQty = this.getOrderReturnedQtyMap(order);
+    const remainingQty = this.returnLineRemaining(order);
 
     // Left panel - items with editable price
     const items = order.items || [];
@@ -4101,9 +4156,8 @@ const App = {
           <th style="padding:8px 4px;text-align:right;width:80px">Thành tiền</th>
         </tr></thead>
         <tbody>${items.map((it, i) => {
-          const key = this.getReturnItemKey(it);
-          const alreadyReturned = returnedQty[key] || 0;
-          const remaining = Math.max(0, it.qty - alreadyReturned);
+          const remaining = remainingQty[i];
+          const alreadyReturned = it.qty - remaining;
           const disabled = remaining <= 0;
           return `<tr style="border-bottom:1px solid #F3F4F6;${disabled?'opacity:0.4':''}">
           <td style="padding:6px 4px"><input type="checkbox" class="return-item-check" data-idx="${i}" style="accent-color:#EF4444" ${disabled?'disabled':''}></td>
@@ -4206,10 +4260,96 @@ const App = {
     this._returnPropDiscount = discount;
   },
 
+  returnLineRemaining(order) {
+    const used = {...this.getOrderReturnedQtyMap(order)};
+    return (order.items || []).map(item => {
+      const key = this.getReturnItemKey(item), qty = this.toMoneyNumber(item.qty), returned = Math.min(qty,used[key] || 0);
+      used[key] = Math.max(0,(used[key] || 0)-returned);
+      return qty-returned;
+    });
+  },
+
+  returnPendingKey() { return 'khs_return_v2:' + this.user?.username; },
+
+  getPendingReturn() {
+    let record;
+    try { record = JSON.parse(localStorage.getItem(this.returnPendingKey()) || 'null'); }
+    catch (_) { throw new Error('Không đọc được phiếu đang chờ. Không xóa dữ liệu app; cần kiểm tra trước khi trả tiếp.'); }
+    if (record && (record.version !== 2 || !record.request?.clientRequestId || record.order?.id !== record.request.orderId || !Array.isArray(record.request.items))) throw new Error('Phiếu đang chờ không hợp lệ. Giữ dữ liệu app để kiểm tra.');
+    return record;
+  },
+
+  async fetchOrderReturns(orderId) {
+    const url = localStorage.getItem('khs_api_url'), user = this.user, epoch = this._returnDataEpoch || 0;
+    if (!url) throw new Error('Chưa cấu hình API');
+    const result = await this.fetchApiJson(`${url}?action=getReturns&orderId=${encodeURIComponent(orderId)}`,{retries:0,timeoutMs:30000});
+    if (this.user !== user || epoch !== (this._returnDataEpoch || 0)) throw new Error('Dữ liệu vừa thay đổi. Vui lòng kiểm tra lại.');
+    if (result.meta?.scope !== 'order' || result.meta.orderId !== orderId || !Array.isArray(result.data) || result.data.some(r => r.orderId !== orderId || !Array.isArray(r.items))) throw new Error('Backend chưa trả đúng phiếu của đơn này. Giữ dữ liệu cũ.');
+    return result.data;
+  },
+
+  mergeOrderReturns(orderId, rows) {
+    this.returns = this.returns.filter(r => r.orderId !== orderId).concat(rows);
+    // Global orders use the shared ledger; embedded snapshots belong only to history detail.
+    for (const order of this.orders || []) if (order.id === orderId) delete order.returns;
+    if (this.returnSelectedOrder?.id === orderId && !(this.orders || []).includes(this.returnSelectedOrder)) this.returnSelectedOrder.returns = rows;
+  },
+
+  async applyReturnResult(result, request) {
+    const expected = new Set(request.items.map(i => i.sku));
+    if (result.returnSaveVersion !== 2 || result.orderId !== request.orderId || result.returnId !== request.returnId ||
+      !Array.isArray(result.affectedSkus) || result.affectedSkus.length !== expected.size || new Set(result.affectedSkus).size !== expected.size || result.affectedSkus.some(s => !expected.has(s)) ||
+      !Array.isArray(result.products) || result.products.length !== expected.size || new Set(result.products.map(p => p.sku)).size !== expected.size || result.products.some(p => !expected.has(p.sku) || ['stock','costPrice','sellPrice'].some(k => !Number.isFinite(p[k]) || p[k] < 0)) ||
+      !Array.isArray(result.batches) || result.batches.some(b => !expected.has(b.sku)) ||
+      !Array.isArray(result.returns) || result.returns.some(r => r.orderId !== request.orderId || !Array.isArray(r.items)) || !result.returns.some(r => r.id === request.returnId)) throw new Error('Chưa nhận đủ biên nhận trả hàng v2. Giữ nguyên yêu cầu để kiểm tra lại.');
+    this._returnDataEpoch = (this._returnDataEpoch || 0) + 1;
+    for (const product of result.products) {
+      const current = this.products.find(p => p.sku === product.sku);
+      if (current) Object.assign(current,product); else this.products.push({...product});
+    }
+    this.batches = (this.batches || []).filter(b => !expected.has(b.sku)).concat(result.batches);
+    this.mergeOrderReturns(request.orderId,result.returns);
+    this.invalidateCustomerAccounting();
+    this._customerHistory = null;
+    // A subset receipt cannot certify freshness of a whole catalog or ledger.
+    this.datasetSyncTimes = {...(this.datasetSyncTimes || {}),returns:''};
+    try { await Promise.all(['products','batches','returns','orders','datasetSyncTimes'].map(k => this.saveCacheValue(k,this[k]))); }
+    catch (_) { this.toast('warning','Sheet đã lưu. Bộ nhớ đệm trên máy chưa lưu được; cần làm mới khi mở lại app.'); }
+  },
+
+  async sendPendingReturn(record) {
+    const username = this.user?.username, user = this.user, key = this.returnPendingKey();
+    const url = localStorage.getItem('khs_api_url');
+    if (!username || !url) throw new Error('Chưa cấu hình API hoặc chưa đăng nhập; phiếu chưa được gửi.');
+    const firstAttempt = !record.attempted;
+    record.attempted = true;
+    localStorage.setItem(key,JSON.stringify(record));
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(),90000);
+    let result;
+    try {
+      const response = await this.apiFetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},signal:controller.signal,body:JSON.stringify({...record.request,_authUsername:username})});
+      result = await response.json();
+      if (response.ok === false || result.success !== true) {
+        if (firstAttempt && result.notSubmitted === true && localStorage.getItem(key) === JSON.stringify(record)) localStorage.removeItem(key);
+        throw new Error(result.error || 'Server chưa xác nhận phiếu trả.');
+      }
+    } finally { clearTimeout(timer); }
+    if (this.user !== user) throw new Error('Tài khoản đã thay đổi. Trở lại tài khoản cũ để kiểm tra phiếu đang chờ.');
+    await this.applyReturnResult(result,record.request);
+    if (this.user !== user) throw new Error('Phiếu đã lưu nhưng tài khoản vừa thay đổi. Mở lại tài khoản cũ để kiểm tra.');
+    try { if (localStorage.getItem(key) === JSON.stringify(record)) localStorage.removeItem(key); }
+    catch (_) { /* Keep the same request recoverable; a replay will not credit stock again. */ }
+  },
+
   async processReturn() {
     if(this.returnSubmitting) return;
     const order = this.returnSelectedOrder;
     if(!order) return;
+    let record;
+    try { record = this.getPendingReturn(); }
+    catch (error) { this.showSheetError('Không thể trả hàng',error.message); return; }
+    if (record && record.order.id !== order.id) { this.openReturn(); return; }
+    if (!record) {
     if(!this.isReturnableOrder(order)) {
       this.toast('error', 'Đơn đã hủy hoặc chưa hoàn thành, không thể trả hàng');
       this.returnStep1();
@@ -4218,15 +4358,14 @@ const App = {
     }
     const items = order.items || [];
     const returnItems = [];
-    const returnedQty = this.getOrderReturnedQtyMap(order);
+    const remainingQty = this.returnLineRemaining(order);
 
     document.querySelectorAll('.return-item-check').forEach(cb => {
       const i = parseInt(cb.dataset.idx);
       const qi = document.querySelector(`.return-qty-input[data-idx="${i}"]`);
       if(cb.checked && qi) {
         const line = items[i];
-        const key = this.getReturnItemKey(line);
-        const remaining = Math.max(0, (this.toMoneyNumber(line.qty) || 0) - (returnedQty[key] || 0));
+        const remaining = remainingQty[i];
         const qty = Math.min(parseInt(qi.value)||0, remaining);
         const price = this.toMoneyNumber(line.price);
         if(qty > 0) returnItems.push({ name: line.name, sku: line.sku, qty, price });
@@ -4243,7 +4382,7 @@ const App = {
     }
 
     const itemsValue = returnItems.reduce((s,i) => s + i.qty * i.price, 0);
-    const returnTotal = this._returnRefund || itemsValue; // Use proportional refund
+    const returnTotal = this._returnRefund ?? itemsValue; // Zero refund is a valid explicit amount.
     const propDiscount = this._returnPropDiscount || 0;
     const note = document.getElementById('return-note').value;
 
@@ -4252,29 +4391,25 @@ const App = {
     confirmMsg += `\nCần trả khách: ${fmtd(returnTotal)}`;
     if(!confirm(confirmMsg)) return;
 
-    // Create return record
+    // Persist BEFORE sending. Never allocate another identity for an uncertain write.
     const now = new Date();
-    const returnId = 'TH' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + String(this.returns.length+1).padStart(3,'0');
-    const returnRecord = {
-      id: returnId,
-      orderId: order.id,
-      customerName: order.customerName || 'Khách lẻ',
-      customerId: order.customerId || '',
-      items: returnItems,
-      itemsValue,
-      discount: propDiscount,
-      returnTotal,
-      note,
-      createdBy: this.user.displayName,
-      createdAt: now.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})
-    };
+    try {
+      if (!this.user?.username || !localStorage.getItem('khs_api_url')) throw new Error('Chưa cấu hình API hoặc chưa đăng nhập; phiếu chưa được gửi.');
+      const id = crypto.randomUUID();
+      const returnId = 'TH' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + id;
+      record = {version:2,order:JSON.parse(JSON.stringify(order)),request:{action:'returnOrder',returnMutationVersion:2,clientRequestId:'return:'+id,returnId,orderId:order.id,items:returnItems,returnTotal,note,createdBy:this.user.displayName}};
+      localStorage.setItem(this.returnPendingKey(),JSON.stringify(record));
+    } catch (error) { this.showSheetError('Phiếu chưa được gửi',error.message); return; }
+    }
 
     const confirmBtn = document.getElementById('return-confirm');
     const oldConfirmText = confirmBtn?.textContent || '';
     const controls = [...document.querySelectorAll('#return-overlay button, #return-overlay input, #return-overlay textarea, #return-overlay select')];
     const disabledStates = controls.map(control => control.disabled);
     let returnFailure = '';
+    let confirmed = false;
     this.returnSubmitting = true;
+    this._returnDataEpoch = (this._returnDataEpoch || 0) + 1;
     controls.forEach(control => { control.disabled = true; });
     if(confirmBtn) {
       confirmBtn.disabled = true;
@@ -4283,67 +4418,28 @@ const App = {
 
     try {
     this.showSheetProgress('Đang xử lý trả hàng…', 'Đang gửi phiếu trả và chờ server cập nhật tồn kho. Vui lòng không đóng hoặc tải lại app.');
-    let returnSynced = false;
-    let returnError = '';
-
-    // Sync to Google Sheets first. Only update local state after backend accepts it.
-    const apiUrl = localStorage.getItem('khs_api_url');
-    if(apiUrl) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 90000);
-      try {
-        const res = await App.apiFetch(apiUrl, {
-          signal: controller.signal,
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            action: 'returnOrder',
-            returnId,
-            orderId: order.id,
-            customerName: returnRecord.customerName,
-            customerId: returnRecord.customerId,
-            items: returnItems,
-            returnTotal,
-            note,
-            createdBy: returnRecord.createdBy
-          })
-        }).then(r => r.json());
-        if(res.success) {
-          returnSynced = true;
-          setTimeout(() => this.autoSync(), 3000);
-        } else {
-          returnError = res.error || 'Google Sheets từ chối phiếu trả hàng';
-        }
-      } catch(e) {
-        returnError = e.notSubmitted ? (e.message || 'Yêu cầu chưa được gửi') : 'Chưa xác nhận được kết quả. Hãy làm mới Trả hàng và kiểm tra phiếu ' + returnId + ' trước khi thao tác lại. ' + (e.message || 'Mất kết nối Google Sheets');
-      } finally {
-        clearTimeout(timer);
-      }
-    } else {
-      returnError = 'Chưa cấu hình API; phiếu trả chưa được gửi.';
-    }
-
-    if(!returnSynced) {
-      this.returnSubmitting = false;
-      if(confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = oldConfirmText;
-      }
-      returnFailure = returnError;
-      return;
-    }
-
-    this.returns.unshift(returnRecord);
-    this.invalidateCustomerAccounting();
+    await this.sendPendingReturn(record);
+    confirmed = true;
     this.returnSubmitting = false;
-    this.toast('success', `Đã tạo phiếu trả hàng ${returnId} - Hoàn ${fmtd(returnTotal)}`);
+    this.toast('success', `Đã xác nhận phiếu ${record.request.returnId} - Hoàn ${fmtd(record.request.returnTotal)}`);
     this.closeReturn();
     if(this.page === 'orders') this.renderOrders(document.getElementById('page-container'));
+    if(this.page === 'returns') this.updateReturnsTable();
+    } catch (error) {
+      if (confirmed) this.toast('warning','Phiếu đã lưu. Giao diện chưa cập nhật; hãy mở lại tab, không tạo lại phiếu.');
+      else returnFailure = 'Chưa xác nhận được kết quả. Kiểm tra lại cùng phiếu ' + record.request.returnId + ' trước khi thao tác lại. ' + error.message;
     } finally {
       this.returnSubmitting = false;
+      this._returnDataEpoch = (this._returnDataEpoch || 0) + 1;
       this.hideSheetProgress();
       controls.forEach((control, i) => { control.disabled = disabledStates[i]; });
       if (confirmBtn) confirmBtn.textContent = oldConfirmText;
+      if (returnFailure) {
+        try { if (this.getPendingReturn()) {
+          document.querySelectorAll('#return-overlay input, #return-overlay textarea, #return-overlay select').forEach(control => { control.disabled = true; });
+          if (confirmBtn) confirmBtn.textContent = 'KIỂM TRA PHIẾU ĐANG CHỜ';
+        } } catch (_) { /* Keep failure visible if local storage itself is unavailable. */ }
+      }
       if (returnFailure) this.showSheetError('Chưa xác nhận trả hàng thành công', returnFailure);
     }
   },
