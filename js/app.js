@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '389';
+const KHS_APP_VERSION = '390';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -2632,6 +2632,7 @@ const App = {
     const user = this.user;
     button.disabled = true; button.textContent = 'Đang kiểm tra phiếu trả…';
     try {
+      this.showSheetProgress('Đang kiểm tra phiếu trả…', 'Đang tải các lần trả trước để kiểm tra số lượng còn được trả.');
       await this.refreshArrayDataset('returns','getReturns',{retries:0,timeoutMs:30000});
       if (!button.isConnected || this.user !== user || document.getElementById('modal-overlay').style.display === 'none') return;
       const latest = {...order, returns:this.returns.filter(r => String(r.orderId).trim() === String(order.id).trim())};
@@ -2639,6 +2640,8 @@ const App = {
       this.closeModal(); this.openReturn(); this.selectReturnOrder(latest.id, latest);
     } catch (error) {
       if (button.isConnected && this.user === user) { this.toast('error','Chưa kiểm tra được phiếu trả: ' + error.message); button.disabled = false; button.textContent = '↩ Thử lại trả hàng'; }
+    } finally {
+      this.hideSheetProgress();
     }
   },
 
@@ -3984,6 +3987,7 @@ const App = {
   },
 
   openReturn() {
+    if (this.returnSubmitting) return;
     this.returnSearch = '';
     this.returnPage = 1;
     this.returnSelectedOrder = null;
@@ -3995,6 +3999,7 @@ const App = {
   },
 
   closeReturn() {
+    if (this.returnSubmitting) return;
     document.getElementById('return-overlay').style.display = 'none';
   },
 
@@ -4004,6 +4009,7 @@ const App = {
   },
 
   returnStep1() {
+    if (this.returnSubmitting) return;
     document.getElementById('return-step1').style.display = '';
     document.getElementById('return-step2').style.display = 'none';
     document.getElementById('return-title').textContent = 'Chọn hóa đơn trả hàng';
@@ -4265,20 +4271,29 @@ const App = {
 
     const confirmBtn = document.getElementById('return-confirm');
     const oldConfirmText = confirmBtn?.textContent || '';
+    const controls = [...document.querySelectorAll('#return-overlay button, #return-overlay input, #return-overlay textarea, #return-overlay select')];
+    const disabledStates = controls.map(control => control.disabled);
+    let returnFailure = '';
     this.returnSubmitting = true;
+    controls.forEach(control => { control.disabled = true; });
     if(confirmBtn) {
       confirmBtn.disabled = true;
       confirmBtn.textContent = 'Đang xử lý...';
     }
 
+    try {
+    this.showSheetProgress('Đang xử lý trả hàng…', 'Đang gửi phiếu trả và chờ server cập nhật tồn kho. Vui lòng không đóng hoặc tải lại app.');
     let returnSynced = false;
     let returnError = '';
 
     // Sync to Google Sheets first. Only update local state after backend accepts it.
     const apiUrl = localStorage.getItem('khs_api_url');
     if(apiUrl) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 90000);
       try {
         const res = await App.apiFetch(apiUrl, {
+          signal: controller.signal,
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
@@ -4300,10 +4315,12 @@ const App = {
           returnError = res.error || 'Google Sheets từ chối phiếu trả hàng';
         }
       } catch(e) {
-        returnError = e.message || 'Mất kết nối Google Sheets';
+        returnError = e.notSubmitted ? (e.message || 'Yêu cầu chưa được gửi') : 'Chưa xác nhận được kết quả. Hãy làm mới Trả hàng và kiểm tra phiếu ' + returnId + ' trước khi thao tác lại. ' + (e.message || 'Mất kết nối Google Sheets');
+      } finally {
+        clearTimeout(timer);
       }
     } else {
-      returnSynced = true;
+      returnError = 'Chưa cấu hình API; phiếu trả chưa được gửi.';
     }
 
     if(!returnSynced) {
@@ -4312,7 +4329,7 @@ const App = {
         confirmBtn.disabled = false;
         confirmBtn.textContent = oldConfirmText;
       }
-      this.toast('error', 'Không tạo được phiếu trả hàng: ' + returnError);
+      returnFailure = returnError;
       return;
     }
 
@@ -4322,6 +4339,13 @@ const App = {
     this.toast('success', `Đã tạo phiếu trả hàng ${returnId} - Hoàn ${fmtd(returnTotal)}`);
     this.closeReturn();
     if(this.page === 'orders') this.renderOrders(document.getElementById('page-container'));
+    } finally {
+      this.returnSubmitting = false;
+      this.hideSheetProgress();
+      controls.forEach((control, i) => { control.disabled = disabledStates[i]; });
+      if (confirmBtn) confirmBtn.textContent = oldConfirmText;
+      if (returnFailure) this.showSheetError('Chưa xác nhận trả hàng thành công', returnFailure);
+    }
   },
 
   // ═════════ SETTINGS ═════════

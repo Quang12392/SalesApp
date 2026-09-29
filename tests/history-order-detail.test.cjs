@@ -4,6 +4,7 @@ function setup(){
  const nodes=new Map();const document={getElementById:id=>{if(!nodes.has(id))nodes.set(id,{style:{display:'flex'},addEventListener(){},innerHTML:''});return nodes.get(id);}};
  const code=source.slice(source.indexOf('  viewOrder('),source.indexOf('  // ═════════ RETURNS PAGE'));
  const app=vm.runInNewContext('({'+code+'})',{document,fmtd:String});
+ app.showSheetProgress=()=>{};app.hideSheetProgress=()=>{};
  Object.assign(app,{user:{username:'test'},orders:[],returns:[],openModal(){},closeModal(){},openReturn(){},getOrderReturnState:()=> 'none',getOrderStatusLabel:()=> 'Hoàn thành',isReturnableOrder:o=>!o.returns?.length,toast(){},selectReturnOrder:(id,o)=>app.selected=o});
  return {app,nodes,button:{disabled:false,isConnected:true}};
 }
