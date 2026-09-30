@@ -12,7 +12,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyq7b6kEdMTiXv5
 if (localStorage.getItem('khs_api_url') !== DEFAULT_API_URL) {
   localStorage.setItem('khs_api_url', DEFAULT_API_URL);
 }
-const KHS_APP_VERSION = '391';
+const KHS_APP_VERSION = '392';
 window.KHS_APP_VERSION = KHS_APP_VERSION;
 // ── UTILS ──
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)); }
@@ -244,7 +244,7 @@ const App = {
         timeoutMs: options.timeoutMs ?? 30000
       });
       if (!Array.isArray(response.data)) throw new Error('API tồn kho trả về dữ liệu không hợp lệ');
-      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this.user !== user) throw new Error('Kho vừa thay đổi, bỏ phản hồi cũ.');
+      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this._checkoutSubmitting || this.user !== user) throw new Error('Kho vừa thay đổi, bỏ phản hồi cũ.');
       this.products = response.data;
       this.productsLastSyncAt = new Date().toISOString();
       await Promise.all([
@@ -305,7 +305,7 @@ const App = {
       timeoutMs: options.timeoutMs ?? 45000
     });
     if (!Array.isArray(response.data)) throw new Error(`${action} trả về dữ liệu không hợp lệ`);
-    if (['batches','returns','customers'].includes(key) && (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this.user !== user)) throw new Error('Dữ liệu vừa thay đổi, bỏ phản hồi cũ.');
+    if (['batches','returns','customers'].includes(key) && (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this._checkoutSubmitting || this.user !== user)) throw new Error('Dữ liệu vừa thay đổi, bỏ phản hồi cũ.');
     if (key === 'customers' && response.customerStatsVersion !== 1) throw new Error('Backend chưa hỗ trợ tổng mua đầy đủ. Giữ dữ liệu cũ.');
     this[key] = response.data;
     await Promise.all([this.saveCacheValue(key, this[key]), this.markDatasetSynced(key)]);
@@ -320,6 +320,7 @@ const App = {
     const apiUrl = localStorage.getItem('khs_api_url');
     if (!apiUrl) throw new Error('Chưa cấu hình API');
     const response = await this.fetchApiJson(`${apiUrl}?action=getConfig`, { retries: 2 });
+    this._checkoutBackendReady = response.checkoutSaveVersion === 2;
     const config = response.data || {};
     if (config.store_name) localStorage.setItem('khs_store_name', config.store_name);
     if (config.store_addr) localStorage.setItem('khs_store_addr', config.store_addr);
@@ -546,7 +547,7 @@ const App = {
         params.set('to', this._formatDateInput(endDate));
       }
       const response = await this.fetchApiJson(`${apiUrl}?${params.toString()}`, { retries: 2, timeoutMs: 60000 });
-      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this.user !== user) throw new Error('Đơn vừa thay đổi, bỏ phản hồi cũ.');
+      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this._checkoutSubmitting || this.user !== user) throw new Error('Đơn vừa thay đổi, bỏ phản hồi cũ.');
       const incoming = Array.isArray(response.data) ? response.data : [];
       // Older Apps Script deployments ignore from/to and return the complete
       // history without meta. Treat those responses, and an explicit "all"
@@ -591,7 +592,7 @@ const App = {
       const results = await this.runLimited(tasks, 2);
       const errors = [];
       definitions.forEach(([key], index) => {
-        if (['products','batches','returns','customers'].includes(key) && (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this.user !== user)) { errors.push(`${key}: Bỏ phản hồi trước khi trả hàng`); return; }
+        if (['products','batches','returns','customers'].includes(key) && (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this._checkoutSubmitting || this.user !== user)) { errors.push(`${key}: Bỏ phản hồi trước khi trả hàng`); return; }
         const result = results[index];
         if (!result?.ok) { errors.push(`${key}: ${result?.error?.message || 'lỗi tải'}`); return; }
         const payload = result.value;
@@ -611,6 +612,7 @@ const App = {
       const cfgRes = results[definitions.findIndex(([key]) => key === 'config')]?.value;
       // Sync store config → localStorage
       if (cfgRes?.success && cfgRes.data) {
+        this._checkoutBackendReady = cfgRes.checkoutSaveVersion === 2;
         const cfg = cfgRes.data;
         if (cfg.store_name) localStorage.setItem('khs_store_name', cfg.store_name);
         if (cfg.store_addr) localStorage.setItem('khs_store_addr', cfg.store_addr);
@@ -2931,7 +2933,7 @@ const App = {
       const params = new URLSearchParams({action:'getCustomers',mode:'history',customerId:h.custId,offset:String(offset),limit:'30'});
       const result = await this.fetchApiJson(`${apiUrl}?${params}`, {retries:0,timeoutMs:30000});
       if (this._customerHistory !== h || this.user !== h.user) return;
-      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting) throw new Error('Dữ liệu trả hàng vừa thay đổi. Mở lại lịch sử để cập nhật.');
+      if (epoch !== (this._returnDataEpoch || 0) || this.returnSubmitting || this._checkoutSubmitting) throw new Error('Dữ liệu trả hàng vừa thay đổi. Mở lại lịch sử để cập nhật.');
       if (result.customerStatsVersion !== 1 || result.customerId !== h.custId || !Array.isArray(result.data)
         || !result.summary || !result.meta || result.meta.offset !== offset
         || !Number.isFinite(result.summary.totalSpent) || !Number.isFinite(result.summary.totalOrders)
@@ -4102,7 +4104,7 @@ const App = {
   },
 
   async prepareReturnOrder(orderId) {
-    if (this._returnCheckBusy || this.returnSubmitting) return;
+    if (this._returnCheckBusy || this.returnSubmitting || this._checkoutSubmitting) return;
     const order = this.orders.find(o => o.id === orderId), user = this.user, generation = this._returnOpenGeneration;
     if (!order) return;
     this._returnCheckBusy = true;
