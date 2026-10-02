@@ -1,5 +1,11 @@
 # SalesApp workflow notes
 
+## TikTok bỏ H Afiliate — 02/10/2026
+
+Backend Private Code.gs đã đọc cột TikTok theo tiêu đề và triển khai Web App v105 trên URL cũ; bot/Fee v48. Sheet doanh thu/BOT TEST đã bỏ H: thực nhận H = E-F-G, SKU J, đối soát N, CAT O, thời gian P. Mapping/quà/giá/receipt không đổi. 90 backend tests đạt; không ghi/trừ kho SalesApp thật để thử. Không cần dán/deploy Apps Script lần nữa cho bản này, không phát hành frontend/Worker (PWA vẫn v392).
+
+Chi tiết và chứng cứ đối chiếu nằm trong backend Private `G:\Antigravity\SalesApp-Backend\docs\TIKTOK_COLUMN_LAYOUT.md` và `G:\Antigravity\TikTok Tools\README.md`. Chỉ lưu mục này, giữ nguyên các ghi chép/cấu hình local chưa commit khác.
+
 ## Environments
 
 - Local workspace: `G:\Antigravity\SalesApp`
